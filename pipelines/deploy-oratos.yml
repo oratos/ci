@@ -1,0 +1,111 @@
+groups:
+- name: main
+  jobs:
+  - oratos-deploy
+
+resources:
+- name: loggregator-k8s-deployment
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry-incubator/loggregator-k8s-deployment
+    branch: master
+
+- name: deployments-loggregator
+  type: git
+  source:
+    uri: git@github.com:cloudfoundry/deployments-loggregator.git
+    branch: master
+    private_key: {{deployments-loggregator-key}}
+
+jobs:
+- name: oratos-deploy
+  public: false
+  serial: true
+  plan:
+  - aggregate:
+    - get: deployments-loggregator
+    - get: loggregator-k8s-deployment
+      trigger: true
+  - task: prepare-certs
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: loggregator/certs
+      inputs:
+      - name: deployments-loggregator
+      outputs:
+      - name: updated-deployments-loggregator
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -e
+
+          apt-get update --yes
+          apt-get install --yes git
+          git config --global user.email "cf-loggregator@pivotal.io"
+          git config --global user.name "Loggregator CI"
+
+          cp -R deployments-loggregator/. updated-deployments-loggregator/
+
+          generate-certs.sh output
+          tls_certs_header='
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: loggregator-tls-certs
+            namespace: oratos
+          type: Opaque
+          data:'
+
+          echo "$tls_certs_header" > k8s-certs.yml
+          ls output |
+              while read line
+                  do echo "  $line: $(cat output/$line | base64 -w 0)"
+              done >> k8s-certs.yml
+          mv k8s-certs.yml updated-deployments-loggregator/gcp/playground/
+          pushd updated-deployments-loggregator
+            git add gcp/playground/k8s-certs.yml
+            git commit -m "Add loggregator certs for kubernetes
+
+          [ci-skip]"
+          popd
+  - put: deployments-loggregator
+    params:
+      repository: updated-deployments-loggregator
+      rebase: true
+  - task: oratos-deploy
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: loggregator/base
+      inputs:
+      - name: loggregator-k8s-deployment
+      - name: updated-deployments-loggregator
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -e
+
+          pushd updated-deployments-loggregator/gcp/playground
+            eval "$(ssh-agent)"
+            source .envrc
+            set +e
+            source k8s_login
+            set -e
+          popd
+          cp updated-deployments-loggregator/gcp/playground/k8s-certs.yml loggregator-k8s-deployment/secrets/
+          pushd loggregator-k8s-deployment
+            ./deploy.sh
+          popd
+          killall ssh
+          killall ssh-agent
