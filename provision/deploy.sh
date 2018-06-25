@@ -58,7 +58,7 @@ function install_concourse {
     echo INSTALLING CONCOURSE
     echo
 
-    # kubectl create namespace "$NAMESPACE_NAME"
+    kubectl create namespace "$NAMESPACE_NAME"
     helm install stable/concourse \
         --name concourse \
         --values <(generate_values) \
@@ -102,8 +102,8 @@ function poll_loadbalancer_ip {
 }
 
 function main {
-    # create_cluster
-    # init_helm
+    create_cluster
+    init_helm
     install_concourse
     poll_loadbalancer_ip
 }
