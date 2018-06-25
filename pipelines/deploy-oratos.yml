@@ -105,7 +105,7 @@ jobs:
           popd
           cp updated-deployments-loggregator/gcp/playground/k8s-certs.yml loggregator-k8s-deployment/secrets/
           pushd loggregator-k8s-deployment
-            ./deploy.sh
+            ./deploy.sh && ./status.sh
           popd
           killall ssh
           killall ssh-agent
