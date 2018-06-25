@@ -6,10 +6,11 @@
 ## Description :
 ## --
 ## Created : <2017-08-15>
-## Updated: Time-stamp: <2018-06-25 11:51:36>
+## Updated: Time-stamp: <2018-06-25 11:57:48>
 ##-------------------------------------------------------------------
 function setup_daemonset() {
     echo "Setup Daemonset"
+    kubectl apply -f namespace/namespace.yml
     kubectl apply -f configmap/fluent-bit-configmap.yml
     kubectl apply -f daemonsets/daemonset.yaml
 }
