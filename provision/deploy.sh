@@ -14,7 +14,7 @@ concourse:
   externalURL: http://oratos.ci.cf-app.com
   githubAuth:
     enabled: true
-    user: jasonkeene,wfernandes,dennyzhang
+    user: jasonkeene,wfernandes,DennyZhang
 "
 
 function generate_values {
