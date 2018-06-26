@@ -1,0 +1,40 @@
+#!/bin/bash
+
+set -ex
+
+function teardown {
+  set +e
+  killall ssh
+  killall ssh-agent
+}
+trap teardown EXIT
+
+eval "$(ssh-agent)"
+
+pushd deployments-loggregator/gcp/playground
+  set +x
+  source .envrc
+  set +e
+  source k8s_login
+  set -ex
+
+  kubectl get namespaces --output json | \
+    jq --raw-output .items[].metadata.name | \
+    while read ns; do
+      kubectl --namespace "$ns" delete all --all --cascade --now
+  done
+popd
+
+echo waiting for delete requests to complete
+while true; do
+  echo -n .
+  count="$(
+    kubectl get all --all-namespaces --output json | \
+      jq --raw-output '.items | length'
+  )"
+  # kubernetes service might get recreated
+  if [ "$count" -lt 2 ]; then
+    break
+  fi
+  sleep 5
+done

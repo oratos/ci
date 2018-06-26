@@ -1,6 +1,8 @@
 groups:
 - name: main
   jobs:
+  - cfcr-deploy
+  - cfcr-destroy
   - oratos-deploy
 
 resources:
@@ -17,7 +19,184 @@ resources:
     branch: master
     private_key: {{deployments-loggregator-key}}
 
+- name: kubo-deployment
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry-incubator/kubo-deployment
+    branch: v0.17.0
+
+- name: kubo-release-bosh-io
+  type: bosh-io-release
+  source:
+    repository: cloudfoundry-incubator/kubo-release
+
+- name: weekday-after-work
+  type: time
+  source:
+    start: 6:00 PM
+    stop: 7:00 PM
+    location: America/Denver
+    days: [Monday, Tuesday, Wednesday, Thursday, Friday]
+
+- name: cf-deployment-concourse-tasks
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry/cf-deployment-concourse-tasks
+    branch: v6.8
+
+- name: oratos-ci
+  type: git
+  source:
+    uri: https://github.com/oratos/ci
+
 jobs:
+- name: cfcr-deploy
+  public: false
+  serial: true
+  plan:
+  - aggregate:
+    - get: weekday-before-work
+      trigger: true
+    - get: deployments-loggregator
+    - get: kubo-deployment
+      trigger: true
+    - get: cf-deployment-concourse-tasks
+    - get: kubo-release-bosh-io
+      trigger: true
+  - task: upload-release
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: relintdockerhubpushbot/cf-deployment-concourse-tasks
+      inputs:
+      - name: kubo-release-bosh-io
+      - name: deployments-loggregator
+      params:
+        BBL_STATE_DIR: gcp/playground
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -ex
+
+          # set bosh env vars
+          set +x
+          pushd "deployments-loggregator/$BBL_STATE_DIR" > /dev/null
+            eval "$(bbl print-env)"
+          popd > /dev/null
+          set -x
+
+          bosh upload-release kubo-release-bosh-io/release.tgz
+  - task: upload-stemcell
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: relintdockerhubpushbot/cf-deployment-concourse-tasks
+      inputs:
+      - name: kubo-deployment
+      - name: deployments-loggregator
+      params:
+        BBL_STATE_DIR: gcp/playground
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -ex
+
+          # get stemcell version
+          pushd kubo-deployment > /dev/null
+            version="$(
+              bosh int manifests/cfcr.yml \
+                --path /stemcells/alias=trusty/version
+            )"
+          popd > /dev/null
+
+          # set bosh env vars
+          set +x
+          pushd "deployments-loggregator/$BBL_STATE_DIR" > /dev/null
+            eval "$(bbl print-env)"
+          popd > /dev/null
+          set -x
+
+          bosh upload-stemcell \
+            "https://bosh.io/d/stemcells/bosh-google-kvm-ubuntu-trusty-go_agent?v=$version"
+  - task: upload-vars-to-credhub
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: loggregator/base
+      inputs:
+      - name: deployments-loggregator
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -e
+
+          eval "$(ssh-agent)"
+          cd deployments-loggregator/gcp/playground
+          source .envrc
+          credhub import --file k8s-cloud-provider-credhub-vars.yml
+          killall ssh-agent
+  - task: cfcr-deploy
+    file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
+    input_mapping:
+      cf-deployment: kubo-deployment
+      ops-files: kubo-deployment
+      bbl-state: deployments-loggregator
+      vars-store: deployments-loggregator
+      vars-files: deployments-loggregator
+    params:
+      BBL_STATE_DIR: gcp/playground
+      SYSTEM_DOMAIN: playground.loggr.cf-app.com
+      USE_VARS_STORE: false
+      MANIFEST_FILE: manifests/cfcr.yml
+      OPS_FILES: |
+        manifests/ops-files/allow-privileged-containers.yml
+        manifests/ops-files/iaas/gcp/cloud-provider.yml
+        manifests/ops-files/iaas/gcp/add-service-key-master.yml
+        manifests/ops-files/iaas/gcp/add-service-key-worker.yml
+  - task: run-apply-addons-errand
+    file: cf-deployment-concourse-tasks/run-errand/task.yml
+    input_mapping:
+      bbl-state: deployments-loggregator
+    params:
+      DEPLOYMENT_NAME: cfcr
+      ERRAND_NAME: apply-addons
+      BBL_STATE_DIR: gcp/playground
+
+- name: cfcr-destroy
+  serial_groups: ["deployment"]
+  public: false
+  plan:
+  - get: weekday-after-work
+    trigger: true
+  - aggregate:
+    - get: deployments-loggregator
+    - get: cf-deployment-concourse-tasks
+    - get: oratos-ci
+  - task: delete-k8s-resources
+    file: oratos-ci/tasks/k8s-delete-all-resources/task.yml
+  - task: cfcr-deployment-destroy
+    file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
+    input_mapping:
+      bbl-state: deployments-loggregator
+    params:
+      BBL_STATE_DIR: gcp/playground
+      DEPLOYMENT_NAME: cfcr
+
 - name: oratos-deploy
   public: false
   serial: true
