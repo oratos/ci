@@ -1,0 +1,189 @@
+#!/bin/bash
+
+set -e
+
+MESSAGE="$MESSAGE-$RANDOM"
+
+# Install and setup papertrail cli
+gem install papertrail
+echo "token: $PAPERTRAIL_TOKEN" > ~/.papertrail.yml
+
+function report_to_datadog {
+  currenttime="$(date +%s)"
+  SYSTEM_DOMAIN=k8s-syslog-playground
+  APP_NAME=k8s-syslog-playground-blackbox
+  curl --fail -X POST -H "Content-type: application/json" \
+  -d "{ \"series\" :
+    [
+      {
+        \"metric\":\"smoke_test.loggregator.k8s_namespace_delay\",
+        \"points\":[[${currenttime}, ${DELAY}]],
+        \"type\":\"gauge\",
+        \"host\":\"${SYSTEM_DOMAIN}\",
+        \"tags\":[
+          \"${APP_NAME}\",
+          \"delay_unit:${DELAY_UNIT}\"
+        ]
+      },
+      {
+        \"metric\":\"smoke_test.loggregator.k8s_namespace_logs_received\",
+        \"points\":[[${currenttime}, ${MSG_COUNT}]],
+        \"type\":\"gauge\",
+        \"host\":\"${SYSTEM_DOMAIN}\",
+        \"tags\":[
+          \"${APP_NAME}\"
+        ]
+      },
+      {
+        \"metric\":\"smoke_test.loggregator.k8s_namespace_logs_sent\",
+        \"points\":[[${currenttime}, ${CYCLES}]],
+        \"type\":\"gauge\",
+        \"host\":\"${SYSTEM_DOMAIN}\",
+        \"tags\":[
+          \"${APP_NAME}\"
+        ]
+      }
+    ]
+  }" \
+  'https://app.datadoghq.com/api/v1/series?api_key='"$DATADOG_API_KEY"
+
+  set +e
+  killall kubectl
+  killall ssh
+  killall ssh-agent
+  killall papertrail
+}
+trap report_to_datadog EXIT
+
+MSG_COUNT=0
+
+eval "$(ssh-agent)"
+pushd deployments-loggregator/gcp/playground
+    source .envrc
+    set +e
+    source k8s_login
+    set -e
+    echo "
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: blackbox-tests
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: logspinner
+  namespace: blackbox-tests
+  labels:
+    run: logspinner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: logspinner
+  template:
+    metadata:
+      labels:
+        run: logspinner
+    spec:
+      containers:
+      - name: logspinner
+        image: loggregator/logspinner
+        env:
+        - name: PORT
+          value: \"8080\"
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: syslog-nozzle
+  namespace: oratos
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: syslog-nozzle
+    spec:
+      volumes:
+      - name: loggregator-tls-certs
+        secret:
+          secretName: loggregator-tls-certs
+      containers:
+      - name: syslog-nozzle
+        image: loggregator/syslog-nozzle
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: loggregator-tls-certs
+          mountPath: /srv/certs
+          readOnly: true
+        env:
+        - name: LOGS_PROVIDER_ADDR
+          value: loggregator-rlp.oratos.svc.cluster.local:8082
+        - name: DRAINS
+          value: |
+            [
+               {
+                   \"namespace\": \"blackbox-tests\",
+                   \"url\": \"logs2.papertrailapp.com:13998\"
+               }
+            ]
+" | kubectl apply -f -
+    logspinner_pod_name="$(
+        kubectl get pod -l run=logspinner \
+            --output=json \
+            --namespace blackbox-tests | \
+            jq --raw-output .items[0].metadata.name
+    )"
+    nozzle_pod_name="$(
+        kubectl get pod -l app=syslog-nozzle \
+            --output=json \
+            --namespace oratos | \
+            jq --raw-output .items[0].metadata.name
+    )"
+    while true; do
+        logspinner_status="$(
+            kubectl get pod "$logspinner_pod_name" \
+                --output=json \
+                --namespace blackbox-tests | \
+                jq --raw-output .status.phase
+        )"
+        nozzle_status="$(
+            kubectl get pod "$nozzle_pod_name" \
+                --output=json \
+                --namespace oratos | \
+                jq --raw-output .status.phase
+        )"
+        if [[ "$logspinner_status" = "Running" && "$nozzle_status" = "Running" ]]; then
+            break
+        fi
+        sleep 10
+    done
+
+
+    kubectl port-forward "$logspinner_pod_name" 8080:8080 \
+        --namespace blackbox-tests > /dev/null &
+    sleep 3
+popd
+
+echo "Collecting logs for $logspinner_pod_name"
+papertrail -f $MESSAGE > output.txt &
+sleep 30 # wait 30 seconds to establish connection and drain logs
+
+echo "Triggering $logspinner_pod_name"
+curl "http://localhost:8080?cycles=$CYCLES&delay=$DELAY$DELAY_UNIT&text=$MESSAGE"
+
+sleep "$WAIT" # wait for a bit to collect logs
+
+MSG_COUNT=$(grep -c "$MESSAGE" output.txt)
+
+echo "The number of messages received: $MSG_COUNT"
+echo "The number of messages sent    : $CYCLES"
+if [ "$MSG_COUNT" -lt $(($CYCLES * 99 / 100)) ]; then
+    echo =========================================
+    echo THE RELIABILITY TEST DID NOT MEET OUR SLO
+    echo =========================================
+    exit 123
+fi
+
+# Trap will send metrics to datadog
