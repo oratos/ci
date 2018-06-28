@@ -1,0 +1,144 @@
+resources:
+- name: 15m
+  type: time
+  source: {interval: 15m}
+
+- name: 1h
+  type: time
+  source: {interval: 1h}
+
+- name: oratos-ci
+  type: git
+  source:
+    uri: https://github.com/oratos/ci
+
+- name: deployments-loggregator
+  type: git
+  source:
+    uri: git@github.com:cloudfoundry/deployments-loggregator.git
+    branch: master
+    private_key: {{deployments-loggregator-key}}
+
+jobs:
+- name: k8s-floodspinner
+  public: false
+  serial: true
+  serial_groups: ["restage"]
+  plan:
+  - get: oratos-ci
+  - get: deployments-loggregator
+  - get: 15m
+    trigger: true
+  - task: run-k8s-blackbox-tests
+    file: oratos-ci/tasks/k8s-blackbox/task.yml
+    params:
+      WAIT: 60
+      CYCLES: 10000
+      DATADOG_API_KEY: {{datadog-loggregator-api-key}}
+      DELAY: "2"
+      DELAY_UNIT: "us"
+      MESSAGE: "FIFTEEN-MINUTE"
+    timeout: 15m
+
+- name: k8s-dripspinner
+  public: false
+  serial: true
+  serial_groups: ["restage"]
+  plan:
+  - get: oratos-ci
+  - get: deployments-loggregator
+  - get: 1h
+    trigger: true
+  - task: run-k8s-blackbox-tests
+    file: oratos-ci/tasks/k8s-blackbox/task.yml
+    params:
+      WAIT: 600
+      CYCLES: 1000
+      DATADOG_API_KEY: {{datadog-loggregator-api-key}}
+      DELAY: "500"
+      DELAY_UNIT: "ms"
+      MESSAGE: "HOURLY"
+    timeout: 15m
+
+- name: k8s-flowspinner
+  public: false
+  serial: true
+  serial_groups: ["restage"]
+  plan:
+  - get: oratos-ci
+  - get: deployments-loggregator
+  - get: 1h
+    trigger: true
+  - task: run-k8s-blackbox-tests
+    file: oratos-ci/tasks/k8s-blackbox/task.yml
+    params:
+      WAIT: 60
+      CYCLES: 1000
+      DATADOG_API_KEY: {{datadog-loggregator-api-key}}
+      DELAY: "1"
+      DELAY_UNIT: "ms"
+      MESSAGE: "HOURLY"
+    timeout: 15m
+
+- name: k8s-syslog-floodspinner
+  public: false
+  serial: true
+  serial_groups: ["restage"]
+  plan:
+  - get: oratos-ci
+  - get: deployments-loggregator
+  - get: 15m
+    trigger: true
+  - task: run-k8s-syslog-blackbox-tests
+    file: oratos-ci/tasks/k8s-syslog-blackbox/task.yml
+    params:
+      PAPERTRAIL_TOKEN: {{papertrail-token}}
+      WAIT: 60
+      CYCLES: 10000
+      DATADOG_API_KEY: {{datadog-loggregator-api-key}}
+      DELAY: "2"
+      DELAY_UNIT: "us"
+      MESSAGE: "FIFTEEN-MINUTE"
+    timeout: 15m
+
+- name: k8s-syslog-dripspinner
+  public: false
+  serial: true
+  serial_groups: ["restage"]
+  plan:
+  - get: oratos-ci
+  - get: deployments-loggregator
+  - get: 1h
+    trigger: true
+  - task: run-k8s-syslog-blackbox-tests
+    file: oratos-ci/tasks/k8s-syslog-blackbox/task.yml
+    params:
+      PAPERTRAIL_TOKEN: {{papertrail-token}}
+      WAIT: 600
+      CYCLES: 1000
+      DATADOG_API_KEY: {{datadog-loggregator-api-key}}
+      DELAY: "500"
+      DELAY_UNIT: "ms"
+      MESSAGE: "HOURLY"
+    timeout: 15m
+
+- name: k8s-syslog-flowspinner
+  public: false
+  serial: true
+  serial_groups: ["restage"]
+  plan:
+  - get: oratos-ci
+  - get: deployments-loggregator
+  - get: 1h
+    trigger: true
+  - task: run-k8s-syslog-blackbox-tests
+    file: oratos-ci/tasks/k8s-syslog-blackbox/task.yml
+    params:
+      PAPERTRAIL_TOKEN: {{papertrail-token}}
+      WAIT: 60
+      CYCLES: 1000
+      DATADOG_API_KEY: {{datadog-loggregator-api-key}}
+      DELAY: "1"
+      DELAY_UNIT: "ms"
+      MESSAGE: "HOURLY"
+    timeout: 15m
