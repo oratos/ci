@@ -12,6 +12,13 @@ resources:
     uri: https://github.com/cloudfoundry-incubator/loggregator-k8s-deployment
     branch: master
 
+- name: oratos-secrets
+  type: git
+  source:
+    uri: git@github.com:pivotal-cf/oratos-secrets.git
+    branch: master
+    private_key: {{oratos-key}}
+
 - name: deployments-loggregator
   type: git
   source:
@@ -29,6 +36,14 @@ resources:
   type: bosh-io-release
   source:
     repository: cloudfoundry-incubator/kubo-release
+
+- name: weekday-before-work
+  type: time
+  source:
+    start: 7:00 AM
+    stop: 8:00 AM
+    location: America/Denver
+    days: [Monday, Tuesday, Wednesday, Thursday, Friday]
 
 - name: weekday-after-work
   type: time
@@ -58,6 +73,7 @@ jobs:
     - get: weekday-before-work
       trigger: true
     - get: deployments-loggregator
+    - get: oratos-secrets
     - get: kubo-deployment
       trigger: true
     - get: cf-deployment-concourse-tasks
@@ -203,6 +219,7 @@ jobs:
   plan:
   - aggregate:
     - get: deployments-loggregator
+    - get: oratos-secrets
     - get: loggregator-k8s-deployment
       trigger: true
   - task: prepare-certs
@@ -213,9 +230,9 @@ jobs:
         source:
           repository: loggregator/certs
       inputs:
-      - name: deployments-loggregator
+      - name: oratos-secrets
       outputs:
-      - name: updated-deployments-loggregator
+      - name: updated-oratos-secrets
       run:
         path: /bin/bash
         args:
@@ -229,7 +246,7 @@ jobs:
           git config --global user.email "cf-loggregator@pivotal.io"
           git config --global user.name "Loggregator CI"
 
-          cp -R deployments-loggregator/. updated-deployments-loggregator/
+          cp -R oratos-secrets/. updated-oratos-secrets/
 
           generate-certs.sh output
           tls_certs_header='
@@ -246,16 +263,16 @@ jobs:
               while read line
                   do echo "  $line: $(cat output/$line | base64 -w 0)"
               done >> k8s-certs.yml
-          mv k8s-certs.yml updated-deployments-loggregator/gcp/playground/
-          pushd updated-deployments-loggregator
-            git add gcp/playground/k8s-certs.yml
+          mv k8s-certs.yml updated-oratos-secrets/
+          pushd updated-oratos-secrets
+            git add k8s-certs.yml
             git commit -m "Add loggregator certs for kubernetes
 
           [ci-skip]"
           popd
-  - put: deployments-loggregator
+  - put: oratos-secrets
     params:
-      repository: updated-deployments-loggregator
+      repository: updated-oratos-secrets
       rebase: true
   - task: oratos-deploy
     config:
@@ -266,7 +283,8 @@ jobs:
           repository: loggregator/base
       inputs:
       - name: loggregator-k8s-deployment
-      - name: updated-deployments-loggregator
+      - name: deployments-loggregator
+      - name: updated-oratos-secrets
       run:
         path: /bin/bash
         args:
@@ -275,14 +293,14 @@ jobs:
           #!/bin/bash
           set -e
 
-          pushd updated-deployments-loggregator/gcp/playground
+          pushd deployments-loggregator/gcp/playground
             eval "$(ssh-agent)"
             source .envrc
             set +e
             source k8s_login
             set -e
           popd
-          cp updated-deployments-loggregator/gcp/playground/k8s-certs.yml loggregator-k8s-deployment/secrets/
+          cp updated-oratos-secrets/k8s-certs.yml loggregator-k8s-deployment/secrets/
           pushd loggregator-k8s-deployment
             ./deploy.sh && ./status.sh
           popd
