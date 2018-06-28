@@ -73,7 +73,6 @@ jobs:
     - get: weekday-before-work
       trigger: true
     - get: deployments-loggregator
-    - get: oratos-secrets
     - get: kubo-deployment
       trigger: true
     - get: cf-deployment-concourse-tasks
