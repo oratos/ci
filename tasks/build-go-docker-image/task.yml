@@ -1,0 +1,24 @@
+platform: linux
+image_resource:
+  type: docker-image
+  source:
+    repository: loggregator/base
+inputs:
+- name: context-repo # repo that contains the source docker context
+- name: source-repo # repo to build static binaries from
+- name: oratos-ci # repo for task file
+outputs:
+- name: build-image # the place to store the build context and tag
+params:
+  # - Required
+  # - The path in the context-repo where the context is located
+  CONTEXT_PATH:
+
+  # - Required
+  # - The base package for the Go source repo
+  BASE_PACKAGE:
+
+  # - The sub-package, relative to the BASE_PACKAGE that is being built
+  SUB_PACKAGE:
+run:
+  path: oratos-ci/tasks/build-go-docker-image/task
