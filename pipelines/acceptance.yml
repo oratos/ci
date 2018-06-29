@@ -217,6 +217,10 @@ jobs:
   serial: true
   plan:
   - aggregate:
+    - get: weekday-before-work
+      trigger: true
+      passed:
+      - cfcr-deploy
     - get: deployments-loggregator
     - get: oratos-secrets
     - get: loggregator-k8s-deployment
