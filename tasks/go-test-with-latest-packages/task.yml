@@ -1,0 +1,19 @@
+---
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: loggregator/base
+
+inputs:
+- name: oratos-ci   # - This repo
+- name: source-repo # - The Go package to test
+
+run:
+  path: oratos-ci/tasks/go-test-with-latest-packages/task
+
+params:
+  # - Required
+  # - The import path of the package to test.
+  IMPORT_PATH:
