@@ -31,7 +31,8 @@ function report_to_datadog {
         \"type\":\"gauge\",
         \"host\":\"${SYSTEM_DOMAIN}\",
         \"tags\":[
-          \"${APP_NAME}\"
+          \"${APP_NAME}\",
+          \"delay:${DELAY}${DELAY_UNIT}\"
         ]
       },
       {
@@ -40,7 +41,8 @@ function report_to_datadog {
         \"type\":\"gauge\",
         \"host\":\"${SYSTEM_DOMAIN}\",
         \"tags\":[
-          \"${APP_NAME}\"
+          \"${APP_NAME}\",
+          \"delay:${DELAY}${DELAY_UNIT}\"
         ]
       }
     ]
