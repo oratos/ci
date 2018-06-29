@@ -16,7 +16,8 @@ resources:
   source:
     uri: https://github.com/oratos/ci
     branch: master
-    path: docker-images/fluent-bit-out-syslog
+    paths:
+    - docker-images/fluent-bit-out-syslog
 
 - name: out-syslog-image
   type: docker-image
