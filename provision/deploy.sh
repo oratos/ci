@@ -21,7 +21,7 @@ web:
     type: NodePort
   ingress:
     annotations:
-      kubernetes.io/ingress.allow-http: "false"
+      kubernetes.io/ingress.allow-http: \"false\"
     enabled: true
     hosts:
     - oratos.ci.cf-app.com

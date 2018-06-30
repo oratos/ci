@@ -8,4 +8,4 @@ install:
   - shellcheck --version
 
 script:
-  -  find . -name *.sh | xargs shellcheck
+  - find . -name *.sh | xargs shellcheck
