@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -ex
+
+mkdir -p "workspace/src/$IMPORT_PATH"
+cp -r source-repo/. "workspace/src/$IMPORT_PATH/"
+
+pushd workspace
+  export GOPATH="$PWD"
+  export PATH="$GOPATH/bin:$PATH"
+
+  pushd "src/$IMPORT_PATH"
+    go get -t -d ./...
+    golangci-lint run
+  popd
+popd

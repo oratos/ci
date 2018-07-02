@@ -47,6 +47,17 @@ jobs:
     - get: out-syslog
       trigger: true
     - get: oratos-ci
+  - task: run-linter
+    file: oratos-ci/tasks/golangci-lint/task.yml
+    input_mapping:
+      source-repo: out-syslog
+    params:
+      IMPORT_PATH: github.com/oratos/out_syslog
+    on_failure:
+      put: slack-alert
+      params:
+        text: Syslog Plugin Linter failed
+
   - task: run-tests
     file: oratos-ci/tasks/go-test-with-latest-packages/task.yml
     input_mapping:
