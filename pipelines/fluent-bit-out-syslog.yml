@@ -27,6 +27,21 @@ resources:
     password: {{docker-hub-password}}
 
 jobs:
+- name: unit-tests
+  public: false
+  serial: true
+  plan:
+  - aggregate:
+    - get: out-syslog
+      trigger: true
+    - get: oratos-ci
+  - task: run-tests
+    file: oratos-ci/tasks/go-test-with-latest-packages/task.yml
+    input_mapping:
+      source-repo: out-syslog
+    params:
+      IMPORT_PATH: github.com/oratos/out_syslog
+
 - name: build-out-syslog
   public: false
   serial: true
@@ -34,6 +49,8 @@ jobs:
   - aggregate:
     - get: out-syslog
       trigger: true
+      passed:
+      - unit-tests
     - get: out-syslog-dockerfile
       trigger: true
     - get: oratos-ci
