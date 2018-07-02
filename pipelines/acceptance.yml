@@ -6,10 +6,10 @@ groups:
   - oratos-deploy
 
 resources:
-- name: loggregator-k8s-deployment
+- name: oratos-deployment
   type: git
   source:
-    uri: https://github.com/cloudfoundry-incubator/loggregator-k8s-deployment
+    uri: https://github.com/oratos/deployment
     branch: master
 
 - name: oratos-secrets
@@ -223,7 +223,7 @@ jobs:
       - cfcr-deploy
     - get: deployments-loggregator
     - get: oratos-secrets
-    - get: loggregator-k8s-deployment
+    - get: oratos-deployment
       trigger: true
   - task: prepare-certs
     config:
@@ -285,7 +285,7 @@ jobs:
         source:
           repository: loggregator/base
       inputs:
-      - name: loggregator-k8s-deployment
+      - name: oratos-deployment
       - name: deployments-loggregator
       - name: updated-oratos-secrets
       run:
@@ -303,8 +303,8 @@ jobs:
             source k8s_login
             set -e
           popd
-          cp updated-oratos-secrets/k8s-certs.yml loggregator-k8s-deployment/secrets/
-          pushd loggregator-k8s-deployment
+          cp updated-oratos-secrets/k8s-certs.yml oratos-deployment/secrets/
+          pushd oratos-deployment
             ./deploy.sh && ./status.sh
           popd
           killall ssh
