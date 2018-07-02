@@ -1,3 +1,10 @@
+resource_types:
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+    tag: latest
+
 resources:
 - name: oratos-ci
   type: git
@@ -26,6 +33,11 @@ resources:
     username: {{docker-hub-username}}
     password: {{docker-hub-password}}
 
+- name: slack-alert
+  type: slack-notification
+  source:
+    url: {{slack-url}}
+
 jobs:
 - name: unit-tests
   public: false
@@ -41,6 +53,10 @@ jobs:
       source-repo: out-syslog
     params:
       IMPORT_PATH: github.com/oratos/out_syslog
+    on_failure:
+      put: slack-alert
+      params:
+        text: Syslog Plugin Unit tests failed
 
 - name: build-out-syslog
   public: false
