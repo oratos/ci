@@ -60,6 +60,7 @@ jobs:
 
   - task: run-tests
     file: oratos-ci/tasks/go-test-with-latest-packages/task.yml
+    privileged: true
     input_mapping:
       source-repo: out-syslog
     params:
