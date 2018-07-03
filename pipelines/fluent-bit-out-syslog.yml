@@ -110,7 +110,7 @@ jobs:
             mount -t cgroup -o none,name=systemd none /sys/fs/cgroup/systemd
           fi
         }
-        santize_cgroups
+        sanitize_cgroups
         service docker start
       POST_TEST_HOOK: service docker stop
     on_failure:
