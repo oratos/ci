@@ -13,5 +13,6 @@ pushd workspace
     go get -t -d ./...
     eval "$PRE_TEST_HOOK"
     go test ./... -race
+    eval "$POST_TEST_HOOK"
   popd
 popd

@@ -20,3 +20,6 @@ params:
 
   # - Command to run before running tests.
   PRE_TEST_HOOK:
+
+  # - Command to run after running tests.
+  POST_TEST_HOOK:
