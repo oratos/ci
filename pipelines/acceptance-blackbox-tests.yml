@@ -101,6 +101,27 @@ jobs:
       MESSAGE: "FIFTEEN-MINUTE"
     timeout: 15m
 
+- name: k8s-syslog-floodspinner
+  public: false
+  serial: true
+  serial_groups: ["restage"]
+  plan:
+  - get: oratos-ci
+  - get: deployments-loggregator
+  - get: 15m
+    trigger: true
+  - task: run-k8s-syslog-blackbox-tests
+    file: oratos-ci/tasks/k8s-syslog-blackbox/task.yml
+    params:
+      PAPERTRAIL_TOKEN: {{papertrail-token}}
+      WAIT: 60
+      CYCLES: 10000
+      DATADOG_API_KEY: {{datadog-loggregator-api-key}}
+      DELAY: "2"
+      DELAY_UNIT: "us"
+      MESSAGE: "FIFTEEN-MINUTE"
+    timeout: 15m
+
 - name: k8s-syslog-dripspinner
   public: false
   serial: true
