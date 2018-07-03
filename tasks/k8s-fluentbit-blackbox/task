@@ -2,6 +2,10 @@
 
 set -e
 
+if [ -n "$DEBUG" ]; then
+    set -x
+fi
+
 MESSAGE="$MESSAGE-$RANDOM"
 
 # Install and setup papertrail cli
