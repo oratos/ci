@@ -89,7 +89,7 @@ jobs:
   - get: deployments-loggregator
   - get: 15m
     trigger: true
-  - task: run-k8s-syslog-blackbox-tests
+  - task: run-k8s-fluentbit-blackbox-tests
     file: oratos-ci/tasks/k8s-fluentbit-blackbox/task.yml
     params:
       PAPERTRAIL_TOKEN: {{papertrail-token}}
@@ -99,6 +99,48 @@ jobs:
       DELAY: "2"
       DELAY_UNIT: "us"
       MESSAGE: "FIFTEEN-MINUTE"
+    timeout: 15m
+
+- name: k8s-fluentbit-dripspinner
+  public: false
+  serial: true
+  serial_groups: ["restage"]
+  plan:
+  - get: oratos-ci
+  - get: deployments-loggregator
+  - get: 1h
+    trigger: true
+  - task: run-k8s-fluentbit-blackbox-tests
+    file: oratos-ci/tasks/k8s-fluentbit-blackbox/task.yml
+    params:
+      PAPERTRAIL_TOKEN: {{papertrail-token}}
+      WAIT: 600
+      CYCLES: 1000
+      DATADOG_API_KEY: {{datadog-loggregator-api-key}}
+      DELAY: "500"
+      DELAY_UNIT: "ms"
+      MESSAGE: "HOURLY"
+    timeout: 15m
+
+- name: k8s-fluentbit-flowspinner
+  public: false
+  serial: true
+  serial_groups: ["restage"]
+  plan:
+  - get: oratos-ci
+  - get: deployments-loggregator
+  - get: 1h
+    trigger: true
+  - task: run-k8s-fluentbit-blackbox-tests
+    file: oratos-ci/tasks/k8s-fluentbit-blackbox/task.yml
+    params:
+      PAPERTRAIL_TOKEN: {{papertrail-token}}
+      WAIT: 60
+      CYCLES: 1000
+      DATADOG_API_KEY: {{datadog-loggregator-api-key}}
+      DELAY: "1"
+      DELAY_UNIT: "ms"
+      MESSAGE: "HOURLY"
     timeout: 15m
 
 - name: k8s-syslog-floodspinner

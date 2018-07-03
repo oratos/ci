@@ -170,7 +170,7 @@ spec:
 popd
 
 echo "Collecting logs for $logspinner_pod_name"
-papertrail -f "$MESSAGE" > output.txt &
+papertrail --min-time '30 minutes ago' "$MESSAGE" > output.txt &
 sleep 30 # wait 30 seconds to establish connection and drain logs
 
 echo "Triggering $logspinner_pod_name"
