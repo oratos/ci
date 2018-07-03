@@ -66,6 +66,8 @@ jobs:
     params:
       IMPORT_PATH: github.com/oratos/out_syslog
       PRE_TEST_HOOK: |
+        # Note: this was copied from the docker-image-resource
+        # https://github.com/concourse/docker-image-resource/blob/c725c6277ca2820016de1bfe2bdfabaad5fd5879/assets/common.sh#L4
         sanitize_cgroups() {
           mkdir -p /sys/fs/cgroup
           mountpoint -q /sys/fs/cgroup || \
