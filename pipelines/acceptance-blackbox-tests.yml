@@ -80,7 +80,7 @@ jobs:
       MESSAGE: "HOURLY"
     timeout: 15m
 
-- name: k8s-syslog-floodspinner
+- name: k8s-fluentbit-floodspinner
   public: false
   serial: true
   serial_groups: ["restage"]
@@ -90,7 +90,7 @@ jobs:
   - get: 15m
     trigger: true
   - task: run-k8s-syslog-blackbox-tests
-    file: oratos-ci/tasks/k8s-syslog-blackbox/task.yml
+    file: oratos-ci/tasks/k8s-fluentbit-blackbox/task.yml
     params:
       PAPERTRAIL_TOKEN: {{papertrail-token}}
       WAIT: 60

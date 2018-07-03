@@ -16,7 +16,7 @@ function report_to_datadog {
   -d "{ \"series\" :
     [
       {
-        \"metric\":\"smoke_test.loggregator.k8s_namespace_delay\",
+        \"metric\":\"smoke_test.fluent.k8s_namespace_delay\",
         \"points\":[[${currenttime}, ${DELAY}]],
         \"type\":\"gauge\",
         \"host\":\"${SYSTEM_DOMAIN}\",
@@ -26,7 +26,7 @@ function report_to_datadog {
         ]
       },
       {
-        \"metric\":\"smoke_test.loggregator.k8s_namespace_logs_received\",
+        \"metric\":\"smoke_test.fluent.k8s_namespace_logs_received\",
         \"points\":[[${currenttime}, ${MSG_COUNT}]],
         \"type\":\"gauge\",
         \"host\":\"${SYSTEM_DOMAIN}\",
@@ -36,7 +36,7 @@ function report_to_datadog {
         ]
       },
       {
-        \"metric\":\"smoke_test.loggregator.k8s_namespace_logs_sent\",
+        \"metric\":\"smoke_test.fluent.k8s_namespace_logs_sent\",
         \"points\":[[${currenttime}, ${CYCLES}]],
         \"type\":\"gauge\",
         \"host\":\"${SYSTEM_DOMAIN}\",
@@ -94,55 +94,19 @@ spec:
         env:
         - name: PORT
           value: \"8080\"
----
-apiVersion: extensions/v1beta1
-kind: Deployment
-metadata:
-  name: syslog-nozzle
-  namespace: oratos
-spec:
-  replicas: 1
-  template:
-    metadata:
-      labels:
-        app: syslog-nozzle
-    spec:
-      volumes:
-      - name: loggregator-tls-certs
-        secret:
-          secretName: loggregator-tls-certs
-      containers:
-      - name: syslog-nozzle
-        image: loggregator/syslog-nozzle
-        imagePullPolicy: Always
-        volumeMounts:
-        - name: loggregator-tls-certs
-          mountPath: /srv/certs
-          readOnly: true
-        env:
-        - name: LOGS_PROVIDER_ADDR
-          value: loggregator-rlp.oratos.svc.cluster.local:8082
-        - name: DRAINS
-          value: |
-            [
-               {
-                   \"namespace\": \"blackbox-tests\",
-                   \"url\": \"logs2.papertrailapp.com:13998\"
-               }
-            ]
 " | kubectl apply -f -
+    output='[OUTPUT]\n    Name syslog\n    Match *\n    Addr logs2.papertrailapp.com:13998\n'
+    kubectl patch configmap fluent-bit-config \
+        --namespace oratos \
+        --patch '{"data": {"outputs.conf": "'"$output"'"}}'
+
     logspinner_pod_name="$(
         kubectl get pod -l run=logspinner \
             --output=json \
             --namespace blackbox-tests | \
             jq --raw-output .items[0].metadata.name
     )"
-    nozzle_pod_name="$(
-        kubectl get pod -l app=syslog-nozzle \
-            --output=json \
-            --namespace oratos | \
-            jq --raw-output .items[0].metadata.name
-    )"
+
     while true; do
         echo -n .
         logspinner_status="$(
@@ -151,13 +115,7 @@ spec:
                 --namespace blackbox-tests | \
                 jq --raw-output .status.phase
         )"
-        nozzle_status="$(
-            kubectl get pod "$nozzle_pod_name" \
-                --output=json \
-                --namespace oratos | \
-                jq --raw-output .status.phase
-        )"
-        if [[ "$logspinner_status" = "Running" && "$nozzle_status" = "Running" ]]; then
+        if [ "$logspinner_status" = "Running" ]; then
             break
         fi
         sleep 10
