@@ -131,14 +131,13 @@ spec:
     sleep 3
 popd
 
-echo "Collecting logs for $logspinner_pod_name"
-papertrail --min-time '30 minutes ago' "$MESSAGE" > output.txt &
-sleep 30 # wait 30 seconds to establish connection and drain logs
-
 echo "Triggering $logspinner_pod_name"
 curl "http://localhost:8080?cycles=$CYCLES&delay=$DELAY$DELAY_UNIT&text=$MESSAGE"
 
 sleep "$WAIT" # wait for a bit to collect logs
+
+echo "Collecting logs for $logspinner_pod_name"
+papertrail --min-time '30 minutes ago' "$MESSAGE" > output.txt
 
 MSG_COUNT=$(grep -c "$MESSAGE" output.txt)
 
