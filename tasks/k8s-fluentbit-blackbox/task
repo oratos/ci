@@ -102,7 +102,7 @@ spec:
     output='[OUTPUT]\n    Name syslog\n    Match *\n    Addr logs2.papertrailapp.com:13998\n'
     kubectl patch configmap fluent-bit-config \
         --namespace oratos \
-        --patch '{"data": {"outputs.conf": "'"$output"'"}}'
+        --patch '{"data": {"outputs.conf": "'"$output"'"}}' || true
 
     logspinner_pod_name="$(
         kubectl get pod -l run=logspinner \
