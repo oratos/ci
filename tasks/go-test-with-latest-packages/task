@@ -11,6 +11,7 @@ pushd workspace
 
   pushd "src/$IMPORT_PATH"
     go get -t -d ./...
+    eval "$PRE_TEST_HOOK"
     go test ./... -race
   popd
 popd

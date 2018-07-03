@@ -4,7 +4,7 @@ platform: linux
 image_resource:
   type: docker-image
   source:
-    repository: loggregator/base
+    repository: oratos/ci-base
 
 inputs:
 - name: oratos-ci   # - This repo
@@ -17,3 +17,6 @@ params:
   # - Required
   # - The import path of the package to test.
   IMPORT_PATH:
+
+  # - Command to run before running tests.
+  PRE_TEST_HOOK:
