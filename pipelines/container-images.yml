@@ -1,0 +1,28 @@
+resources:
+- name: base-image-docker-build-context
+  type: git
+  source:
+    uri: https://github.com/pivotal-cf/oratos-ci
+    branch: master
+    paths:
+    - docker-images/ci-base
+
+- name: ci-base-image
+  type: docker-image
+  source:
+    repository: oratos/ci-base
+    username: {{docker-hub-username}}
+    password: {{docker-hub-password}}
+
+jobs:
+- name: ci-base
+  plan:
+  - aggregate:
+    - get: base-image-docker-build-context
+      trigger: true
+  - put: ci-base-image
+    params:
+      build: base-image-docker-build-context/docker-images/ci-base
+      tag_as_latest: true
+      cache_tag: latest
+
