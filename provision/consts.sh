@@ -11,7 +11,7 @@ concourse:
   externalURL: https://oratos.ci.cf-app.com
   githubAuth:
     enabled: true
-    user: jasonkeene,wfernandes,dennyzhang
+    user: jasonkeene,wfernandes,dennyzhang,chentom88
 web:
   service:
     type: NodePort
