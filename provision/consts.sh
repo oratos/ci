@@ -1,3 +1,4 @@
+#!/bin/bash
 PROJECT_NAME=oratos
 CLUSTER_NAME="$PROJECT_NAME-ci"
 CLUSTER_SIZE=6
