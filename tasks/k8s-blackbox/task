@@ -99,6 +99,7 @@ spec:
             jq --raw-output .items[0].metadata.name
     )"
     while true; do
+        echo -n .
         status="$(
             kubectl get pod "$pod_name" \
                 --output=json \

@@ -1,0 +1,38 @@
+platform: linux
+image_resource:
+  type: docker-image
+  source:
+    repository: loggregator/base
+inputs:
+- name: oratos-ci
+- name: deployments-loggregator
+params:
+  # - Required
+  # - The token required to connect with the papertrailapp service.
+  PAPERTRAIL_TOKEN:
+
+  # - Required
+  # - The API Key to send metrics to DataDog.
+  DATADOG_API_KEY:
+
+  # - Optional
+  # - How many logs to emit.
+  CYCLES: 10000
+
+  # - Optional
+  # - The delay between emitting each log.
+  DELAY: 20
+
+  # - Optional
+  # - The unit of the delay.
+  DELAY_UNIT: ms
+
+  # - Optional
+  # - The message to write in the logs
+  MESSAGE: "logspinner-syslog-blackbox"
+
+  # - Optional
+  # - Wait sleeps for N seconds waiting for messages to show up.
+  WAIT: 300
+run:
+  path: oratos-ci/tasks/k8s-fluentbit-blackbox/task

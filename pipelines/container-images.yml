@@ -1,54 +1,28 @@
 resources:
-- name: oratos-ci
+- name: base-image-docker-build-context
   type: git
   source:
-    uri: https://github.com/oratos/ci
-    branch: master
-
-- name: out-syslog
-  type: git
-  source:
-    uri: https://github.com/oratos/out_syslog
-    branch: master
-
-- name: out-syslog-dockerfile
-  type: git
-  source:
-    uri: https://github.com/oratos/ci
+    uri: https://github.com/pivotal-cf/oratos-ci
     branch: master
     paths:
-    - docker-images/fluent-bit-out-syslog
+    - docker-images/ci-base
 
-- name: out-syslog-image
+- name: ci-base-image
   type: docker-image
   source:
-    repository: oratos/fluent-bit-out-syslog
+    repository: oratos/ci-base
     username: {{docker-hub-username}}
     password: {{docker-hub-password}}
 
 jobs:
-- name: build-out-syslog
-  public: false
-  serial: true
+- name: ci-base
   plan:
   - aggregate:
-    - get: out-syslog
+    - get: base-image-docker-build-context
       trigger: true
-    - get: out-syslog-dockerfile
-      trigger: true
-    - get: oratos-ci
-  - task: prepare-build
-    file: oratos-ci/tasks/build-go-docker-image/task.yml
-    input_mapping:
-      context-repo: out-syslog-dockerfile
-      source-repo: out-syslog
+  - put: ci-base-image
     params:
-      CONTEXT_PATH: docker-images/fluent-bit-out-syslog
-      BASE_PACKAGE: github.com/oratos/out_syslog
-  - put: out-syslog-image
-    params:
-      build: build-image/build
-      tag: build-image/tag
+      build: base-image-docker-build-context/docker-images/ci-base
       tag_as_latest: true
-      cache: true
       cache_tag: latest
+
