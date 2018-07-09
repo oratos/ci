@@ -14,18 +14,18 @@ function validate {
 
 function set_pipeline {
     echo setting pipeline for "$1"
-    fly -t $TARGET set-pipeline -p "$1" \
+    fly -t "$TARGET" set-pipeline -p "$1" \
         -c "pipelines/$1.yml" \
         -l ~/workspace/oratos-secrets/shared-pipeline-secrets.yml
 }
 
 function sync_fly {
-    fly -t $TARGET sync
+    fly -t "$TARGET" sync
 }
 
 function set_pipelines {
     if [ "$pipeline" = all ]; then
-        for pipeline_file in $(ls "pipelines/"); do
+        for pipeline_file in pipelines/*; do
             set_pipeline "${pipeline_file%.yml}"
         done
         exit 0
@@ -39,9 +39,9 @@ function print_usage {
 }
 
 function main {
-    set_globals $1
+    set_globals "$1"
     validate
     sync_fly
     set_pipelines
 }
-main $1 $2
+main "$1" "$2"
