@@ -1,7 +1,6 @@
-##  Build docker image: docker build --no-cache -t oratos/fluent-bit-out-syslog -f Dockerfile --rm=true .
+##  Docker Image: oratos/fluent-bit-out-syslog
 FROM golang:latest as builder
 
-# TODO: not a good pratice. docker build shouldn't rely on local box
 COPY / /go/
 
 ENV GOOS=linux \
