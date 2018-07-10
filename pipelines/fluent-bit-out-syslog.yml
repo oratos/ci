@@ -9,19 +9,19 @@ resources:
 - name: oratos-ci
   type: git
   source:
-    uri: https://github.com/oratos/ci
+    uri: https://github.com/pivotal-cf/oratos-ci
     branch: master
 
 - name: out-syslog
   type: git
   source:
-    uri: https://github.com/oratos/out_syslog
+    uri: https://github.com/pivotal-cf/fluent-bit-out-syslog
     branch: master
 
 - name: out-syslog-dockerfile
   type: git
   source:
-    uri: https://github.com/oratos/ci
+    uri: https://github.com/pivotal-cf/oratos-ci
     branch: master
     paths:
     - docker-images/fluent-bit-out-syslog
@@ -52,7 +52,7 @@ jobs:
     input_mapping:
       source-repo: out-syslog
     params:
-      IMPORT_PATH: github.com/oratos/out_syslog
+      IMPORT_PATH: github.com/pivotal-cf/fluent-bit-out-syslog
     on_failure:
       put: slack-alert
       params:
@@ -64,7 +64,7 @@ jobs:
     input_mapping:
       source-repo: out-syslog
     params:
-      IMPORT_PATH: github.com/oratos/out_syslog
+      IMPORT_PATH: github.com/pivotal-cf/fluent-bit-out-syslog
       PRE_TEST_HOOK: |
         # Note: this was copied from the docker-image-resource
         # https://github.com/concourse/docker-image-resource/blob/c725c6277ca2820016de1bfe2bdfabaad5fd5879/assets/common.sh#L4
@@ -139,7 +139,7 @@ jobs:
       source-repo: out-syslog
     params:
       CONTEXT_PATH: docker-images/fluent-bit-out-syslog
-      BASE_PACKAGE: github.com/oratos/out_syslog
+      BASE_PACKAGE: github.com/pivotal-cf/fluent-bit-out-syslog
   - put: out-syslog-image
     params:
       build: build-image/build
