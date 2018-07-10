@@ -16,4 +16,4 @@ FROM alpine:latest
 
 COPY --from=builder /namespace-drain /srv/
 WORKDIR /srv
-CMD [ "/usr/bin/namespace-drain" ]
+CMD [ "/srv/namespace-drain" ]
