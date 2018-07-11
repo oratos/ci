@@ -15,7 +15,7 @@ pushd workspace
   pushd "src/$IMPORT_PATH"
     go get -t -d ./...
     eval "$PRE_TEST_HOOK"
-    if [ "$PKGS_HOOK" != "" ]; the
+    if [ "$PKGS_HOOK" != "" ]; then
         go test $($PKGS_HOOK) -race
     else
         go test ./... -race
