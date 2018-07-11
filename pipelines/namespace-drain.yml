@@ -12,12 +12,19 @@ resources:
     uri: https://github.com/pivotal-cf/oratos-ci
     branch: master
 
+- name: oratos-secrets
+  type: git
+  source:
+    uri: git@github.com:pivotal-cf/oratos-secrets
+    branch: master
+    private_key: {{oratos-bot-github-key}}
+
 - name: namespace-drain
   type: git
   source:
     uri: git@github.com:pivotal-cf/namespace-drain
     branch: wip
-    private_key: {{ci-github-private-key}}
+    private_key: {{oratos-bot-github-key}}
 
 - name: namespace-drain-dockerfile
   type: git
@@ -34,14 +41,6 @@ resources:
     username: {{docker-hub-username}}
     password: {{docker-hub-password}}
 
-- name: deployments-loggregator
-  type: git
-  source:
-    uri: git@github.com:cloudfoundry/deployments-loggregator.git
-    branch: master
-    private_key: {{deployments-loggregator-key}}
-
-
 - name: slack-alert
   type: slack-notification
   source:
@@ -56,7 +55,7 @@ jobs:
     - get: namespace-drain
       trigger: true
     - get: oratos-ci
-    - get: deployments-loggregator
+    - get: oratos-secrets
   # - task: run-linter
   #   file: oratos-ci/tasks/golangci-lint/task.yml
   #   input_mapping:
@@ -87,7 +86,7 @@ jobs:
           repository: oratos/ci-base
       inputs:
       - name: namespace-drain
-      - name: deployments-loggregator
+      - name: oratos-secrets
       run:
         path: /bin/bash
         args:
@@ -96,16 +95,13 @@ jobs:
           #!/bin/bash
           set -ex
 
-          pushd deployments-loggregator/gcp/playground
-            set +x
-            eval "$(ssh-agent)"
-            source .envrc
-            set +e
-            source k8s_login
-            set -ex
-          popd
+          gcloud auth activate-service-account \
+            --key-file oratos-secrets/oratos-ci-testing-service-account.json \
+            --project cf-pks-observability
+          gcloud container clusters get-credentials oratos-ci-testing \
+            --zone us-central1-a
 
-          pushd namespace-drain/crds/tests
+          pushd namespace-drain/manifests/crds/tests
             ./test.sh
           popd
     on_failure:
