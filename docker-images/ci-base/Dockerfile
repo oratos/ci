@@ -2,47 +2,14 @@ FROM golang:latest
 
 RUN go version
 
-RUN apt-get update && \
-    apt-get install --yes \
-        jq \
-        rsync \
-        unzip \
-        psmisc \
-        vim \
-        apt-transport-https \
-        ca-certificates \
-        curl \
-        gnupg2 \
-        software-properties-common
+COPY /install_packages.sh /install_packages.sh
 
-RUN git config --global user.email "jkeene+oratos-bot@pivotal.io" && \
+RUN /install_packages.sh
+
+RUN git config --global user.email "oratos-team@pivotal.io" && \
     git config --global user.name "Oratos CI"
 
-RUN go get -d github.com/cloudfoundry/bosh-cli && go build -o $GOPATH/bin/bosh github.com/cloudfoundry/bosh-cli
-
-RUN cd /tmp \
-    && wget https://releases.hashicorp.com/terraform/0.11.7/terraform_0.11.7_linux_amd64.zip -O terraform.zip \
-    && unzip terraform.zip -d /usr/local/bin
-
-RUN cd /tmp \
-    && wget https://github.com/cloudfoundry/bosh-bootloader/releases/download/v6.6.7/bbl-v6.6.7_linux_x86-64 -O /usr/local/bin/bbl \
-    && chmod +x /usr/local/bin/bbl
-
-RUN cd /tmp \
-    && wget https://github.com/cloudfoundry-incubator/credhub-cli/releases/download/1.7.5/credhub-linux-1.7.5.tgz \
-    && tar xzvf credhub*.tgz ./credhub \
-    && cp ./credhub /usr/local/bin/
-
-RUN wget -O /usr/local/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl && \
+RUN wget -q -O /usr/local/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl && \
     chmod +x /usr/local/bin/kubectl
 
-RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
-    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable" && \
-    apt-get update && \
-    apt-get install --yes docker-ce
-
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b /usr/local/bin v1.9.1
-
-RUN echo "deb http://packages.cloud.google.com/apt cloud-sdk-$(lsb_release -c -s) main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
-    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - && \
-    apt-get update && apt-get install google-cloud-sdk --yes
