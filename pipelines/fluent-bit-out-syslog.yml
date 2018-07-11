@@ -120,7 +120,7 @@ jobs:
       params:
         text: Syslog Plugin Unit tests failed
 
-- name: build-out-syslog
+- name: build-out-syslog-image
   public: false
   serial: true
   plan:
