@@ -15,7 +15,11 @@ pushd workspace
   pushd "src/$IMPORT_PATH"
     go get -t -d ./...
     eval "$PRE_TEST_HOOK"
-    go test "$(go list ./... | grep -v /vendor/)" -race
+    if [ "$PKGS_HOOK" != "" ]; the
+        go test $($PKGS_HOOK) -race
+    else
+        go test ./... -race
+    fi
     eval "$POST_TEST_HOOK"
   popd
 popd
