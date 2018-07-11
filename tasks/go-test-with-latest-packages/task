@@ -16,7 +16,7 @@ pushd workspace
     go get -t -d ./...
     eval "$PRE_TEST_HOOK"
     if [ "$PKGS_HOOK" != "" ]; then
-        go test $($PKGS_HOOK) -race
+        go test $(eval "$PKGS_HOOK") -race
     else
         go test ./... -race
     fi
