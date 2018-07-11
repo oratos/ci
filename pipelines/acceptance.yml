@@ -4,13 +4,38 @@ groups:
   - cfcr-deploy
   - cfcr-destroy
   - oratos-deploy
+  - namespace-drain-deploy
 
 resources:
 - name: oratos-deployment
   type: git
   source:
-    uri: https://github.com/oratos/deployment
+    uri: git@github.com:pivotal-cf/oratos-deployment.git
     branch: master
+    private_key: {{oratos-bot-github-key}}
+
+- name: namespace-drain-manifests
+  type: git
+  source:
+    uri: git@github.com:pivotal-cf/namespace-drain.git
+    branch: master
+    private_key: {{oratos-bot-github-key}}
+    paths:
+    - manifests
+
+- name: namespace-drain-image
+  type: docker-image
+  source:
+    repository: oratos/namespace-drain
+    username: {{docker-hub-username}}
+    password: {{docker-hub-password}}
+
+- name: fluent-bit-out-syslog-image
+  type: docker-image
+  source:
+    repository: oratos/fluent-bit-out-syslog
+    username: {{docker-hub-username}}
+    password: {{docker-hub-password}}
 
 - name: oratos-secrets
   type: git
@@ -37,22 +62,6 @@ resources:
   source:
     repository: cloudfoundry-incubator/kubo-release
 
-- name: weekday-before-work
-  type: time
-  source:
-    start: 7:00 AM
-    stop: 8:00 AM
-    location: America/Denver
-    days: [Monday, Tuesday, Wednesday, Thursday, Friday]
-
-- name: weekday-after-work
-  type: time
-  source:
-    start: 6:00 PM
-    stop: 7:00 PM
-    location: America/Denver
-    days: [Monday, Tuesday, Wednesday, Thursday, Friday]
-
 - name: cf-deployment-concourse-tasks
   type: git
   source:
@@ -62,7 +71,9 @@ resources:
 - name: oratos-ci
   type: git
   source:
-    uri: https://github.com/oratos/ci
+    uri: git@github.com:pivotal-cf/oratos-ci.git
+    branch: master
+    private_key: {{oratos-bot-github-key}}
 
 jobs:
 - name: cfcr-deploy
@@ -70,8 +81,6 @@ jobs:
   serial: true
   plan:
   - aggregate:
-    - get: weekday-before-work
-      trigger: true
     - get: deployments-loggregator
     - get: kubo-deployment
       trigger: true
@@ -196,8 +205,6 @@ jobs:
   serial_groups: ["deployment"]
   public: false
   plan:
-  - get: weekday-after-work
-    trigger: true
   - aggregate:
     - get: deployments-loggregator
     - get: cf-deployment-concourse-tasks
@@ -217,10 +224,6 @@ jobs:
   serial: true
   plan:
   - aggregate:
-    - get: weekday-before-work
-      trigger: true
-      passed:
-      - cfcr-deploy
     - get: deployments-loggregator
     - get: oratos-secrets
     - get: oratos-deployment
@@ -309,3 +312,54 @@ jobs:
           popd
           killall ssh
           killall ssh-agent
+
+- name: namespace-drain-deploy
+  public: false
+  serial: true
+  plan:
+  - aggregate:
+    - get: namespace-drain-manifests
+      trigger: true
+    - get: namespace-drain-image
+      trigger: true
+    - get: fluent-bit-out-syslog-image
+      trigger: true
+    - get: deployments-loggregator
+  - task: deploy-namespace-drain
+    input_mapping:
+      namespace-drain: namespace-drain-manifests
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: loggregator/base
+      inputs:
+      - name: deployments-loggregator
+      - name: namespace-drain
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -e
+
+          function cleanup {
+            set +e
+            killall ssh 2> /dev/null
+            killall ssh-agent 2> /dev/null
+          }
+          trap cleanup EXIT
+
+          # TODO: deploy with the triggered images, not :latest
+
+          pushd deployments-loggregator/gcp/playground
+            eval "$(ssh-agent)"
+            source .envrc
+            set +e
+            source k8s_login
+            set -e
+          popd
+
+          kubectl apply -R -f namespace-drain/manifests

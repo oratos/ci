@@ -26,7 +26,7 @@ resources:
     paths:
     - docker-images/fluent-bit-out-syslog
 
-- name: out-syslog-image
+- name: fluent-bit-out-syslog-image
   type: docker-image
   source:
     repository: oratos/fluent-bit-out-syslog
@@ -47,80 +47,80 @@ jobs:
     - get: out-syslog
       trigger: true
     - get: oratos-ci
-  - task: run-linter
-    file: oratos-ci/tasks/golangci-lint/task.yml
-    input_mapping:
-      source-repo: out-syslog
-    params:
-      IMPORT_PATH: github.com/pivotal-cf/fluent-bit-out-syslog
-    on_failure:
-      put: slack-alert
+  - aggregate:
+    - task: run-linter
+      file: oratos-ci/tasks/golangci-lint/task.yml
+      input_mapping:
+        source-repo: out-syslog
       params:
-        text: Syslog Plugin Linter failed
+        IMPORT_PATH: github.com/pivotal-cf/fluent-bit-out-syslog
+      on_failure:
+        put: slack-alert
+        params:
+          text: Syslog Plugin Linter failed
+    - task: run-tests
+      file: oratos-ci/tasks/go-test-with-latest-packages/task.yml
+      privileged: true
+      input_mapping:
+        source-repo: out-syslog
+      params:
+        IMPORT_PATH: github.com/pivotal-cf/fluent-bit-out-syslog
+        PRE_TEST_HOOK: |
+          # Note: this was copied from the docker-image-resource
+          # https://github.com/concourse/docker-image-resource/blob/c725c6277ca2820016de1bfe2bdfabaad5fd5879/assets/common.sh#L4
+          sanitize_cgroups() {
+            mkdir -p /sys/fs/cgroup
+            mountpoint -q /sys/fs/cgroup || \
+              mount -t tmpfs -o uid=0,gid=0,mode=0755 cgroup /sys/fs/cgroup
 
-  - task: run-tests
-    file: oratos-ci/tasks/go-test-with-latest-packages/task.yml
-    privileged: true
-    input_mapping:
-      source-repo: out-syslog
-    params:
-      IMPORT_PATH: github.com/pivotal-cf/fluent-bit-out-syslog
-      PRE_TEST_HOOK: |
-        # Note: this was copied from the docker-image-resource
-        # https://github.com/concourse/docker-image-resource/blob/c725c6277ca2820016de1bfe2bdfabaad5fd5879/assets/common.sh#L4
-        sanitize_cgroups() {
-          mkdir -p /sys/fs/cgroup
-          mountpoint -q /sys/fs/cgroup || \
-            mount -t tmpfs -o uid=0,gid=0,mode=0755 cgroup /sys/fs/cgroup
+            mount -o remount,rw /sys/fs/cgroup
 
-          mount -o remount,rw /sys/fs/cgroup
-
-          sed -e 1d /proc/cgroups | while read sys hierarchy num enabled; do
-            if [ "$enabled" != "1" ]; then
-              # subsystem disabled; skip
-              continue
-            fi
-
-            grouping="$(cat /proc/self/cgroup | cut -d: -f2 | grep "\\<$sys\\>")" || true
-            if [ -z "$grouping" ]; then
-              # subsystem not mounted anywhere; mount it on its own
-              grouping="$sys"
-            fi
-
-            mountpoint="/sys/fs/cgroup/$grouping"
-
-            mkdir -p "$mountpoint"
-
-            # clear out existing mount to make sure new one is read-write
-            if mountpoint -q "$mountpoint"; then
-              umount "$mountpoint"
-            fi
-
-            mount -n -t cgroup -o "$grouping" cgroup "$mountpoint"
-
-            if [ "$grouping" != "$sys" ]; then
-              if [ -L "/sys/fs/cgroup/$sys" ]; then
-                rm "/sys/fs/cgroup/$sys"
+            sed -e 1d /proc/cgroups | while read sys hierarchy num enabled; do
+              if [ "$enabled" != "1" ]; then
+                # subsystem disabled; skip
+                continue
               fi
 
-              ln -s "$mountpoint" "/sys/fs/cgroup/$sys"
+              grouping="$(cat /proc/self/cgroup | cut -d: -f2 | grep "\\<$sys\\>")" || true
+              if [ -z "$grouping" ]; then
+                # subsystem not mounted anywhere; mount it on its own
+                grouping="$sys"
+              fi
+
+              mountpoint="/sys/fs/cgroup/$grouping"
+
+              mkdir -p "$mountpoint"
+
+              # clear out existing mount to make sure new one is read-write
+              if mountpoint -q "$mountpoint"; then
+                umount "$mountpoint"
+              fi
+
+              mount -n -t cgroup -o "$grouping" cgroup "$mountpoint"
+
+              if [ "$grouping" != "$sys" ]; then
+                if [ -L "/sys/fs/cgroup/$sys" ]; then
+                  rm "/sys/fs/cgroup/$sys"
+                fi
+
+                ln -s "$mountpoint" "/sys/fs/cgroup/$sys"
+              fi
+            done
+
+            if ! test -e /sys/fs/cgroup/systemd ; then
+              mkdir /sys/fs/cgroup/systemd
+              mount -t cgroup -o none,name=systemd none /sys/fs/cgroup/systemd
             fi
-          done
+          }
+          sanitize_cgroups
+          service docker start
+        POST_TEST_HOOK: service docker stop
+      on_failure:
+        put: slack-alert
+        params:
+          text: Syslog Plugin Unit tests failed
 
-          if ! test -e /sys/fs/cgroup/systemd ; then
-            mkdir /sys/fs/cgroup/systemd
-            mount -t cgroup -o none,name=systemd none /sys/fs/cgroup/systemd
-          fi
-        }
-        sanitize_cgroups
-        service docker start
-      POST_TEST_HOOK: service docker stop
-    on_failure:
-      put: slack-alert
-      params:
-        text: Syslog Plugin Unit tests failed
-
-- name: build-out-syslog-image
+- name: build-fluent-bit-out-syslog-image
   public: false
   serial: true
   plan:
@@ -140,7 +140,7 @@ jobs:
     params:
       CONTEXT_PATH: docker-images/fluent-bit-out-syslog
       BASE_PACKAGE: github.com/pivotal-cf/fluent-bit-out-syslog
-  - put: out-syslog-image
+  - put: fluent-bit-out-syslog-image
     params:
       build: build-image/build
       tag: build-image/tag

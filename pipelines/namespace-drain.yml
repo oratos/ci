@@ -23,7 +23,7 @@ resources:
   type: git
   source:
     uri: git@github.com:pivotal-cf/namespace-drain
-    branch: wip
+    branch: master
     private_key: {{oratos-bot-github-key}}
 
 - name: namespace-drain-dockerfile
@@ -56,58 +56,86 @@ jobs:
       trigger: true
     - get: oratos-ci
     - get: oratos-secrets
-  # - task: run-linter
-  #   file: oratos-ci/tasks/golangci-lint/task.yml
-  #   input_mapping:
-  #     source-repo: namespace-drain
-  #   params:
-  #     IMPORT_PATH: github.com/pivotal-cf/namespace-drain
-  #   on_failure:
-  #     put: slack-alert
-  #     params:
-  #       text: Namespace Drain Linter failed
-  - task: run-tests
-    file: oratos-ci/tasks/go-test-with-latest-packages/task.yml
-    privileged: true
-    input_mapping:
-      source-repo: namespace-drain
-    params:
-      IMPORT_PATH: github.com/pivotal-cf/namespace-drain
-    on_failure:
-      put: slack-alert
+  - aggregate:
+    - task: run-linter
+      file: oratos-ci/tasks/golangci-lint/task.yml
+      input_mapping:
+        source-repo: namespace-drain
       params:
-        text: Namespace Drain Unit tests failed
-  - task: run-crd-tests
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: oratos/ci-base
-      inputs:
-      - name: namespace-drain
-      - name: oratos-secrets
-      run:
-        path: /bin/bash
-        args:
-        - "-c"
-        - |
-          #!/bin/bash
-          set -ex
-
-          gcloud auth activate-service-account \
-            --key-file oratos-secrets/oratos-ci-testing-service-account.json \
-            --project cf-pks-observability
-          gcloud container clusters get-credentials oratos-ci-testing \
-            --zone us-central1-a
-
-          pushd namespace-drain/manifests/crds/tests
-            ./test.sh
-          popd
-    on_failure:
-      put: slack-alert
+        IMPORT_PATH: github.com/pivotal-cf/namespace-drain
+      on_failure:
+        put: slack-alert
+        params:
+          text: Namespace Drain Linter failed
+    - task: run-tests
+      file: oratos-ci/tasks/go-test-with-latest-packages/task.yml
+      privileged: true
+      input_mapping:
+        source-repo: namespace-drain
       params:
-        text: Namespace Drain CRD tests failed
+        IMPORT_PATH: github.com/pivotal-cf/namespace-drain
+        PKGS_HOOK: |
+          go list ./... | grep -v vendor | grep -v pkg/client
+      on_failure:
+        put: slack-alert
+        params:
+          text: Namespace Drain Unit tests failed
+    - task: run-crd-tests
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: oratos/ci-base
+        inputs:
+        - name: namespace-drain
+        - name: oratos-secrets
+        run:
+          path: /bin/bash
+          args:
+          - "-c"
+          - |
+            #!/bin/bash
+            set -ex
+
+            gcloud auth activate-service-account \
+              --key-file oratos-secrets/oratos-ci-testing-service-account.json \
+              --project cf-pks-observability
+            gcloud container clusters get-credentials oratos-ci-testing \
+              --zone us-central1-a
+
+            namespace-drain/tests/test.sh
+      on_failure:
+        put: slack-alert
+        params:
+          text: Namespace Drain CRD tests failed
+    - task: run-verify-codegen
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: oratos/ci-base
+        inputs:
+        - name: namespace-drain
+        run:
+          path: /bin/bash
+          args:
+          - "-c"
+          - |
+            #!/bin/bash
+            set -ex
+
+            export GOPATH="$PWD/workspace"
+            path=workspace/src/github.com/pivotal-cf/namespace-drain
+            mkdir -p "$path"
+            cp -r namespace-drain/. "$path/"
+            cd "$path"
+            hack/verify-codegen.sh
+      on_failure:
+        put: slack-alert
+        params:
+          text: Namespace Drain Verify Codegen failed
 
 - name: build-namespace-drain-image
   public: false
