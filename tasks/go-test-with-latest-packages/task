@@ -1,6 +1,10 @@
 #!/bin/bash
 
-set -ex
+set -e
+
+if [ "$DEBUG" != "" ]; then
+  set -x
+fi
 
 mkdir -p "workspace/src/$IMPORT_PATH"
 cp -r source-repo/. "workspace/src/$IMPORT_PATH/"
@@ -16,9 +20,9 @@ pushd workspace
     go get -t -d ./...
     eval "$PRE_TEST_HOOK"
     if [ "$PKGS_HOOK" != "" ]; then
-        go test $(eval "$PKGS_HOOK") -race
+      go test $(eval "$PKGS_HOOK") -race
     else
-        go test ./... -race
+      go test ./... -race
     fi
     eval "$POST_TEST_HOOK"
   popd
