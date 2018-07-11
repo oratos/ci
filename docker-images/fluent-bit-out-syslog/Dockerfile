@@ -10,7 +10,7 @@ RUN go build \
     -installsuffix fluent \
     -buildmode c-shared \
     -o /out_syslog.so \
-    github.com/oratos/out_syslog/cmd
+    github.com/pivotal-cf/fluent-bit-out-syslog/cmd
 
 FROM fluent/fluent-bit:0.13.4
 
