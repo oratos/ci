@@ -1,0 +1,142 @@
+resource_types:
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+    tag: latest
+
+resources:
+- name: oratos-ci
+  type: git
+  source:
+    uri: https://github.com/pivotal-cf/oratos-ci
+    branch: master
+
+- name: namespace-drain
+  type: git
+  source:
+    uri: git@github.com:pivotal-cf/namespace-drain
+    branch: wip
+    private_key: {{ci-github-private-key}}
+
+- name: namespace-drain-dockerfile
+  type: git
+  source:
+    uri: https://github.com/pivotal-cf/oratos-ci
+    branch: master
+    paths:
+    - docker-images/namespace-drain
+
+- name: namespace-drain-image
+  type: docker-image
+  source:
+    repository: oratos/namespace-drain
+    username: {{docker-hub-username}}
+    password: {{docker-hub-password}}
+
+- name: deployments-loggregator
+  type: git
+  source:
+    uri: git@github.com:cloudfoundry/deployments-loggregator.git
+    branch: master
+    private_key: {{deployments-loggregator-key}}
+
+
+- name: slack-alert
+  type: slack-notification
+  source:
+    url: {{slack-url}}
+
+jobs:
+- name: unit-tests
+  public: false
+  serial: true
+  plan:
+  - aggregate:
+    - get: namespace-drain
+      trigger: true
+    - get: oratos-ci
+    - get: deployments-loggregator
+  # - task: run-linter
+  #   file: oratos-ci/tasks/golangci-lint/task.yml
+  #   input_mapping:
+  #     source-repo: namespace-drain
+  #   params:
+  #     IMPORT_PATH: github.com/pivotal-cf/namespace-drain
+  #   on_failure:
+  #     put: slack-alert
+  #     params:
+  #       text: Namespace Drain Linter failed
+  - task: run-tests
+    file: oratos-ci/tasks/go-test-with-latest-packages/task.yml
+    privileged: true
+    input_mapping:
+      source-repo: namespace-drain
+    params:
+      IMPORT_PATH: github.com/pivotal-cf/namespace-drain
+    on_failure:
+      put: slack-alert
+      params:
+        text: Namespace Drain Unit tests failed
+  - task: run-crd-tests
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      inputs:
+      - name: namespace-drain
+      - name: deployments-loggregator
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -ex
+
+          pushd deployments-loggregator/gcp/playground
+            set +x
+            eval "$(ssh-agent)"
+            source .envrc
+            set +e
+            source k8s_login
+            set -ex
+          popd
+
+          pushd namespace-drain/crds/tests
+            ./test.sh
+          popd
+    on_failure:
+      put: slack-alert
+      params:
+        text: Namespace Drain CRD tests failed
+
+- name: build-namespace-drain-image
+  public: false
+  serial: true
+  plan:
+  - aggregate:
+    - get: namespace-drain
+      trigger: true
+      passed:
+      - unit-tests
+    - get: namespace-drain-dockerfile
+      trigger: true
+    - get: oratos-ci
+  - task: prepare-build
+    file: oratos-ci/tasks/build-go-docker-image/task.yml
+    input_mapping:
+      context-repo: namespace-drain-dockerfile
+      source-repo: namespace-drain
+    params:
+      CONTEXT_PATH: docker-images/namespace-drain
+      BASE_PACKAGE: github.com/pivotal-cf/namespace-drain
+  - put: namespace-drain-image
+    params:
+      build: build-image/build
+      tag: build-image/tag
+      tag_as_latest: true
+      cache: true
+      cache_tag: latest
