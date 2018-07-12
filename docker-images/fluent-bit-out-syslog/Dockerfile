@@ -1,3 +1,4 @@
+##  Docker Image: oratos/fluent-bit-out-syslog
 FROM golang:latest as builder
 
 COPY / /go/
