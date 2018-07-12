@@ -322,8 +322,12 @@ jobs:
       trigger: true
     - get: namespace-drain-image
       trigger: true
+      params:
+        skip_download: true
     - get: fluent-bit-out-syslog-image
       trigger: true
+      params:
+        skip_download: true
     - get: deployments-loggregator
   - task: deploy-namespace-drain
     input_mapping:

@@ -147,3 +147,5 @@ jobs:
       tag_as_latest: true
       cache: true
       cache_tag: latest
+    get_params:
+      skip_download: true

@@ -17,12 +17,12 @@ resources:
 jobs:
 - name: ci-base
   plan:
-  - aggregate:
-    - get: base-image-docker-build-context
-      trigger: true
+  - get: base-image-docker-build-context
+    trigger: true
   - put: ci-base-image
     params:
       build: base-image-docker-build-context/docker-images/ci-base
       tag_as_latest: true
       cache_tag: latest
-
+    get_params:
+      skip_download: true
