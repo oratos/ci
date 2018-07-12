@@ -308,7 +308,7 @@ jobs:
           popd
           cp updated-oratos-secrets/k8s-certs.yml oratos-deployment/secrets/
           pushd oratos-deployment
-            ./deploy.sh && ./status.sh
+            ./deploy.sh
           popd
           killall ssh
           killall ssh-agent
