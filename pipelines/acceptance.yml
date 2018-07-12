@@ -363,3 +363,5 @@ jobs:
           popd
 
           kubectl apply -R -f namespace-drain/manifests
+          patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
+          kubectl patch -R -f namespace-drain/manifests --patch "$patch"
