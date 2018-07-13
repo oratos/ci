@@ -149,7 +149,10 @@ curl "http://localhost:8080?cycles=$CYCLES&delay=$DELAY$DELAY_UNIT&text=$MESSAGE
 
 sleep "$WAIT" # wait for a bit to collect logs
 
+# Dont quit the script if fails to grep
+set +e
 MSG_COUNT=$(grep -c "$MESSAGE" output.txt)
+set -e
 
 if [ "$MSG_COUNT" -lt $(($CYCLES * 99 / 100)) ]; then
     echo the reliability test did not meet our SLO

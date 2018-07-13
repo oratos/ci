@@ -139,7 +139,10 @@ sleep "$WAIT" # wait for a bit to collect logs
 echo "Collecting logs for $logspinner_pod_name"
 papertrail --min-time '30 minutes ago' "$MESSAGE" > output.txt
 
+# Dont quit the script if fails to grep
+set +e
 MSG_COUNT=$(grep -c "$MESSAGE" output.txt)
+set -e
 
 echo "The number of messages received: $MSG_COUNT"
 echo "The number of messages sent    : $CYCLES"
