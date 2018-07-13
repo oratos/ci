@@ -10,7 +10,7 @@ resources:
 - name: oratos-ci
   type: git
   source:
-    uri: https://github.com/oratos/ci
+    uri: https://github.com/pivotal-cf/oratos-ci
 
 - name: deployments-loggregator
   type: git
