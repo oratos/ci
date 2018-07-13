@@ -127,7 +127,7 @@ spec:
             [
                {
                    \"namespace\": \"blackbox-tests\",
-                   \"url\": \"logs2.papertrailapp.com:13998\"
+                   \"url\": \"$PAPERTRAIL_DESTINATION\"
                }
             ]
 " | kubectl apply -f -

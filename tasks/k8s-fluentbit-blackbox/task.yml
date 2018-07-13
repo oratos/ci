@@ -8,6 +8,10 @@ inputs:
 - name: deployments-loggregator
 params:
   # - Required
+  # - The destination address of the papertrailapp service.
+  PAPERTRAIL_DESTINATION:
+
+  # - Required
   # - The token required to connect with the papertrailapp service.
   PAPERTRAIL_TOKEN:
 

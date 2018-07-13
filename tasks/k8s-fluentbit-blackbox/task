@@ -99,7 +99,7 @@ spec:
         - name: PORT
           value: \"8080\"
 " | kubectl apply -f -
-    output='[OUTPUT]\n    Name syslog\n    Match *\n    Addr logs2.papertrailapp.com:13998\n'
+    output="[OUTPUT]\n    Name syslog\n    Match *\n    Addr $PAPERTRAIL_DESTINATION\n"
     kubectl patch configmap fluent-bit\
         --namespace oratos \
         --patch '{"data": {"outputs.conf": "'"$output"'"}}' || true
