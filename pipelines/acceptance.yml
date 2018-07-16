@@ -55,12 +55,13 @@ resources:
   type: git
   source:
     uri: https://github.com/cloudfoundry-incubator/kubo-deployment
-    branch: v0.17.0
+    branch: v0.18.0
 
 - name: kubo-release-bosh-io
   type: bosh-io-release
   source:
     repository: cloudfoundry-incubator/kubo-release
+    branch: v0.18.0
 
 - name: cf-deployment-concourse-tasks
   type: git
@@ -77,7 +78,6 @@ resources:
 
 jobs:
 - name: cfcr-deploy
-  public: false
   serial: true
   plan:
   - aggregate:
@@ -203,7 +203,6 @@ jobs:
 
 - name: cfcr-destroy
   serial_groups: ["deployment"]
-  public: false
   plan:
   - aggregate:
     - get: deployments-loggregator
@@ -220,7 +219,6 @@ jobs:
       DEPLOYMENT_NAME: cfcr
 
 - name: oratos-deploy
-  public: false
   serial: true
   plan:
   - aggregate:
@@ -314,7 +312,6 @@ jobs:
           killall ssh-agent
 
 - name: namespace-drain-deploy
-  public: false
   serial: true
   plan:
   - aggregate:
