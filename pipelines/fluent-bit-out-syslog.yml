@@ -40,8 +40,6 @@ resources:
 
 jobs:
 - name: unit-tests
-  public: false
-  serial: true
   plan:
   - aggregate:
     - get: out-syslog
@@ -121,7 +119,6 @@ jobs:
           text: Syslog Plugin Unit tests failed
 
 - name: build-fluent-bit-out-syslog-image
-  public: false
   serial: true
   plan:
   - aggregate:
