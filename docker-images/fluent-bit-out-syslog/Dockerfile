@@ -16,4 +16,5 @@ FROM fluent/fluent-bit:0.13.4
 
 COPY --from=builder /out_syslog.so /fluent-bit/bin/
 
+WORKDIR "/fluent-bit/etc"
 CMD ["/fluent-bit/bin/fluent-bit", "--plugin", "/fluent-bit/bin/out_syslog.so", "--config", "/fluent-bit/etc/fluent-bit.conf"]
