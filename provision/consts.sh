@@ -5,7 +5,7 @@ CLUSTER_ZONE=us-central1-a
 CLUSTER_VERSION=1.10
 NAMESPACE_NAME="$CLUSTER_NAME"
 LASTPASS_SECRETS_PATH="Shared-CF-Oratos/concourse-secrets.yml"
-LASTPASS_X509_PATH='Shared-Opensource Common/*.ci.cf-app.com SSL key & certs (RSA-2048)'
+LASTPASS_X509_PATH='Shared-CF-Oratos/oratos.ci.cf-app.com certs/key'
 VALUES="
 concourse:
   externalURL: https://oratos.ci.cf-app.com
