@@ -238,17 +238,17 @@ jobs:
           #!/bin/bash
           set -e; [ -n "$DEBUG" ] && set -x
 
-          pushd deployments-loggregator/gcp/playground
+          pushd deployments-loggregator/gcp/playground > /dev/null
             eval "$(ssh-agent)"
             source .envrc
             set +e
             source k8s_login
             set -e
-          popd
+          popd > /dev/null
           echo "$LOGGREGATOR_TLS_SECRETS" > oratos-deployment/secrets/loggregator-tls-certs.yml
-          pushd oratos-deployment
+          pushd oratos-deployment > /dev/null
             ./deploy.sh
-          popd
+          popd > /dev/null
           killall ssh
           killall ssh-agent
 
@@ -296,13 +296,13 @@ jobs:
 
           # TODO: deploy with the triggered images, not :latest
 
-          pushd deployments-loggregator/gcp/playground
+          pushd deployments-loggregator/gcp/playground > /dev/null
             eval "$(ssh-agent)"
             source .envrc
             set +e
             source k8s_login
             set -e
-          popd
+          popd > /dev/null
 
           kubectl apply -R -f namespace-drain/manifests
           patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'

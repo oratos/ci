@@ -56,7 +56,7 @@ trap report_to_datadog EXIT
 MSG_COUNT=0
 
 eval "$(ssh-agent)"
-pushd deployments-loggregator/gcp/playground
+pushd deployments-loggregator/gcp/playground > /dev/null
     source .envrc
     set +e
     source k8s_login
@@ -130,7 +130,7 @@ spec:
     kubectl port-forward "$pod_name" 8080:8080 \
         --namespace blackbox-tests > /dev/null &
     sleep 3
-popd
+popd > /dev/null
 
 echo "Collecting logs for $pod_name"
 

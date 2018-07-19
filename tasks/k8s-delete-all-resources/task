@@ -10,7 +10,7 @@ trap teardown EXIT
 
 eval "$(ssh-agent)"
 
-pushd deployments-loggregator/gcp/playground
+pushd deployments-loggregator/gcp/playground > /dev/null
   set +x
   source .envrc
   set +e
@@ -22,7 +22,7 @@ pushd deployments-loggregator/gcp/playground
     while read ns; do
       kubectl --namespace "$ns" delete all --all --cascade --now
   done
-popd
+popd > /dev/null
 
 echo waiting for delete requests to complete
 while true; do

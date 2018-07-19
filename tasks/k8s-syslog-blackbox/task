@@ -59,7 +59,7 @@ trap report_to_datadog EXIT
 MSG_COUNT=0
 
 eval "$(ssh-agent)"
-pushd deployments-loggregator/gcp/playground
+pushd deployments-loggregator/gcp/playground > /dev/null
     source .envrc
     set +e
     source k8s_login
@@ -166,7 +166,7 @@ spec:
     kubectl port-forward "$logspinner_pod_name" 8080:8080 \
         --namespace blackbox-tests > /dev/null &
     sleep 3
-popd
+popd > /dev/null
 
 echo "Triggering $logspinner_pod_name"
 curl "http://localhost:8080?cycles=$CYCLES&delay=$DELAY$DELAY_UNIT&text=$MESSAGE"
