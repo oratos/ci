@@ -12,19 +12,12 @@ resources:
     uri: https://github.com/pivotal-cf/oratos-ci
     branch: master
 
-- name: oratos-secrets
-  type: git
-  source:
-    uri: git@github.com:pivotal-cf/oratos-secrets
-    branch: master
-    private_key: {{oratos-bot-github-key}}
-
 - name: namespace-drain
   type: git
   source:
     uri: git@github.com:pivotal-cf/namespace-drain
     branch: master
-    private_key: {{oratos-bot-github-key}}
+    private_key: ((github.oratos-bot-private-key))
 
 - name: namespace-drain-dockerfile
   type: git
@@ -38,13 +31,13 @@ resources:
   type: docker-image
   source:
     repository: oratos/namespace-drain
-    username: {{docker-hub-username}}
-    password: {{docker-hub-password}}
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
 
 - name: slack-alert
   type: slack-notification
   source:
-    url: {{slack-url}}
+    url: ((slack.notifications-url))
 
 jobs:
 - name: unit-tests
@@ -53,7 +46,6 @@ jobs:
     - get: namespace-drain
       trigger: true
     - get: oratos-ci
-    - get: oratos-secrets
   - aggregate:
     - task: run-linter
       file: oratos-ci/tasks/golangci-lint/task.yml
@@ -61,6 +53,8 @@ jobs:
         source-repo: namespace-drain
       params:
         IMPORT_PATH: github.com/pivotal-cf/namespace-drain
+        PKGS_HOOK: |
+          go list ./... | grep -v vendor | grep -v pkg/client
       on_failure:
         put: slack-alert
         params:
@@ -87,18 +81,19 @@ jobs:
             repository: oratos/ci-base
         inputs:
         - name: namespace-drain
-        - name: oratos-secrets
+        params:
+          SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-service-account))
         run:
           path: /bin/bash
           args:
           - "-c"
           - |
             #!/bin/bash
-            set -ex
+            set -e; [ -n "$DEBUG" ] && set -x
 
-            gcloud auth activate-service-account \
-              --key-file oratos-secrets/oratos-ci-testing-service-account.json \
-              --project cf-pks-observability
+            echo "$SERVICE_ACCOUNT" > sa.json
+            gcloud auth activate-service-account --key-file sa.json
+            rm sa.json
             gcloud container clusters get-credentials oratos-ci-testing \
               --zone us-central1-a
 
@@ -122,7 +117,7 @@ jobs:
           - "-c"
           - |
             #!/bin/bash
-            set -ex
+            set -e; [ -n "$DEBUG" ] && set -x
 
             export GOPATH="$PWD/workspace"
             path=workspace/src/github.com/pivotal-cf/namespace-drain

@@ -7,8 +7,10 @@ source ../lib.sh
 source lib.sh
 
 function main {
-    delete_k8s_objects
-    delete_cluster
+    create_cluster
+    init_helm
+    install_vault
+    poll_loadbalancer_ip
 }
 
 main

@@ -7,8 +7,7 @@ source ../lib.sh
 source lib.sh
 
 function main {
-    delete_k8s_objects
-    delete_cluster
+    upgrade_vault
 }
 
 main

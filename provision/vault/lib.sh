@@ -1,4 +1,12 @@
 
+function generate_values {
+    echo "$VALUES"
+}
+
+function service_account {
+    lpass show "$LASTPASS_VAULT_GCS_SERVICE_ACCOUNT" --notes
+}
+
 function cert {
     lpass show "$LASTPASS_X509_PATH" | \
         sed -n "/^-----BEGIN CERTIFICATE-----$/,/-----END CERTIFICATE-----/p"
@@ -6,36 +14,52 @@ function cert {
 
 function key {
     lpass show "$LASTPASS_X509_PATH" | \
-        sed -n "/^-----BEGIN PRIVATE KEY-----$/,/-----END PRIVATE KEY-----/p"
+        sed -n "/^-----BEGIN RSA PRIVATE KEY-----$/,/-----END RSA PRIVATE KEY-----/p"
 }
 
-function install_concourse {
+function install_vault {
     echo
     echo
-    echo INSTALLING CONCOURSE
+    echo INSTALLING VAULT
     echo
 
+    sa_file="$(mktemp)"
     cert_file="$(mktemp)"
     key_file="$(mktemp)"
+    service_account > "$sa_file"
     cert > "$cert_file"
     key > "$key_file"
 
     kubectl create namespace "$NAMESPACE_NAME"
-    kubectl create secret tls concourse-web-tls \
+    kubectl create secret generic vault-gcs-service-account \
+        --from-file=key.json="$sa_file" \
+        --namespace "$NAMESPACE_NAME"
+    kubectl create secret tls vault-tls \
         --cert "$cert_file" \
         --key "$key_file" \
         --namespace "$NAMESPACE_NAME"
-    helm install stable/concourse \
-        --name concourse \
+    helm repo add incubator \
+        http://storage.googleapis.com/kubernetes-charts-incubator
+    helm install incubator/vault \
+        --name vault \
         --values <(generate_values) \
         --namespace "$NAMESPACE_NAME"
 
+    rm "$sa_file"
     rm "$cert_file"
     rm "$key_file"
 }
 
+function upgrade_vault {
+    echo
+    echo
+    echo UPGRADING VAULT
+    echo
+    helm upgrade vault incubator/vault --values <(generate_values)
+}
+
 function loadbalancer_ip {
-    kubectl get ingress concourse-web \
+    kubectl get ingress vault-vault \
         --output jsonpath='{ .status.loadBalancer.ingress[0].ip }' \
         --namespace "$NAMESPACE_NAME"
 }
@@ -61,21 +85,4 @@ function poll_loadbalancer_ip {
     echo
     echo Configure the DNS for your External URL to point to this IP.
     echo
-}
-
-function generate_values {
-    echo "$VALUES"
-    secrets
-}
-
-function secrets {
-    lpass show --notes "$LASTPASS_SECRETS_PATH"
-}
-
-function upgrade_concourse {
-    echo
-    echo
-    echo UPGRADING CONCOURSE
-    echo
-    helm upgrade concourse stable/concourse --values <(generate_values)
 }

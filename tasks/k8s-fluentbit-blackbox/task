@@ -1,10 +1,5 @@
 #!/bin/bash
-
-set -e
-
-if [ -n "$DEBUG" ]; then
-    set -x
-fi
+set -e; [ -n "$DEBUG" ] && set -x
 
 MESSAGE="$MESSAGE-$RANDOM"
 

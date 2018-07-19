@@ -1,6 +1,5 @@
 #!/bin/bash
-
-set -ex
+set -e; [ -n "$DEBUG" ] && set -x
 
 function teardown {
   set +e

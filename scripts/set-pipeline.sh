@@ -14,9 +14,7 @@ function validate {
 
 function set_pipeline {
     echo setting pipeline for "$1"
-    fly -t $TARGET set-pipeline -p "$1" \
-        -c "pipelines/$1.yml" \
-        -l ~/workspace/oratos-secrets/shared-pipeline-secrets.yml
+    fly -t $TARGET set-pipeline -p "$1" -c "pipelines/$1.yml"
 }
 
 function sync_fly {

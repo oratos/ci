@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+set -e; [ -n "$DEBUG" ] && set -x
 
 if [ -z "$BASE_PACKAGE" ]; then
   echo BASE_PACKAGE was not set

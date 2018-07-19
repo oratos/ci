@@ -17,7 +17,7 @@ resources:
   source:
     uri: git@github.com:cloudfoundry/deployments-loggregator.git
     branch: master
-    private_key: {{deployments-loggregator-key}}
+    private_key: ((github.oratos-bot-private-key))
 
 jobs:
 - name: k8s-floodspinner
@@ -33,7 +33,7 @@ jobs:
     params:
       WAIT: 60
       CYCLES: 10000
-      DATADOG_API_KEY: {{datadog-loggregator-api-key}}
+      DATADOG_API_KEY: ((datadog.loggregator-ci-api-key))
       DELAY: "2"
       DELAY_UNIT: "us"
       MESSAGE: "FIFTEEN-MINUTE"
@@ -52,7 +52,7 @@ jobs:
     params:
       WAIT: 600
       CYCLES: 1000
-      DATADOG_API_KEY: {{datadog-loggregator-api-key}}
+      DATADOG_API_KEY: ((datadog.loggregator-ci-api-key))
       DELAY: "500"
       DELAY_UNIT: "ms"
       MESSAGE: "HOURLY"
@@ -71,7 +71,7 @@ jobs:
     params:
       WAIT: 60
       CYCLES: 1000
-      DATADOG_API_KEY: {{datadog-loggregator-api-key}}
+      DATADOG_API_KEY: ((datadog.loggregator-ci-api-key))
       DELAY: "1"
       DELAY_UNIT: "ms"
       MESSAGE: "HOURLY"
@@ -88,11 +88,11 @@ jobs:
   - task: run-k8s-fluentbit-blackbox-tests
     file: oratos-ci/tasks/k8s-fluentbit-blackbox/task.yml
     params:
-      PAPERTRAIL_TOKEN: {{papertrail-token}}
-      PAPERTRAIL_DESTINATION: {{papertrail-destination}}
+      PAPERTRAIL_TOKEN: ((papertrail.token))
+      PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 60
       CYCLES: 10000
-      DATADOG_API_KEY: {{datadog-loggregator-api-key}}
+      DATADOG_API_KEY: ((datadog.loggregator-ci-api-key))
       DELAY: "2"
       DELAY_UNIT: "us"
       MESSAGE: "FIFTEEN-MINUTE"
@@ -109,11 +109,11 @@ jobs:
   - task: run-k8s-fluentbit-blackbox-tests
     file: oratos-ci/tasks/k8s-fluentbit-blackbox/task.yml
     params:
-      PAPERTRAIL_TOKEN: {{papertrail-token}}
-      PAPERTRAIL_DESTINATION: {{papertrail-destination}}
+      PAPERTRAIL_TOKEN: ((papertrail.token))
+      PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 600
       CYCLES: 1000
-      DATADOG_API_KEY: {{datadog-loggregator-api-key}}
+      DATADOG_API_KEY: ((datadog.loggregator-ci-api-key))
       DELAY: "500"
       DELAY_UNIT: "ms"
       MESSAGE: "HOURLY"
@@ -130,11 +130,11 @@ jobs:
   - task: run-k8s-fluentbit-blackbox-tests
     file: oratos-ci/tasks/k8s-fluentbit-blackbox/task.yml
     params:
-      PAPERTRAIL_TOKEN: {{papertrail-token}}
-      PAPERTRAIL_DESTINATION: {{papertrail-destination}}
+      PAPERTRAIL_TOKEN: ((papertrail.token))
+      PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 60
       CYCLES: 1000
-      DATADOG_API_KEY: {{datadog-loggregator-api-key}}
+      DATADOG_API_KEY: ((datadog.loggregator-ci-api-key))
       DELAY: "1"
       DELAY_UNIT: "ms"
       MESSAGE: "HOURLY"
@@ -151,11 +151,11 @@ jobs:
   - task: run-k8s-syslog-blackbox-tests
     file: oratos-ci/tasks/k8s-syslog-blackbox/task.yml
     params:
-      PAPERTRAIL_TOKEN: {{papertrail-token}}
-      PAPERTRAIL_DESTINATION: {{papertrail-destination}}
+      PAPERTRAIL_TOKEN: ((papertrail.token))
+      PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 60
       CYCLES: 10000
-      DATADOG_API_KEY: {{datadog-loggregator-api-key}}
+      DATADOG_API_KEY: ((datadog.loggregator-ci-api-key))
       DELAY: "2"
       DELAY_UNIT: "us"
       MESSAGE: "FIFTEEN-MINUTE"
@@ -172,11 +172,11 @@ jobs:
   - task: run-k8s-syslog-blackbox-tests
     file: oratos-ci/tasks/k8s-syslog-blackbox/task.yml
     params:
-      PAPERTRAIL_TOKEN: {{papertrail-token}}
-      PAPERTRAIL_DESTINATION: {{papertrail-destination}}
+      PAPERTRAIL_TOKEN: ((papertrail.token))
+      PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 600
       CYCLES: 1000
-      DATADOG_API_KEY: {{datadog-loggregator-api-key}}
+      DATADOG_API_KEY: ((datadog.loggregator-ci-api-key))
       DELAY: "500"
       DELAY_UNIT: "ms"
       MESSAGE: "HOURLY"
@@ -193,11 +193,11 @@ jobs:
   - task: run-k8s-syslog-blackbox-tests
     file: oratos-ci/tasks/k8s-syslog-blackbox/task.yml
     params:
-      PAPERTRAIL_TOKEN: {{papertrail-token}}
-      PAPERTRAIL_DESTINATION: {{papertrail-destination}}
+      PAPERTRAIL_TOKEN: ((papertrail.token))
+      PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 60
       CYCLES: 1000
-      DATADOG_API_KEY: {{datadog-loggregator-api-key}}
+      DATADOG_API_KEY: ((datadog.loggregator-ci-api-key))
       DELAY: "1"
       DELAY_UNIT: "ms"
       MESSAGE: "HOURLY"

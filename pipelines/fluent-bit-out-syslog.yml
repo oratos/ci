@@ -30,13 +30,13 @@ resources:
   type: docker-image
   source:
     repository: oratos/fluent-bit-out-syslog
-    username: {{docker-hub-username}}
-    password: {{docker-hub-password}}
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
 
 - name: slack-alert
   type: slack-notification
   source:
-    url: {{slack-url}}
+    url: ((slack.notifications-url))
 
 jobs:
 - name: unit-tests

@@ -12,14 +12,14 @@ resources:
   source:
     uri: git@github.com:pivotal-cf/oratos-deployment.git
     branch: master
-    private_key: {{oratos-bot-github-key}}
+    private_key: ((github.oratos-bot-private-key))
 
 - name: namespace-drain-manifests
   type: git
   source:
     uri: git@github.com:pivotal-cf/namespace-drain.git
     branch: master
-    private_key: {{oratos-bot-github-key}}
+    private_key: ((github.oratos-bot-private-key))
     paths:
     - manifests
 
@@ -27,29 +27,22 @@ resources:
   type: docker-image
   source:
     repository: oratos/namespace-drain
-    username: {{docker-hub-username}}
-    password: {{docker-hub-password}}
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
 
 - name: fluent-bit-out-syslog-image
   type: docker-image
   source:
     repository: oratos/fluent-bit-out-syslog
-    username: {{docker-hub-username}}
-    password: {{docker-hub-password}}
-
-- name: oratos-secrets
-  type: git
-  source:
-    uri: git@github.com:pivotal-cf/oratos-secrets.git
-    branch: master
-    private_key: {{oratos-bot-github-key}}
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
 
 - name: deployments-loggregator
   type: git
   source:
     uri: git@github.com:cloudfoundry/deployments-loggregator.git
     branch: master
-    private_key: {{deployments-loggregator-key}}
+    private_key: ((github.oratos-bot-private-key))
 
 - name: kubo-deployment
   type: git
@@ -74,7 +67,7 @@ resources:
   source:
     uri: git@github.com:pivotal-cf/oratos-ci.git
     branch: master
-    private_key: {{oratos-bot-github-key}}
+    private_key: ((github.oratos-bot-private-key))
 
 jobs:
 - name: cfcr-deploy
@@ -105,7 +98,7 @@ jobs:
         - "-c"
         - |
           #!/bin/bash
-          set -ex
+          set -e; [ -n "$DEBUG" ] && set -x
 
           # set bosh env vars
           set +x
@@ -133,7 +126,7 @@ jobs:
         - "-c"
         - |
           #!/bin/bash
-          set -ex
+          set -e; [ -n "$DEBUG" ] && set -x
 
           # get stemcell version
           pushd kubo-deployment > /dev/null
@@ -167,7 +160,7 @@ jobs:
         - "-c"
         - |
           #!/bin/bash
-          set -e
+          set -e; [ -n "$DEBUG" ] && set -x
 
           eval "$(ssh-agent)"
           cd deployments-loggregator/gcp/playground
@@ -223,61 +216,8 @@ jobs:
   plan:
   - aggregate:
     - get: deployments-loggregator
-    - get: oratos-secrets
     - get: oratos-deployment
       trigger: true
-  - task: prepare-certs
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: loggregator/certs
-      inputs:
-      - name: oratos-secrets
-      outputs:
-      - name: updated-oratos-secrets
-      run:
-        path: /bin/bash
-        args:
-        - "-c"
-        - |
-          #!/bin/bash
-          set -e
-
-          apt-get update --yes
-          apt-get install --yes git
-          git config --global user.email "cf-loggregator@pivotal.io"
-          git config --global user.name "Loggregator CI"
-
-          cp -R oratos-secrets/. updated-oratos-secrets/
-
-          generate-certs.sh output
-          tls_certs_header='
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: loggregator-tls-certs
-            namespace: oratos
-          type: Opaque
-          data:'
-
-          echo "$tls_certs_header" > k8s-certs.yml
-          ls output |
-              while read line
-                  do echo "  $line: $(cat output/$line | base64 -w 0)"
-              done >> k8s-certs.yml
-          mv k8s-certs.yml updated-oratos-secrets/
-          pushd updated-oratos-secrets
-            git add k8s-certs.yml
-            git commit -m "Add loggregator certs for kubernetes
-
-          [ci-skip]"
-          popd
-  - put: oratos-secrets
-    params:
-      repository: updated-oratos-secrets
-      rebase: true
   - task: oratos-deploy
     config:
       platform: linux
@@ -288,14 +228,15 @@ jobs:
       inputs:
       - name: oratos-deployment
       - name: deployments-loggregator
-      - name: updated-oratos-secrets
+      params:
+        LOGGREGATOR_TLS_SECRETS: ((playground.loggregator-tls-secrets))
       run:
         path: /bin/bash
         args:
         - "-c"
         - |
           #!/bin/bash
-          set -e
+          set -e; [ -n "$DEBUG" ] && set -x
 
           pushd deployments-loggregator/gcp/playground
             eval "$(ssh-agent)"
@@ -304,7 +245,7 @@ jobs:
             source k8s_login
             set -e
           popd
-          cp updated-oratos-secrets/k8s-certs.yml oratos-deployment/secrets/
+          echo "$LOGGREGATOR_TLS_SECRETS" > oratos-deployment/secrets/loggregator-tls-certs.yml
           pushd oratos-deployment
             ./deploy.sh
           popd
@@ -344,7 +285,7 @@ jobs:
         - "-c"
         - |
           #!/bin/bash
-          set -e
+          set -e; [ -n "$DEBUG" ] && set -x
 
           function cleanup {
             set +e
