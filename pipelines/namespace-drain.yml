@@ -54,7 +54,7 @@ jobs:
       params:
         IMPORT_PATH: github.com/pivotal-cf/namespace-drain
         PKGS_HOOK: |
-          go list ./... | grep -v vendor | grep -v pkg/client | sed 's|github.com/pivotal-cf/namespace-drain/||')
+          go list ./... | grep -v vendor | grep -v pkg/client | sed 's|github.com/pivotal-cf/namespace-drain/||'
       on_failure:
         put: slack-alert
         params:
