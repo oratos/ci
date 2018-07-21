@@ -12,3 +12,8 @@ inputs:
 
 run:
   path: oratos-ci/tasks/k8s-delete-all-resources/task
+
+params:
+  # - Optional
+  # - Set to true to output all commands that are ran.
+  DEBUG:

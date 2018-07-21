@@ -18,8 +18,19 @@ params:
   # - The import path of the package to test.
   IMPORT_PATH:
 
+  # - Optional
   # - Command to run before running tests.
   PRE_TEST_HOOK:
 
+  # - Optional
   # - Command to run after running tests.
   POST_TEST_HOOK:
+
+  # - Optional
+  # - Command that is ran to list packages to test.
+  # - Example: go list ./... | grep -v vendor | grep -v client
+  PKGS_HOOK:
+
+  # - Optional
+  # - Set to true to output all commands that are ran.
+  DEBUG:

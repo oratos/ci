@@ -17,3 +17,12 @@ params:
   # - Required
   # - The import path of the package to test.
   IMPORT_PATH:
+
+  # - Optional
+  # - Command that is ran to list packages to lint.
+  # - Example: go list ./... | grep -v vendor | grep -v client
+  PKGS_HOOK:
+
+  # - Optional
+  # - Set to true to output all commands that are ran.
+  DEBUG:

@@ -38,5 +38,9 @@ params:
   # - Optional
   # - Wait sleeps for N seconds waiting for messages to show up.
   WAIT: 300
+
+  # - Optional
+  # - Set to true to output all commands that are ran.
+  DEBUG:
 run:
   path: oratos-ci/tasks/k8s-fluentbit-blackbox/task
