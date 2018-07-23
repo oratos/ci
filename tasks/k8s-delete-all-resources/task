@@ -36,8 +36,11 @@ while true; do
     kubectl get all --all-namespaces --output json | \
       jq --raw-output '.items | length'
   )"
-  # kubernetes service might get recreated
-  if [ -n "$count" ] || [ "$count" -lt 2 ]; then
+  if [ -n "$count" ]; then
+    break
+  fi
+  # kubernetes service might get recreated, thus 2
+  if [ "$count" -lt 2 ]; then
     break
   fi
   sleep 5
