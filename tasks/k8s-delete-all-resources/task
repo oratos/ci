@@ -15,7 +15,7 @@ pushd deployments-loggregator/gcp/playground > /dev/null
   source .envrc
   set +e
   source k8s_login
-  set -ex
+  set -e; [ -n "$DEBUG" ] && set -x
 
   kubectl get namespaces --output json | \
     jq --raw-output .items[].metadata.name | \
