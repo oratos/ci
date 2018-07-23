@@ -25,15 +25,21 @@ pushd deployments-loggregator/gcp/playground > /dev/null
 popd > /dev/null
 
 echo waiting for delete requests to complete
+iterations=0
 while true; do
+  if [ "$iterations" -gt 15 ]; then
+    echo "Polled too many times, failing"
+    exit 1
+  fi
   echo -n .
   count="$(
     kubectl get all --all-namespaces --output json | \
       jq --raw-output '.items | length'
   )"
   # kubernetes service might get recreated
-  if [ "$count" -lt 2 ]; then
+  if [ -n "$count" ] || [ "$count" -lt 2 ]; then
     break
   fi
   sleep 5
+  iterations+=1
 done
