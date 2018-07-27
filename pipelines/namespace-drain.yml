@@ -89,7 +89,7 @@ jobs:
           - "-c"
           - |
             #!/bin/bash
-            set -e; [ -n "$DEBUG" ] && set -x
+            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
 
             echo "$SERVICE_ACCOUNT" > sa.json
             gcloud auth activate-service-account --key-file sa.json
@@ -117,7 +117,7 @@ jobs:
           - "-c"
           - |
             #!/bin/bash
-            set -e; [ -n "$DEBUG" ] && set -x
+            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
 
             export GOPATH="$PWD/workspace"
             path=workspace/src/github.com/pivotal-cf/namespace-drain

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eu
+set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
 
 source consts.sh
 source ../lib.sh
