@@ -19,18 +19,18 @@ resources:
     branch: master
     private_key: ((github.oratos-bot-private-key))
 
-- name: namespace-drain-dockerfile
+- name: sink-controller-dockerfile
   type: git
   source:
     uri: https://github.com/pivotal-cf/oratos-ci
     branch: master
     paths:
-    - docker-images/namespace-drain
+    - docker-images/sink-controller
 
-- name: namespace-drain-image
+- name: sink-controller-image
   type: docker-image
   source:
-    repository: oratos/namespace-drain
+    repository: oratos/sink-controller
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
@@ -130,7 +130,7 @@ jobs:
         params:
           text: Namespace Drain Verify Codegen failed
 
-- name: build-namespace-drain-image
+- name: build-sink-controller-image
   serial: true
   plan:
   - aggregate:
@@ -138,18 +138,18 @@ jobs:
       trigger: true
       passed:
       - unit-tests
-    - get: namespace-drain-dockerfile
+    - get: sink-controller-dockerfile
       trigger: true
     - get: oratos-ci
   - task: prepare-build
     file: oratos-ci/tasks/build-go-docker-image/task.yml
     input_mapping:
-      context-repo: namespace-drain-dockerfile
+      context-repo: sink-controller-dockerfile
       source-repo: namespace-drain
     params:
-      CONTEXT_PATH: docker-images/namespace-drain
+      CONTEXT_PATH: docker-images/sink-controller
       BASE_PACKAGE: github.com/pivotal-cf/namespace-drain
-  - put: namespace-drain-image
+  - put: sink-controller-image
     params:
       build: build-image/build
       tag: build-image/tag

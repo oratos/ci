@@ -9,11 +9,11 @@ ENV GOOS=linux \
 RUN go build \
     -a \
     -installsuffix nocgo \
-    -o /namespace-drain \
+    -o /sink-controller \
     github.com/pivotal-cf/namespace-drain/cmd
 
 FROM alpine:latest
 
-COPY --from=builder /namespace-drain /srv/
+COPY --from=builder /sink-controller /srv/
 WORKDIR /srv
-CMD [ "/srv/namespace-drain" ]
+CMD [ "/srv/sink-controller" ]
