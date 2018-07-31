@@ -1,0 +1,329 @@
+groups:
+- name: cfcr
+  jobs:
+  - oratos-ci-testing-cfcr-bbl-up
+  - oratos-ci-testing-cfcr-bbl-destroy
+  - oratos-ci-testing-cfcr-deploy
+  - oratos-ci-testing-cfcr-destroy
+
+resource_types:
+- name: vault
+  type: docker-image
+  source:
+    repository: wfernandes/vault-resource
+    tag: latest
+
+resources:
+- name: oratos-ci-testing-cfcr-bbl-state
+  type: vault
+  source:
+    url: https://vault.oratos.ci.cf-app.com
+    role_id: ((vault.role_id))
+    secret_id: ((vault.secret_id))
+    path: secret/envs/oratos-ci-testing-cfcr-bbl-state
+    tarball: true
+
+- name: oratos-ci-testing-cfcr-gcp-vars
+  type: vault
+  source:
+    url: https://vault.oratos.ci.cf-app.com
+    role_id: ((vault.role_id))
+    secret_id: ((vault.secret_id))
+    path: secret/envs/oratos-ci-testing-cfcr-gcp-vars
+
+- name: cf-deployment-concourse-tasks
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry/cf-deployment-concourse-tasks
+    branch: v7.1
+
+- name: oratos-ci
+  type: git
+  source:
+    uri: git@github.com:pivotal-cf/oratos-ci.git
+    branch: master
+    private_key: ((github.oratos-bot-private-key))
+
+- name: kubo-deployment
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry-incubator/kubo-deployment
+    branch: v0.19.0
+
+- name: kubo-release-bosh-io
+  type: bosh-io-release
+  source:
+    repository: cloudfoundry-incubator/kubo-release
+    branch: v0.19.0
+
+jobs:
+- name: oratos-ci-testing-cfcr-bbl-up
+  serial: true
+  serial_groups:
+  - oratos-ci-testing-cfcr-director-lifecycle
+  plan:
+  - aggregate:
+    - get: oratos-ci-testing-cfcr-bbl-state
+    - get: cf-deployment-concourse-tasks
+  - task: bbl-up
+    file: cf-deployment-concourse-tasks/bbl-up/task.yml
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+      bbl-config: oratos-ci-testing-cfcr-bbl-state
+    params:
+      BBL_IAAS: gcp
+      BBL_GCP_SERVICE_ACCOUNT_KEY: ((gcloud.oratos-ci-testing-cfcr-service-account))
+      BBL_GCP_REGION: us-central1
+      BBL_ENV_NAME: oratos-ci-testing
+      SKIP_LB_CREATION: true
+  - put: oratos-ci-testing-cfcr-bbl-state
+    params:
+      data: updated-bbl-state
+
+- name: oratos-ci-testing-cfcr-bbl-destroy
+  serial: true
+  serial_groups:
+  - oratos-ci-testing-cfcr-director-lifecycle
+  plan:
+  - aggregate:
+    - get: oratos-ci-testing-cfcr-bbl-state
+    - get: cf-deployment-concourse-tasks
+  - task: bbl-destroy
+    file: cf-deployment-concourse-tasks/bbl-destroy/task.yml
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+    params:
+      BBL_IAAS: gcp
+      BBL_GCP_SERVICE_ACCOUNT_KEY: ((gcloud.oratos-ci-testing-cfcr-service-account))
+  - put: oratos-ci-testing-cfcr-bbl-state
+    params:
+      data: updated-bbl-state
+
+- name: oratos-ci-testing-cfcr-deploy
+  serial: true
+  serial_groups:
+  - oratos-ci-testing-cfcr-lifecycle
+  plan:
+  - aggregate:
+    - get: oratos-ci-testing-cfcr-bbl-state
+    - get: oratos-ci-testing-cfcr-gcp-vars
+    - get: cf-deployment-concourse-tasks
+    - get: oratos-ci
+    - get: kubo-deployment
+      trigger: true
+    - get: kubo-release-bosh-io
+      trigger: true
+  - aggregate:
+    - task: upload-release
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: relintdockerhubpushbot/cf-deployment-concourse-tasks
+        inputs:
+        - name: kubo-release-bosh-io
+        - name: oratos-ci-testing-cfcr-bbl-state
+        params:
+          DEBUG:
+        run:
+          path: /bin/bash
+          args:
+          - "-c"
+          - |
+            #!/bin/bash
+            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+            # set bosh env vars
+            set +x
+            pushd oratos-ci-testing-cfcr-bbl-state/bbl-state > /dev/null
+              eval "$(bbl print-env)"
+            popd > /dev/null
+            set -x
+
+            bosh upload-release kubo-release-bosh-io/release.tgz
+    - task: upload-stemcell
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: relintdockerhubpushbot/cf-deployment-concourse-tasks
+        inputs:
+        - name: kubo-deployment
+        - name: oratos-ci-testing-cfcr-bbl-state
+        params:
+          DEBUG:
+        run:
+          path: /bin/bash
+          args:
+          - "-c"
+          - |
+            #!/bin/bash
+            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+            # get stemcell version
+            pushd kubo-deployment > /dev/null
+              version="$(
+                bosh int manifests/cfcr.yml \
+                  --path /stemcells/alias=trusty/version
+              )"
+            popd > /dev/null
+
+            # set bosh env vars
+            set +x
+            pushd oratos-ci-testing-cfcr-bbl-state/bbl-state > /dev/null
+              eval "$(bbl print-env)"
+            popd > /dev/null
+            set -x
+
+            bosh upload-stemcell \
+              "https://bosh.io/d/stemcells/bosh-google-kvm-ubuntu-trusty-go_agent?v=$version"
+    - task: upload-vars-to-credhub
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: loggregator/base
+        inputs:
+        - name: oratos-ci-testing-cfcr-bbl-state
+        - name: oratos-ci-testing-cfcr-gcp-vars
+        params:
+          DEBUG:
+        run:
+          path: /bin/bash
+          args:
+          - "-c"
+          - |
+            #!/bin/bash
+            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+            pushd oratos-ci-testing-cfcr-bbl-state/bbl-state > /dev/null
+              eval "$(bbl print-env)"
+            popd > /dev/null
+
+            credhub import --file oratos-ci-testing-cfcr-gcp-vars/vars.yml
+    - task: modify-kubo-deployment
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: loggregator/base
+        inputs:
+        - name: kubo-deployment
+        outputs:
+        - name: modified-kubo-deployment
+        params:
+          DEBUG:
+        run:
+          path: /bin/bash
+          args:
+          - "-c"
+          - |
+            #!/bin/bash
+            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+            cp -r kubo-deployment/. modified-kubo-deployment/
+            cat <<EOF > ops.yml
+            - type: remove
+              path: /releases/name=bosh-dns
+            - type: remove
+              path: /addons/name=bosh-dns
+            - type: remove
+              path: /variables/name=~1dns_healthcheck_tls_ca
+            - type: remove
+              path: /variables/name=~1dns_healthcheck_server_tls
+            - type: remove
+              path: /variables/name=~1dns_healthcheck_client_tls
+            - type: remove
+              path: /variables/name=~1dns_api_tls_ca
+            - type: remove
+              path: /variables/name=~1dns_api_server_tls
+            - type: remove
+              path: /variables/name=~1dns_api_client_tls
+            EOF
+            bosh interpolate kubo-deployment/manifests/cfcr.yml \
+              --ops-file ops.yml \
+              > modified-kubo-deployment/manifests/cfcr.yml
+  - task: cfcr-deploy
+    file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+      cf-deployment: modified-kubo-deployment
+      ops-files: modified-kubo-deployment
+      vars-files: kubo-deployment # this isn't used but is a required input
+    params:
+      SYSTEM_DOMAIN: example.com # this isn't used but is a required input
+      MANIFEST_FILE: manifests/cfcr.yml
+      OPS_FILES: |
+        manifests/ops-files/allow-privileged-containers.yml
+        manifests/ops-files/iaas/gcp/cloud-provider.yml
+        manifests/ops-files/iaas/gcp/add-service-key-master.yml
+        manifests/ops-files/iaas/gcp/add-service-key-worker.yml
+  - task: run-apply-addons-errand
+    file: cf-deployment-concourse-tasks/run-errand/task.yml
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+    params:
+      DEPLOYMENT_NAME: cfcr
+      ERRAND_NAME: apply-addons
+  - task: setup-load-balancer-service
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: loggregator/base
+      inputs:
+      - name: kubo-deployment
+      - name: oratos-ci-testing-cfcr-bbl-state
+      - name: oratos-ci
+      outputs:
+      - name: modified-kubo-deployment
+      params:
+        DEBUG:
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+          function cleanup {
+              set +e
+              killall -9 ssh > /dev/null 2>&1
+              killall -9 ssh-agent > /dev/null 2>&1
+          }
+          trap cleanup EXIT
+
+          BBL_STATE_DIR=oratos-ci-testing-cfcr-bbl-state \
+              oratos-ci/scripts/cfcr.sh testing get-credentials-tunnel
+
+          patch='{"spec": {"type": "LoadBalancer"}}'
+          kubectl patch service kubernetes --namespace default --patch "$patch" || true
+
+- name: oratos-ci-testing-cfcr-destroy
+  serial_groups:
+  - oratos-ci-testing-cfcr-lifecycle
+  plan:
+  - aggregate:
+    - get: oratos-ci-testing-cfcr-bbl-state
+    - get: oratos-ci
+    - get: cf-deployment-concourse-tasks
+  - task: delete-k8s-resources
+    file: oratos-ci/tasks/k8s-delete-all-resources/task.yml
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+    params:
+      GET_CREDENTIALS_HOOK: |
+        BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/cfcr.sh testing get-credentials
+  - task: cfcr-deployment-destroy
+    file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+    params:
+      DEPLOYMENT_NAME: cfcr
