@@ -82,7 +82,7 @@ jobs:
         inputs:
         - name: namespace-drain
         params:
-          SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-service-account))
+          SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
           DEBUG:
         run:
           path: /bin/bash
