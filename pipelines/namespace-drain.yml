@@ -83,6 +83,7 @@ jobs:
         - name: namespace-drain
         params:
           SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-service-account))
+          DEBUG:
         run:
           path: /bin/bash
           args:
@@ -111,6 +112,8 @@ jobs:
             repository: oratos/ci-base
         inputs:
         - name: namespace-drain
+        params:
+          DEBUG:
         run:
           path: /bin/bash
           args:

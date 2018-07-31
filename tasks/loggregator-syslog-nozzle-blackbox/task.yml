@@ -5,8 +5,24 @@ image_resource:
     repository: loggregator/base
 inputs:
 - name: oratos-ci
-- name: deployments-loggregator
+- name: bbl-state
 params:
+  # - Required
+  # - Code to run to setup kubectl to point to the cluster.
+  GET_CREDENTIALS_HOOK:
+
+  # - Required
+  # - Used when reporting to datadog.
+  SYSTEM_DOMAIN:
+
+  # - Required
+  # - The destination address of the papertrailapp service.
+  PAPERTRAIL_DESTINATION:
+
+  # - Required
+  # - The token required to connect with the papertrailapp service.
+  PAPERTRAIL_TOKEN:
+
   # - Required
   # - The API Key to send metrics to DataDog.
   DATADOG_API_KEY:
@@ -25,7 +41,7 @@ params:
 
   # - Optional
   # - The message to write in the logs
-  MESSAGE: "LogSpinner Log Message"
+  MESSAGE:
 
   # - Optional
   # - Wait sleeps for N seconds waiting for messages to show up.
@@ -35,4 +51,4 @@ params:
   # - Set to true to output all commands that are ran.
   DEBUG:
 run:
-  path: oratos-ci/tasks/k8s-blackbox/task
+  path: oratos-ci/tasks/loggregator-syslog-nozzle-blackbox/task

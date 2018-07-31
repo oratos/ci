@@ -1,36 +1,77 @@
+groups:
+- name: sink
+  jobs:
+  - sink-dripspinner
+  - sink-flowspinner
+  - sink-floodspinner
+- name: loggregator-rlp
+  jobs:
+  - loggregator-rlp-dripspinner
+  - loggregator-rlp-flowspinner
+  - loggregator-rlp-floodspinner
+- name: loggregator-syslog-nozzle
+  jobs:
+  - loggregator-syslog-nozzle-dripspinner
+  - loggregator-syslog-nozzle-flowspinner
+  - loggregator-syslog-nozzle-floodspinner
+
+resource_types:
+- name: vault
+  type: docker-image
+  source:
+    repository: wfernandes/vault-resource
+    tag: latest
+
 resources:
 - name: 15m
   type: time
-  source: {interval: 15m}
+  source:
+    interval: 15m
 
 - name: 1h
   type: time
-  source: {interval: 1h}
+  source:
+    interval: 1h
 
 - name: oratos-ci
   type: git
   source:
     uri: https://github.com/pivotal-cf/oratos-ci
+    branch: acceptance-wip
 
-- name: deployments-loggregator
-  type: git
+- name: bikepark-bbl-state
+  type: vault
   source:
-    uri: git@github.com:cloudfoundry/deployments-loggregator.git
-    branch: master
-    private_key: ((github.oratos-bot-private-key))
+    url: https://vault.oratos.ci.cf-app.com
+    role_id: ((vault.role_id))
+    secret_id: ((vault.secret_id))
+    path: secret/envs/bikepark-bbl-state
+    tarball: true
 
 jobs:
-- name: k8s-floodspinner
+
+##############################################################################
+# LOGGREGATOR RLP BLACKBOX                                                   #
+##############################################################################
+
+- name: loggregator-rlp-floodspinner
   serial: true
   serial_groups: ["restage"]
   plan:
-  - get: oratos-ci
-  - get: deployments-loggregator
-  - get: 15m
-    trigger: true
-  - task: run-k8s-blackbox-tests
-    file: oratos-ci/tasks/k8s-blackbox/task.yml
+  - aggregate:
+    - get: bikepark-bbl-state
+    - get: oratos-ci
+    - get: 15m
+      trigger: true
+  - task: run-test
+    file: oratos-ci/tasks/loggregator-rlp-blackbox/task.yml
+    input_mapping:
+      bbl-state: bikepark-bbl-state
     params:
+      SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
+      GET_CREDENTIALS_HOOK: |
+        BIKEPARK_BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/bikepark.sh get-credentials
       WAIT: 60
       CYCLES: 10000
       DATADOG_API_KEY: ((datadog.loggregator-ci-api-key))
@@ -39,17 +80,24 @@ jobs:
       MESSAGE: "FIFTEEN-MINUTE"
     timeout: 15m
 
-- name: k8s-dripspinner
+- name: loggregator-rlp-dripspinner
   serial: true
   serial_groups: ["restage"]
   plan:
-  - get: oratos-ci
-  - get: deployments-loggregator
-  - get: 1h
-    trigger: true
-  - task: run-k8s-blackbox-tests
-    file: oratos-ci/tasks/k8s-blackbox/task.yml
+  - aggregate:
+    - get: bikepark-bbl-state
+    - get: oratos-ci
+    - get: 1h
+      trigger: true
+  - task: run-test
+    file: oratos-ci/tasks/loggregator-rlp-blackbox/task.yml
+    input_mapping:
+      bbl-state: bikepark-bbl-state
     params:
+      SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
+      GET_CREDENTIALS_HOOK: |
+        BIKEPARK_BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/bikepark.sh get-credentials
       WAIT: 600
       CYCLES: 1000
       DATADOG_API_KEY: ((datadog.loggregator-ci-api-key))
@@ -58,17 +106,24 @@ jobs:
       MESSAGE: "HOURLY"
     timeout: 15m
 
-- name: k8s-flowspinner
+- name: loggregator-rlp-flowspinner
   serial: true
   serial_groups: ["restage"]
   plan:
-  - get: oratos-ci
-  - get: deployments-loggregator
-  - get: 1h
-    trigger: true
-  - task: run-k8s-blackbox-tests
-    file: oratos-ci/tasks/k8s-blackbox/task.yml
+  - aggregate:
+    - get: bikepark-bbl-state
+    - get: oratos-ci
+    - get: 1h
+      trigger: true
+  - task: run-test
+    file: oratos-ci/tasks/loggregator-rlp-blackbox/task.yml
+    input_mapping:
+      bbl-state: bikepark-bbl-state
     params:
+      SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
+      GET_CREDENTIALS_HOOK: |
+        BIKEPARK_BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/bikepark.sh get-credentials
       WAIT: 60
       CYCLES: 1000
       DATADOG_API_KEY: ((datadog.loggregator-ci-api-key))
@@ -77,17 +132,28 @@ jobs:
       MESSAGE: "HOURLY"
     timeout: 15m
 
-- name: k8s-fluentbit-floodspinner
+##############################################################################
+# LOGGREGATOR SYSLOG NOZZLE BLACKBOX                                         #
+##############################################################################
+
+- name: loggregator-syslog-nozzle-floodspinner
   serial: true
   serial_groups: ["restage"]
   plan:
-  - get: oratos-ci
-  - get: deployments-loggregator
-  - get: 15m
-    trigger: true
-  - task: run-k8s-fluentbit-blackbox-tests
-    file: oratos-ci/tasks/k8s-fluentbit-blackbox/task.yml
+  - aggregate:
+    - get: bikepark-bbl-state
+    - get: oratos-ci
+    - get: 15m
+      trigger: true
+  - task: run-test
+    file: oratos-ci/tasks/loggregator-syslog-nozzle-blackbox/task.yml
+    input_mapping:
+      bbl-state: bikepark-bbl-state
     params:
+      SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
+      GET_CREDENTIALS_HOOK: |
+        BIKEPARK_BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/bikepark.sh get-credentials
       PAPERTRAIL_TOKEN: ((papertrail.token))
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 60
@@ -98,17 +164,24 @@ jobs:
       MESSAGE: "FIFTEEN-MINUTE"
     timeout: 15m
 
-- name: k8s-fluentbit-dripspinner
+- name: loggregator-syslog-nozzle-dripspinner
   serial: true
   serial_groups: ["restage"]
   plan:
-  - get: oratos-ci
-  - get: deployments-loggregator
-  - get: 1h
-    trigger: true
-  - task: run-k8s-fluentbit-blackbox-tests
-    file: oratos-ci/tasks/k8s-fluentbit-blackbox/task.yml
+  - aggregate:
+    - get: bikepark-bbl-state
+    - get: oratos-ci
+    - get: 1h
+      trigger: true
+  - task: run-test
+    file: oratos-ci/tasks/loggregator-syslog-nozzle-blackbox/task.yml
+    input_mapping:
+      bbl-state: bikepark-bbl-state
     params:
+      SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
+      GET_CREDENTIALS_HOOK: |
+        BIKEPARK_BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/bikepark.sh get-credentials
       PAPERTRAIL_TOKEN: ((papertrail.token))
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 600
@@ -119,17 +192,24 @@ jobs:
       MESSAGE: "HOURLY"
     timeout: 15m
 
-- name: k8s-fluentbit-flowspinner
+- name: loggregator-syslog-nozzle-flowspinner
   serial: true
   serial_groups: ["restage"]
   plan:
-  - get: oratos-ci
-  - get: deployments-loggregator
-  - get: 1h
-    trigger: true
-  - task: run-k8s-fluentbit-blackbox-tests
-    file: oratos-ci/tasks/k8s-fluentbit-blackbox/task.yml
+  - aggregate:
+    - get: bikepark-bbl-state
+    - get: oratos-ci
+    - get: 1h
+      trigger: true
+  - task: run-test
+    file: oratos-ci/tasks/loggregator-syslog-nozzle-blackbox/task.yml
+    input_mapping:
+      bbl-state: bikepark-bbl-state
     params:
+      SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
+      GET_CREDENTIALS_HOOK: |
+        BIKEPARK_BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/bikepark.sh get-credentials
       PAPERTRAIL_TOKEN: ((papertrail.token))
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 60
@@ -140,17 +220,28 @@ jobs:
       MESSAGE: "HOURLY"
     timeout: 15m
 
-- name: k8s-syslog-floodspinner
+##############################################################################
+# SINK BLACKBOX                                                              #
+##############################################################################
+
+- name: sink-floodspinner
   serial: true
   serial_groups: ["restage"]
   plan:
-  - get: oratos-ci
-  - get: deployments-loggregator
-  - get: 15m
-    trigger: true
-  - task: run-k8s-syslog-blackbox-tests
-    file: oratos-ci/tasks/k8s-syslog-blackbox/task.yml
+  - aggregate:
+    - get: bikepark-bbl-state
+    - get: oratos-ci
+    - get: 15m
+      trigger: true
+  - task: run-test
+    file: oratos-ci/tasks/sink-blackbox/task.yml
+    input_mapping:
+      bbl-state: bikepark-bbl-state
     params:
+      SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
+      GET_CREDENTIALS_HOOK: |
+        BIKEPARK_BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/bikepark.sh get-credentials
       PAPERTRAIL_TOKEN: ((papertrail.token))
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 60
@@ -161,17 +252,24 @@ jobs:
       MESSAGE: "FIFTEEN-MINUTE"
     timeout: 15m
 
-- name: k8s-syslog-dripspinner
+- name: sink-dripspinner
   serial: true
   serial_groups: ["restage"]
   plan:
-  - get: oratos-ci
-  - get: deployments-loggregator
-  - get: 1h
-    trigger: true
-  - task: run-k8s-syslog-blackbox-tests
-    file: oratos-ci/tasks/k8s-syslog-blackbox/task.yml
+  - aggregate:
+    - get: bikepark-bbl-state
+    - get: oratos-ci
+    - get: 1h
+      trigger: true
+  - task: run-test
+    file: oratos-ci/tasks/sink-blackbox/task.yml
+    input_mapping:
+      bbl-state: bikepark-bbl-state
     params:
+      SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
+      GET_CREDENTIALS_HOOK: |
+        BIKEPARK_BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/bikepark.sh get-credentials
       PAPERTRAIL_TOKEN: ((papertrail.token))
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 600
@@ -182,17 +280,24 @@ jobs:
       MESSAGE: "HOURLY"
     timeout: 15m
 
-- name: k8s-syslog-flowspinner
+- name: sink-flowspinner
   serial: true
   serial_groups: ["restage"]
   plan:
-  - get: oratos-ci
-  - get: deployments-loggregator
-  - get: 1h
-    trigger: true
-  - task: run-k8s-syslog-blackbox-tests
-    file: oratos-ci/tasks/k8s-syslog-blackbox/task.yml
+  - aggregate:
+    - get: bikepark-bbl-state
+    - get: oratos-ci
+    - get: 1h
+      trigger: true
+  - task: run-test
+    file: oratos-ci/tasks/sink-blackbox/task.yml
+    input_mapping:
+      bbl-state: bikepark-bbl-state
     params:
+      SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
+      GET_CREDENTIALS_HOOK: |
+        BIKEPARK_BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/bikepark.sh get-credentials
       PAPERTRAIL_TOKEN: ((papertrail.token))
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 60

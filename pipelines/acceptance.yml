@@ -1,10 +1,23 @@
 groups:
 - name: main
   jobs:
-  - cfcr-deploy
-  - cfcr-destroy
   - oratos-deploy
   - namespace-drain-deploy
+- name: cfcr-lifecycle
+  jobs:
+  - bikepark-cfcr-deploy
+  - bikepark-cfcr-destroy
+- name: director-lifecycle
+  jobs:
+  - bikepark-bbl-up
+  - bikepark-bbl-destroy
+
+resource_types:
+- name: vault
+  type: docker-image
+  source:
+    repository: wfernandes/vault-resource
+    tag: latest
 
 resources:
 - name: oratos-deployment
@@ -13,6 +26,23 @@ resources:
     uri: git@github.com:pivotal-cf/oratos-deployment.git
     branch: master
     private_key: ((github.oratos-bot-private-key))
+
+- name: bikepark-bbl-state
+  type: vault
+  source:
+    url: https://vault.oratos.ci.cf-app.com
+    role_id: ((vault.role_id))
+    secret_id: ((vault.secret_id))
+    path: secret/envs/bikepark-bbl-state
+    tarball: true
+
+- name: bikepark-cfcr-gcp-vars
+  type: vault
+  source:
+    url: https://vault.oratos.ci.cf-app.com
+    role_id: ((vault.role_id))
+    secret_id: ((vault.secret_id))
+    path: secret/envs/bikepark-cfcr-gcp-vars
 
 - name: namespace-drain-manifests
   type: git
@@ -37,148 +67,483 @@ resources:
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
-- name: deployments-loggregator
-  type: git
-  source:
-    uri: git@github.com:cloudfoundry/deployments-loggregator.git
-    branch: master
-    private_key: ((github.oratos-bot-private-key))
-
 - name: kubo-deployment
   type: git
   source:
     uri: https://github.com/cloudfoundry-incubator/kubo-deployment
-    branch: v0.18.0
+    branch: v0.19.0
 
 - name: kubo-release-bosh-io
   type: bosh-io-release
   source:
     repository: cloudfoundry-incubator/kubo-release
-    branch: v0.18.0
+    branch: v0.19.0
 
 - name: cf-deployment-concourse-tasks
   type: git
   source:
     uri: https://github.com/cloudfoundry/cf-deployment-concourse-tasks
-    branch: v6.8
+    branch: v7.1
 
 - name: oratos-ci
   type: git
   source:
     uri: git@github.com:pivotal-cf/oratos-ci.git
-    branch: master
+    branch: acceptance-wip
     private_key: ((github.oratos-bot-private-key))
 
 jobs:
-- name: cfcr-deploy
+- name: bikepark-bbl-up
   serial: true
+  serial_groups:
+  - bikepark-director-lifecycle
   plan:
   - aggregate:
-    - get: deployments-loggregator
+    - get: bikepark-bbl-state
+    - get: cf-deployment-concourse-tasks
+  - task: bbl-up
+    file: cf-deployment-concourse-tasks/bbl-up/task.yml
+    input_mapping:
+      bbl-state: bikepark-bbl-state
+      bbl-config: bikepark-bbl-state
+    params:
+      BBL_IAAS: gcp
+      BBL_GCP_SERVICE_ACCOUNT_KEY: ((gcloud.bikepark-service-account))
+      BBL_GCP_REGION: us-central1
+      BBL_ENV_NAME: bikepark
+      SKIP_LB_CREATION: true
+  - put: bikepark-bbl-state
+    params:
+      data: updated-bbl-state
+
+- name: bikepark-bbl-destroy
+  serial: true
+  serial_groups:
+  - bikepark-director-lifecycle
+  plan:
+  - aggregate:
+    - get: bikepark-bbl-state
+    - get: cf-deployment-concourse-tasks
+  - task: bbl-destroy
+    file: cf-deployment-concourse-tasks/bbl-destroy/task.yml
+    input_mapping:
+      bbl-state: bikepark-bbl-state
+    params:
+      BBL_IAAS: gcp
+      BBL_GCP_SERVICE_ACCOUNT_KEY: ((gcloud.bikepark-service-account))
+  - put: bikepark-bbl-state
+    params:
+      data: updated-bbl-state
+
+- name: bikepark-cfcr-deploy
+  serial: true
+  serial_groups:
+  - bikepark-cfcr-lifecycle
+  plan:
+  - aggregate:
+    - get: bikepark-bbl-state
+    - get: bikepark-cfcr-gcp-vars
+    - get: cf-deployment-concourse-tasks
+    - get: oratos-ci
     - get: kubo-deployment
       trigger: true
-    - get: cf-deployment-concourse-tasks
     - get: kubo-release-bosh-io
       trigger: true
-  - task: upload-release
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: relintdockerhubpushbot/cf-deployment-concourse-tasks
-      inputs:
-      - name: kubo-release-bosh-io
-      - name: deployments-loggregator
-      params:
-        BBL_STATE_DIR: gcp/playground
-      run:
-        path: /bin/bash
-        args:
-        - "-c"
-        - |
-          #!/bin/bash
-          set -e; [ -n "$DEBUG" ] && set -x
+  - aggregate:
+    - task: upload-release
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: relintdockerhubpushbot/cf-deployment-concourse-tasks
+        inputs:
+        - name: kubo-release-bosh-io
+        - name: bikepark-bbl-state
+        params:
+          DEBUG:
+        run:
+          path: /bin/bash
+          args:
+          - "-c"
+          - |
+            #!/bin/bash
+            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
 
-          # set bosh env vars
-          set +x
-          pushd "deployments-loggregator/$BBL_STATE_DIR" > /dev/null
-            eval "$(bbl print-env)"
-          popd > /dev/null
-          set -x
+            # set bosh env vars
+            set +x
+            pushd bikepark-bbl-state/bbl-state > /dev/null
+              eval "$(bbl print-env)"
+            popd > /dev/null
+            set -x
 
-          bosh upload-release kubo-release-bosh-io/release.tgz
-  - task: upload-stemcell
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: relintdockerhubpushbot/cf-deployment-concourse-tasks
-      inputs:
-      - name: kubo-deployment
-      - name: deployments-loggregator
-      params:
-        BBL_STATE_DIR: gcp/playground
-      run:
-        path: /bin/bash
-        args:
-        - "-c"
-        - |
-          #!/bin/bash
-          set -e; [ -n "$DEBUG" ] && set -x
+            bosh upload-release kubo-release-bosh-io/release.tgz
+    - task: upload-stemcell
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: relintdockerhubpushbot/cf-deployment-concourse-tasks
+        inputs:
+        - name: kubo-deployment
+        - name: bikepark-bbl-state
+        params:
+          DEBUG:
+        run:
+          path: /bin/bash
+          args:
+          - "-c"
+          - |
+            #!/bin/bash
+            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
 
-          # get stemcell version
-          pushd kubo-deployment > /dev/null
-            version="$(
-              bosh int manifests/cfcr.yml \
-                --path /stemcells/alias=trusty/version
-            )"
-          popd > /dev/null
+            # get stemcell version
+            pushd kubo-deployment > /dev/null
+              version="$(
+                bosh int manifests/cfcr.yml \
+                  --path /stemcells/alias=trusty/version
+              )"
+            popd > /dev/null
 
-          # set bosh env vars
-          set +x
-          pushd "deployments-loggregator/$BBL_STATE_DIR" > /dev/null
-            eval "$(bbl print-env)"
-          popd > /dev/null
-          set -x
+            # set bosh env vars
+            set +x
+            pushd bikepark-bbl-state/bbl-state > /dev/null
+              eval "$(bbl print-env)"
+            popd > /dev/null
+            set -x
 
-          bosh upload-stemcell \
-            "https://bosh.io/d/stemcells/bosh-google-kvm-ubuntu-trusty-go_agent?v=$version"
-  - task: upload-vars-to-credhub
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: loggregator/base
-      inputs:
-      - name: deployments-loggregator
-      run:
-        path: /bin/bash
-        args:
-        - "-c"
-        - |
-          #!/bin/bash
-          set -e; [ -n "$DEBUG" ] && set -x
+            bosh upload-stemcell \
+              "https://bosh.io/d/stemcells/bosh-google-kvm-ubuntu-trusty-go_agent?v=$version"
+    - task: upload-vars-to-credhub
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: loggregator/base
+        inputs:
+        - name: bikepark-bbl-state
+        - name: bikepark-cfcr-gcp-vars
+        params:
+          DEBUG:
+        run:
+          path: /bin/bash
+          args:
+          - "-c"
+          - |
+            #!/bin/bash
+            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
 
-          eval "$(ssh-agent)"
-          cd deployments-loggregator/gcp/playground
-          source .envrc
-          credhub import --file k8s-cloud-provider-credhub-vars.yml
-          killall ssh-agent
+            pushd bikepark-bbl-state/bbl-state > /dev/null
+              eval "$(bbl print-env)"
+            popd > /dev/null
+
+            credhub import --file bikepark-cfcr-gcp-vars/vars.yml
+    - task: modify-kubo-deployment
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: loggregator/base
+        inputs:
+        - name: kubo-deployment
+        outputs:
+        - name: modified-kubo-deployment
+        params:
+          DEBUG:
+        run:
+          path: /bin/bash
+          args:
+          - "-c"
+          - |
+            #!/bin/bash
+            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+            # README
+            # This is needed as bosh-dns is already added to runtime config
+            # as part of bosh-deployment. When attempting to write an opsfile
+            # to remove the duplicate bosh-dns bits it turns out the variable
+            # names have / in them which prevents the use of opsfiles.
+
+            cp -r kubo-deployment/. modified-kubo-deployment/
+            cat <<EOF > modified-kubo-deployment/manifests/cfcr.yml
+            name: cfcr
+            releases:
+            - name: kubo
+              version: latest
+            - name: cfcr-etcd
+              url: https://github.com/cloudfoundry-incubator/cfcr-etcd-release/releases/download/v1.3/cfcr-etcd-release-1.3.tgz
+              sha1: 72a9753b08980229c73b623c4ddeea59a5afc96f
+              version: '1.3'
+            - name: docker
+              url: https://github.com/cloudfoundry-incubator/docker-boshrelease/releases/download/v32.0.0/docker-32.0.0.tgz
+              sha1: f192296243e68150ae66656fc9134a2b2a023184
+              version: 32.0.0
+            - name: bpm
+              sha1: 4f0f239abdc801d71de9063625aa56e3c42634b5
+              url: https://bosh.io/d/github.com/cloudfoundry-incubator/bpm-release?v=0.6.0
+              version: 0.6.0
+            stemcells:
+            - alias: trusty
+              os: ubuntu-trusty
+              version: "3586.25"
+            addons:
+            - name: bosh-dns-aliases
+              jobs:
+              - name: kubo-dns-aliases
+                release: kubo
+            instance_groups:
+            - name: apply-addons
+              instances: 1
+              networks:
+              - name: default
+              azs: [z1]
+              lifecycle: errand
+              jobs:
+              - name: apply-specs
+                release: kubo
+                properties:
+                  api-token: ((kubelet-password))
+                  admin-username: admin
+                  admin-password: ((kubo-admin-password))
+                  tls:
+                    kubernetes: ((tls-kubernetes))
+                    heapster: ((tls-heapster))
+                    influxdb: ((tls-influxdb))
+                    kubernetes-dashboard: ((tls-kubernetes-dashboard))
+              stemcell: trusty
+              vm_type: minimal
+            - name: master
+              instances: 3
+              networks:
+              - name: default
+              azs: [z1,z2,z3]
+              jobs:
+              - name: bpm
+                release: bpm
+              - name: flanneld
+                release: kubo
+              - name: kube-apiserver
+                release: kubo
+                properties:
+                  admin-username: admin
+                  admin-password: ((kubo-admin-password))
+                  kubelet-password: ((kubelet-password))
+                  kube-proxy-password: ((kube-proxy-password))
+                  kube-controller-manager-password: ((kube-controller-manager-password))
+                  kube-scheduler-password: ((kube-scheduler-password))
+                  route-sync-password: ((route-sync-password))
+                  kubelet-drain-password: ((kubelet-drain-password))
+                  backend_port: 8443 # Bosh links hack
+                  port: 8443
+                  service-account-public-key: ((service-account-key.public_key))
+                  tls:
+                    kubernetes:
+                      ca: ((tls-kubernetes.ca))
+                      certificate: ((tls-kubernetes.certificate))
+                      private_key: ((tls-kubernetes.private_key))
+                    kubelet-client: ((tls-kubelet-client))
+              - name: kube-controller-manager
+                release: kubo
+                properties:
+                  api-token: ((kube-controller-manager-password))
+                  cluster-signing: ((kubo_ca))
+                  service-account-private-key: ((service-account-key.private_key))
+                  tls:
+                    kubernetes: ((tls-kubernetes))
+              - name: kube-scheduler
+                release: kubo
+                properties:
+                  api-token: ((kube-scheduler-password))
+                  tls:
+                    kubernetes: ((tls-kubernetes))
+              - name: kubernetes-roles
+                release: kubo
+                properties:
+                  admin-username: admin
+                  admin-password: ((kubo-admin-password))
+                  tls:
+                    kubernetes: ((tls-kubernetes))
+              - name: etcd
+                release: cfcr-etcd
+                properties:
+                  etcd:
+                    dns_suffix: etcd.cfcr.internal
+                  tls:
+                    etcd:
+                      ca: ((tls-etcd-v0-17-0.ca))
+                      certificate: ((tls-etcd-v0-17-0.certificate))
+                      private_key: ((tls-etcd-v0-17-0.private_key))
+                    etcdctl:
+                      ca: ((tls-etcdctl.ca))
+                      certificate: ((tls-etcdctl.certificate))
+                      private_key: ((tls-etcdctl.private_key))
+                    peer:
+                      ca: ((tls-etcd-v0-17-0.ca))
+                      certificate: ((tls-etcd-v0-17-0.certificate))
+                      private_key: ((tls-etcd-v0-17-0.private_key))
+              - name: smoke-tests
+                release: kubo
+              stemcell: trusty
+              vm_type: small
+              persistent_disk: 5120
+            - name: worker
+              instances: 3
+              networks:
+              - name: default
+              azs: [z1,z2,z3]
+              jobs:
+              - name: flanneld
+                release: kubo
+              - name: docker
+                release: docker
+                properties:
+                  bridge: cni0
+                  flannel: true
+                  iptables: false
+                  ip_masq: false
+                  log_level: error
+                  log_options: [ "max-size=128m", "max-file=2" ]
+                  store_dir: /var/vcap/data
+                  storage_driver: overlay2
+                  default_ulimits: [ "nofile=65536" ]
+                  tls_cacert: ((tls-docker.ca))
+                  tls_cert:  ((tls-docker.certificate))
+                  tls_key: ((tls-docker.private_key))
+                  env: {}
+              - name: kubernetes-dependencies
+                release: kubo
+              - name: kubelet
+                release: kubo
+                properties:
+                  api-token: ((kubelet-password))
+                  drain-api-token: ((kubelet-drain-password))
+                  tls:
+                    kubernetes: ((tls-kubernetes))
+                    kubelet: ((tls-kubelet))
+                    kubelet-client-ca:
+                      certificate: ((tls-kubelet-client.ca))
+              - name: kube-proxy
+                release: kubo
+                properties:
+                  tls:
+                    kubernetes: ((tls-kubernetes))
+                  api-token: ((kube-proxy-password))
+              stemcell: trusty
+              vm_type: small-highmem
+            update:
+              canaries: 1
+              max_in_flight: 1
+              canary_watch_time: 10000-300000
+              update_watch_time: 10000-300000
+            variables:
+            - name: kubo-admin-password
+              type: password
+            - name: kubelet-password
+              type: password
+            - name: kubelet-drain-password
+              type: password
+            - name: kube-proxy-password
+              type: password
+            - name: kube-controller-manager-password
+              type: password
+            - name: kube-scheduler-password
+              type: password
+            - name: route-sync-password
+              type: password
+            - name: kubo_ca
+              type: certificate
+              options:
+                is_ca: true
+                common_name: ca
+            - name: tls-kubelet
+              type: certificate
+              options:
+                ca: kubo_ca
+                organization: "system:nodes"
+                common_name: kubelet.cfcr.internal
+                alternative_names: []
+            - name: tls-kubelet-client
+              type: certificate
+              options:
+                ca: kubo_ca
+                common_name: kube-apiserver.cfcr.internal
+                organization: "system:masters"
+                extended_key_usage:
+                - client_auth
+            - name: tls-kubernetes
+              type: certificate
+              options:
+                ca: kubo_ca
+                organization: "system:masters"
+                common_name: master.cfcr.internal
+                alternative_names:
+                - 10.100.200.1
+                - kubernetes
+                - kubernetes.default
+                - kubernetes.default.svc
+                - kubernetes.default.svc.cluster.local
+                - master.cfcr.internal
+            - name: service-account-key
+              type: rsa
+            - name: tls-docker
+              type: certificate
+              options:
+                ca: kubo_ca
+                common_name: docker.cfcr.internal
+            - name: tls-etcd-v0-17-0
+              type: certificate
+              options:
+                ca: kubo_ca
+                common_name: "*.etcd.cfcr.internal"
+                extended_key_usage:
+                - client_auth
+                - server_auth
+            - name: tls-etcdctl
+              type: certificate
+              options:
+                ca: kubo_ca
+                common_name: etcdClient
+                extended_key_usage:
+                - client_auth
+            - name: tls-heapster
+              type: certificate
+              options:
+                ca: kubo_ca
+                common_name: heapster
+                alternative_names:
+                - "heapster.kube-system.svc.cluster.local"
+            - name: tls-influxdb
+              type: certificate
+              options:
+                ca: kubo_ca
+                common_name: monitoring-influxdb
+                alternative_names: []
+            - name: kubernetes-dashboard-ca
+              type: certificate
+              options:
+                is_ca: true
+                common_name: ca
+            - name: tls-kubernetes-dashboard
+              type: certificate
+              options:
+                ca: kubernetes-dashboard-ca
+                common_name: kubernetesdashboard.cfcr.internal
+                alternative_names: []
+            features:
+              use_dns_addresses: true
+            EOF
   - task: cfcr-deploy
     file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
     input_mapping:
-      cf-deployment: kubo-deployment
-      ops-files: kubo-deployment
-      bbl-state: deployments-loggregator
-      vars-store: deployments-loggregator
-      vars-files: deployments-loggregator
+      bbl-state: bikepark-bbl-state
+      cf-deployment: modified-kubo-deployment
+      ops-files: modified-kubo-deployment
+      vars-files: kubo-deployment # this isn't used but is a required input
     params:
-      BBL_STATE_DIR: gcp/playground
-      SYSTEM_DOMAIN: playground.loggr.cf-app.com
-      USE_VARS_STORE: false
+      SYSTEM_DOMAIN: example.com # this isn't used but is a required input
       MANIFEST_FILE: manifests/cfcr.yml
       OPS_FILES: |
         manifests/ops-files/allow-privileged-containers.yml
@@ -188,36 +553,77 @@ jobs:
   - task: run-apply-addons-errand
     file: cf-deployment-concourse-tasks/run-errand/task.yml
     input_mapping:
-      bbl-state: deployments-loggregator
+      bbl-state: bikepark-bbl-state
     params:
       DEPLOYMENT_NAME: cfcr
       ERRAND_NAME: apply-addons
-      BBL_STATE_DIR: gcp/playground
+  - task: setup-load-balancer-service
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: loggregator/base
+      inputs:
+      - name: kubo-deployment
+      - name: bikepark-bbl-state
+      - name: oratos-ci
+      outputs:
+      - name: modified-kubo-deployment
+      params:
+        DEBUG:
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
 
-- name: cfcr-destroy
-  serial_groups: ["deployment"]
+          function cleanup {
+              set +e
+              killall -9 ssh > /dev/null 2>&1
+              killall -9 ssh-agent > /dev/null 2>&1
+          }
+          trap cleanup EXIT
+
+          BIKEPARK_BBL_STATE_DIR=bikepark-bbl-state \
+              oratos-ci/scripts/bikepark.sh get-credentials-tunnel
+
+          patch='{"spec": {"type": "LoadBalancer"}}'
+          kubectl patch service kubernetes --namespace default --patch "$patch" || true
+
+- name: bikepark-cfcr-destroy
+  serial_groups:
+  - bikepark-cfcr-lifecycle
   plan:
   - aggregate:
-    - get: deployments-loggregator
-    - get: cf-deployment-concourse-tasks
+    - get: bikepark-bbl-state
     - get: oratos-ci
+    - get: cf-deployment-concourse-tasks
   - task: delete-k8s-resources
     file: oratos-ci/tasks/k8s-delete-all-resources/task.yml
+    input_mapping:
+      bbl-state: bikepark-bbl-state
+    params:
+      GET_CREDENTIALS_HOOK: |
+        BIKEPARK_BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/bikepark.sh get-credentials
   - task: cfcr-deployment-destroy
     file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
     input_mapping:
-      bbl-state: deployments-loggregator
+      bbl-state: bikepark-bbl-state
     params:
-      BBL_STATE_DIR: gcp/playground
       DEPLOYMENT_NAME: cfcr
 
 - name: oratos-deploy
   serial: true
   plan:
   - aggregate:
-    - get: deployments-loggregator
     - get: oratos-deployment
       trigger: true
+    - get: bikepark-bbl-state
+    - get: oratos-ci
   - task: oratos-deploy
     config:
       platform: linux
@@ -227,30 +633,26 @@ jobs:
           repository: loggregator/base
       inputs:
       - name: oratos-deployment
-      - name: deployments-loggregator
+      - name: oratos-ci
+      - name: bikepark-bbl-state
       params:
         LOGGREGATOR_TLS_SECRETS: ((playground.loggregator-tls-secrets))
+        DEBUG:
       run:
         path: /bin/bash
         args:
         - "-c"
         - |
           #!/bin/bash
-          set -e; [ -n "$DEBUG" ] && set -x
+          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
 
-          pushd deployments-loggregator/gcp/playground > /dev/null
-            eval "$(ssh-agent)"
-            source .envrc
-            set +e
-            source k8s_login
-            set -e
-          popd > /dev/null
+          BIKEPARK_BBL_STATE_DIR=bikepark-bbl-state \
+            oratos-ci/scripts/bikepark.sh get-credentials
+
           echo "$LOGGREGATOR_TLS_SECRETS" > oratos-deployment/secrets/loggregator-tls-certs.yml
           pushd oratos-deployment > /dev/null
             ./deploy.sh
           popd > /dev/null
-          killall ssh
-          killall ssh-agent
 
 - name: namespace-drain-deploy
   serial: true
@@ -266,10 +668,9 @@ jobs:
       trigger: true
       params:
         skip_download: true
-    - get: deployments-loggregator
+    - get: bikepark-bbl-state
+    - get: oratos-ci
   - task: deploy-namespace-drain
-    input_mapping:
-      namespace-drain: namespace-drain-manifests
     config:
       platform: linux
       image_resource:
@@ -277,33 +678,24 @@ jobs:
         source:
           repository: loggregator/base
       inputs:
-      - name: deployments-loggregator
-      - name: namespace-drain
+      - name: bikepark-bbl-state
+      - name: namespace-drain-manifests
+      - name: oratos-ci
+      params:
+        DEBUG:
       run:
         path: /bin/bash
         args:
         - "-c"
         - |
           #!/bin/bash
-          set -e; [ -n "$DEBUG" ] && set -x
-
-          function cleanup {
-            set +e
-            killall ssh 2> /dev/null
-            killall ssh-agent 2> /dev/null
-          }
-          trap cleanup EXIT
+          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
 
           # TODO: deploy with the triggered images, not :latest
 
-          pushd deployments-loggregator/gcp/playground > /dev/null
-            eval "$(ssh-agent)"
-            source .envrc
-            set +e
-            source k8s_login
-            set -e
-          popd > /dev/null
+          BIKEPARK_BBL_STATE_DIR=bikepark-bbl-state \
+            oratos-ci/scripts/bikepark.sh get-credentials
 
-          kubectl apply -R -f namespace-drain/manifests
+          kubectl apply -R -f namespace-drain-manifests/manifests
           patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
-          kubectl patch -R -f namespace-drain/manifests --patch "$patch"
+          kubectl patch -R -f namespace-drain-manifests/manifests --patch "$patch"

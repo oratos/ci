@@ -1,21 +1,31 @@
 #!/bin/bash
 set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
 
+if [ -z "$GET_CREDENTIALS_HOOK" ]; then
+  echo GET_CREDENTIALS_HOOK must be set
+  exit 1
+fi
+if [ -z "$SYSTEM_DOMAIN" ]; then
+  echo SYSTEM_DOMAIN must be set
+  exit 1
+fi
+if [ -z "$DATADOG_API_KEY" ]; then
+  echo DATADOG_API_KEY must be set
+  exit 1
+fi
+
 MESSAGE="$MESSAGE-$RANDOM"
 
-# Install and setup papertrail cli
-gem install papertrail
-echo "token: $PAPERTRAIL_TOKEN" > ~/.papertrail.yml
+go get code.cloudfoundry.org/loggregator-tools/rlpreader
 
 function report_to_datadog {
   currenttime="$(date +%s)"
-  SYSTEM_DOMAIN=k8s-syslog-playground
-  APP_NAME=k8s-syslog-playground-blackbox
+  APP_NAME=loggregator-rlp-blackbox
   curl --fail -X POST -H "Content-type: application/json" \
   -d "{ \"series\" :
     [
       {
-        \"metric\":\"smoke_test.fluent.k8s_namespace_delay\",
+        \"metric\":\"smoke_test.loggregator.k8s_delay\",
         \"points\":[[${currenttime}, ${DELAY}]],
         \"type\":\"gauge\",
         \"host\":\"${SYSTEM_DOMAIN}\",
@@ -25,7 +35,7 @@ function report_to_datadog {
         ]
       },
       {
-        \"metric\":\"smoke_test.fluent.k8s_namespace_logs_received\",
+        \"metric\":\"smoke_test.loggregator.k8s_msg_count\",
         \"points\":[[${currenttime}, ${MSG_COUNT}]],
         \"type\":\"gauge\",
         \"host\":\"${SYSTEM_DOMAIN}\",
@@ -35,7 +45,7 @@ function report_to_datadog {
         ]
       },
       {
-        \"metric\":\"smoke_test.fluent.k8s_namespace_logs_sent\",
+        \"metric\":\"smoke_test.loggregator.k8s_cycles\",
         \"points\":[[${currenttime}, ${CYCLES}]],
         \"type\":\"gauge\",
         \"host\":\"${SYSTEM_DOMAIN}\",
@@ -49,22 +59,16 @@ function report_to_datadog {
   'https://app.datadoghq.com/api/v1/series?api_key='"$DATADOG_API_KEY"
 
   set +e
+  killall rlpreader
   killall kubectl
-  killall ssh
-  killall ssh-agent
-  killall papertrail
 }
 trap report_to_datadog EXIT
 
 MSG_COUNT=0
 
-eval "$(ssh-agent)"
-pushd deployments-loggregator/gcp/playground > /dev/null
-    source .envrc
-    set +e
-    source k8s_login
-    set -e
-    echo "
+eval "$GET_CREDENTIALS_HOOK"
+
+echo "
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -76,16 +80,16 @@ metadata:
   name: logspinner
   namespace: blackbox-tests
   labels:
-    run: logspinner
+    app: logspinner
 spec:
   replicas: 1
   selector:
     matchLabels:
-      run: logspinner
+      app: logspinner
   template:
     metadata:
       labels:
-        run: logspinner
+        app: logspinner
     spec:
       containers:
       - name: logspinner
@@ -94,45 +98,65 @@ spec:
         - name: PORT
           value: \"8080\"
 " | kubectl apply -f -
-    output="[OUTPUT]\n    Name syslog\n    Match *\n    Addr $PAPERTRAIL_DESTINATION\n"
-    kubectl patch configmap fluent-bit\
-        --namespace oratos \
-        --patch '{"data": {"outputs.conf": "'"$output"'"}}' || true
 
-    logspinner_pod_name="$(
-        kubectl get pod -l run=logspinner \
+pod_name="$(
+    kubectl get pod \
+        --selector app=logspinner \
+        --output=json \
+        --namespace blackbox-tests \
+        | jq --join-output .items[0].metadata.name
+)"
+while true; do
+    echo -n .
+    status="$(
+        kubectl get pod "$pod_name" \
             --output=json \
-            --namespace blackbox-tests | \
-            jq --raw-output .items[0].metadata.name
+            --namespace blackbox-tests \
+            | jq --join-output .status.phase
     )"
+    if [ "$status" = "Running" ]; then
+        break
+    fi
+    sleep 10
+done
 
-    while true; do
-        echo -n .
-        logspinner_status="$(
-            kubectl get pod "$logspinner_pod_name" \
-                --output=json \
-                --namespace blackbox-tests | \
-                jq --raw-output .status.phase
-        )"
-        if [ "$logspinner_status" = "Running" ]; then
-            break
-        fi
-        sleep 10
-    done
+set +x
+certs="$(
+    kubectl get secret loggregator-tls-certs --namespace oratos --output=json \
+        | jq .data
+)"
+echo "$certs" | jq --raw-output '.["rlp.crt"]' | base64 -d > /tmp/rlp.crt
+echo "$certs" | jq --raw-output '.["rlp.key"]' | base64 -d > /tmp/rlp.key
+echo "$certs" | jq --raw-output '.["ca.crt"]' | base64 -d > /tmp/ca.crt
+[ -n "$DEBUG" ] && set -x
 
+target="$(
+    kubectl get service loggregator-rlp \
+        --namespace oratos \
+        --output=json \
+        | jq --join-output .status.loadBalancer.ingress[0].ip
+):8082"
 
-    kubectl port-forward "$logspinner_pod_name" 8080:8080 \
-        --namespace blackbox-tests > /dev/null &
-    sleep 3
-popd > /dev/null
+kubectl port-forward "$pod_name" 8080:8080 \
+    --namespace blackbox-tests > /dev/null &
 
-echo "Triggering $logspinner_pod_name"
+sleep 3
+
+echo "Collecting logs for $pod_name"
+
+rlpreader \
+    -app-id "blackbox-tests/deployment/logspinner" \
+    -target "$target" \
+    -ca "/tmp/ca.crt" \
+    -cert "/tmp/rlp.crt" \
+    -key "/tmp/rlp.key" > output.txt &
+
+sleep 10 # wait 10 seconds to establish connection
+
+echo "Triggering $pod_name"
 curl "http://localhost:8080?cycles=$CYCLES&delay=$DELAY$DELAY_UNIT&text=$MESSAGE"
 
 sleep "$WAIT" # wait for a bit to collect logs
-
-echo "Collecting logs for $logspinner_pod_name"
-papertrail --min-time '30 minutes ago' "$MESSAGE" > output.txt
 
 # Dont quit the script if fails to grep
 set +e
@@ -145,7 +169,7 @@ if [ "$MSG_COUNT" -lt $(($CYCLES * 99 / 100)) ]; then
     echo =========================================
     echo THE RELIABILITY TEST DID NOT MEET OUR SLO
     echo =========================================
-    exit 123
+    exit 1
 fi
 
 # Trap will send metrics to datadog

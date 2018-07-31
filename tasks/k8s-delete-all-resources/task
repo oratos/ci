@@ -1,28 +1,18 @@
 #!/bin/bash
 set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
 
-function teardown {
-  set +e
-  killall ssh
-  killall ssh-agent
-}
-trap teardown EXIT
+if [ -z "$GET_CREDENTIALS_HOOK" ]; then
+  echo GET_CREDENTIALS_HOOK must be set
+  exit 1
+fi
 
-eval "$(ssh-agent)"
+eval "$GET_CREDENTIALS_HOOK"
 
-pushd deployments-loggregator/gcp/playground > /dev/null
-  set +x
-  source .envrc
-  set +e
-  source k8s_login
-  set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
-
-  kubectl get namespaces --output json | \
-    jq --raw-output .items[].metadata.name | \
-    while read ns; do
-      kubectl --namespace "$ns" delete all --all --cascade --now
+kubectl get namespaces --output json | \
+  jq --raw-output .items[].metadata.name | \
+  while read ns; do
+    kubectl --namespace "$ns" delete all --all --cascade --now
   done
-popd > /dev/null
 
 echo waiting for delete requests to complete
 iterations=0
@@ -36,10 +26,11 @@ while true; do
     kubectl get all --all-namespaces --output json | \
       jq --raw-output '.items | length'
   )"
-  if [ -n "$count" ] || \
-     ! [[ "$count" =~ '^[0-9]+$' ]] || \
-     [ "$count" -lt 2 ]; then # kubernetes service might get recreated, thus 2
-    break
+  if [ -n "$count" ]; then
+    # kubernetes service might get recreated, thus 2
+    if ! [[ "$count" =~ '^[0-9]+$' ]] || [ "$count" -lt 2 ]; then
+      break
+    fi
   fi
   sleep 5
   iterations+=1

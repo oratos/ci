@@ -7,13 +7,17 @@ image_resource:
     repository: loggregator/base
 
 inputs:
-- name: oratos-ci          # - This repo
-- name: deployments-loggregator # - Needed to have kubectl target env
+- name: oratos-ci               # - This repo
+- name: bbl-state               # - Needed to have kubectl target env
 
 run:
   path: oratos-ci/tasks/k8s-delete-all-resources/task
 
 params:
+  # - Required
+  # - Code to run to setup kubectl to point to the cluster.
+  GET_CREDENTIALS_HOOK:
+
   # - Optional
   # - Set to true to output all commands that are ran.
   DEBUG:
