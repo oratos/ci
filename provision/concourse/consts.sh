@@ -29,6 +29,5 @@ credentialManager:
   vault:
     enabled: true
     url: https://vault.oratos.ci.cf-app.com
-    authBackend: approle
     pathPrefix: /secret/concourse
 "
