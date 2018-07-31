@@ -587,8 +587,8 @@ jobs:
           }
           trap cleanup EXIT
 
-          BIKEPARK_BBL_STATE_DIR=bikepark-bbl-state \
-              oratos-ci/scripts/bikepark.sh get-credentials-tunnel
+          BBL_STATE_DIR=bikepark-bbl-state \
+              oratos-ci/scripts/cfcr.sh bikepark get-credentials-tunnel
 
           patch='{"spec": {"type": "LoadBalancer"}}'
           kubectl patch service kubernetes --namespace default --patch "$patch" || true
@@ -607,8 +607,8 @@ jobs:
       bbl-state: bikepark-bbl-state
     params:
       GET_CREDENTIALS_HOOK: |
-        BIKEPARK_BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/bikepark.sh get-credentials
+        BBL_STATE_DIR=bikepark-bbl-state \
+            oratos-ci/scripts/cfcr.sh bikepark get-credentials
   - task: cfcr-deployment-destroy
     file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
     input_mapping:
@@ -646,8 +646,8 @@ jobs:
           #!/bin/bash
           set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
 
-          BIKEPARK_BBL_STATE_DIR=bikepark-bbl-state \
-            oratos-ci/scripts/bikepark.sh get-credentials
+          BBL_STATE_DIR=bikepark-bbl-state \
+              oratos-ci/scripts/cfcr.sh bikepark get-credentials
 
           echo "$LOGGREGATOR_TLS_SECRETS" > oratos-deployment/secrets/loggregator-tls-certs.yml
           pushd oratos-deployment > /dev/null
@@ -693,8 +693,8 @@ jobs:
 
           # TODO: deploy with the triggered images, not :latest
 
-          BIKEPARK_BBL_STATE_DIR=bikepark-bbl-state \
-            oratos-ci/scripts/bikepark.sh get-credentials
+          BBL_STATE_DIR=bikepark-bbl-state \
+              oratos-ci/scripts/cfcr.sh bikepark get-credentials
 
           kubectl apply -R -f namespace-drain-manifests/manifests
           patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
