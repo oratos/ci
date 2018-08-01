@@ -139,7 +139,7 @@ jobs:
   - put: sink-controller-image
     params:
       build: build-image/build
-      tag_file: build-image/tag
+      tag: build-image/tag
       cache: true
       cache_tag: latest
     get_params:
@@ -195,7 +195,7 @@ jobs:
           patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
           kubectl patch -R -f namespace-drain/manifests --patch "$patch"
 
-- name: crd-tests
+- name: gke-tests
   serial: true
   plan:
   - aggregate:
@@ -207,6 +207,8 @@ jobs:
         skip_download: true
     - get: namespace-drain
       trigger: true
+      passed:
+      - deploy-gke
   - task: run-crd-tests
     config:
       platform: linux
@@ -287,7 +289,7 @@ jobs:
           patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
           kubectl patch -R -f namespace-drain/manifests --patch "$patch"
 
-- name: crosstalk-test
+- name: cfcr-tests
   serial: true
   plan:
   - aggregate:
@@ -295,6 +297,12 @@ jobs:
       trigger: true
       passed:
       - deploy-cfcr
+    - get: sink-controller-image
+      trigger: true
+      passed:
+      - deploy-cfcr
+      params:
+        skip_download: true
     - get: oratos-ci
     - get: oratos-ci-testing-cfcr-bbl-state
   - task: crosstalk-test
@@ -309,3 +317,23 @@ jobs:
       NAOMI_A_KEY: ((crosstalk.naomi_a_key))
       NAOMI_B_CERT: ((crosstalk.naomi_b_cert))
       NAOMI_B_KEY: ((crosstalk.naomi_b_key))
+
+- name: promote
+  serial: true
+  plan:
+  - aggregate:
+    - get: sink-controller-image
+      trigger: true
+      passed:
+      - cfcr-tests
+      - gke-tests
+      params:
+        save: true
+  - put: sink-controller-image
+    params:
+      load: sink-controller-image
+      tag_as_latest: true
+      cache: true
+      cache_tag: latest
+    get_params:
+      skip_download: true
