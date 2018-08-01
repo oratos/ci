@@ -34,6 +34,13 @@ set +x
 echo "token: $PAPERTRAIL_TOKEN" > ~/.papertrail.yml
 [ -n "$DEBUG" ] && set -x
 
+function delete_sinks {
+    # TODO: remove this one we have support for multiple sinks
+    kubectl delete sink --all --namespace default || true
+    kubectl delete sink --all --namespace oratos || true
+    kubectl delete sink --all --namespace blackbox-tests || true
+}
+
 function report_to_datadog {
   currenttime="$(date +%s)"
   APP_NAME=sink-blackbox
@@ -74,6 +81,8 @@ function report_to_datadog {
   }" \
   'https://app.datadoghq.com/api/v1/series?api_key='"$DATADOG_API_KEY"
 
+  delete_sinks
+
   set +e
   killall kubectl
 }
@@ -83,8 +92,7 @@ MSG_COUNT=0
 
 eval "$GET_CREDENTIALS_HOOK"
 
-# TODO: remove this one we have support for multiple sinks
-kubectl delete sink --all --all-namespaces || true
+delete_sinks
 
 papertrail_host="$(echo "$PAPERTRAIL_DESTINATION" | awk -F ':' '{print $1}')"
 papertrail_port="$(echo "$PAPERTRAIL_DESTINATION" | awk -F ':' '{print $2}')"
@@ -121,7 +129,7 @@ spec:
 apiVersion: apps.pivotal.io/v1beta1
 kind: Sink
 metadata:
-  name: valid-syslog-hostname
+  name: blackbox-test-sink
 spec:
   type: syslog
   host: $papertrail_host
