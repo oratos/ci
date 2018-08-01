@@ -87,37 +87,6 @@ jobs:
         put: slack-alert
         params:
           text: Namespace Drain Unit tests failed
-    - task: run-crd-tests
-      config:
-        platform: linux
-        image_resource:
-          type: docker-image
-          source:
-            repository: oratos/ci-base
-        inputs:
-        - name: namespace-drain
-        params:
-          SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
-          DEBUG:
-        run:
-          path: /bin/bash
-          args:
-          - "-c"
-          - |
-            #!/bin/bash
-            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
-
-            echo "$SERVICE_ACCOUNT" > sa.json
-            gcloud auth activate-service-account --key-file sa.json
-            rm sa.json
-            gcloud container clusters get-credentials oratos-ci-testing \
-              --zone us-central1-a
-
-            namespace-drain/tests/test.sh
-      on_failure:
-        put: slack-alert
-        params:
-          text: Namespace Drain CRD tests failed
     - task: run-verify-codegen
       config:
         platform: linux
@@ -148,28 +117,6 @@ jobs:
         params:
           text: Namespace Drain Verify Codegen failed
 
-- name: crosstalk-test
-  plan:
-  - aggregate:
-    - get: namespace-drain
-      trigger: true
-      passed:
-      - unit-tests
-    - get: oratos-ci
-    - get: oratos-ci-testing-cfcr-bbl-state
-  - task: crosstalk-test
-    file: oratos-ci/tasks/sink-crosstalk/task.yml
-    input_mapping:
-      bbl-state: oratos-ci-testing-cfcr-bbl-state
-    params:
-      GET_CREDENTIALS_HOOK: |
-        BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/cfcr.sh testing get-credentials
-      NAOMI_A_CERT: ((crosstalk.naomi_a_cert))
-      NAOMI_A_KEY: ((crosstalk.naomi_a_key))
-      NAOMI_B_CERT: ((crosstalk.naomi_b_cert))
-      NAOMI_B_KEY: ((crosstalk.naomi_b_key))
-
 - name: build-sink-controller-image
   serial: true
   plan:
@@ -177,7 +124,7 @@ jobs:
     - get: namespace-drain
       trigger: true
       passed:
-      - crosstalk-test
+      - unit-tests
     - get: sink-controller-dockerfile
       trigger: true
     - get: oratos-ci
@@ -192,9 +139,173 @@ jobs:
   - put: sink-controller-image
     params:
       build: build-image/build
-      tag: build-image/tag
-      tag_as_latest: true
+      tag_file: build-image/tag
       cache: true
       cache_tag: latest
     get_params:
       skip_download: true
+
+- name: deploy-gke
+  serial: true
+  plan:
+  - aggregate:
+    - get: namespace-drain
+      trigger: true
+      passed:
+      - build-sink-controller-image
+    - get: sink-controller-image
+      trigger: true
+      passed:
+      - build-sink-controller-image
+      params:
+        skip_download: true
+  - task: deploy
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      inputs:
+      - name: namespace-drain
+      - name: sink-controller-image
+      params:
+        SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
+        DEBUG:
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+          echo "$SERVICE_ACCOUNT" > sa.json
+          gcloud auth activate-service-account --key-file sa.json
+          rm sa.json
+          gcloud container clusters get-credentials oratos-ci-testing \
+            --zone us-central1-a
+
+          sha="$(cat sink-controller-image/tag)"
+          yq read namespace-drain/manifests/05-deployments/sink.yml --tojson | \
+            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller:'"$sha"'"' \
+            > namespace-drain/manifests/05-deployments/sink.json
+          rm namespace-drain/manifests/05-deployments/sink.yml
+          kubectl apply -R -f namespace-drain/manifests
+          patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
+          kubectl patch -R -f namespace-drain/manifests --patch "$patch"
+
+- name: crd-tests
+  serial: true
+  plan:
+  - aggregate:
+    - get: sink-controller-image
+      trigger: true
+      passed:
+      - deploy-gke
+      params:
+        skip_download: true
+    - get: namespace-drain
+      trigger: true
+  - task: run-crd-tests
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      inputs:
+      - name: namespace-drain
+      params:
+        SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
+        DEBUG:
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+          echo "$SERVICE_ACCOUNT" > sa.json
+          gcloud auth activate-service-account --key-file sa.json
+          rm sa.json
+          gcloud container clusters get-credentials oratos-ci-testing \
+            --zone us-central1-a
+
+          namespace-drain/tests/test.sh
+
+- name: deploy-cfcr
+  serial: true
+  plan:
+  - aggregate:
+    - get: namespace-drain
+      trigger: true
+      passed:
+      - build-sink-controller-image
+    - get: sink-controller-image
+      trigger: true
+      passed:
+      - build-sink-controller-image
+      params:
+        skip_download: true
+    - get: oratos-ci-testing-cfcr-bbl-state
+    - get: oratos-ci
+  - task: deploy
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      inputs:
+      - name: namespace-drain
+      - name: sink-controller-image
+      - name: oratos-ci
+      - name: bbl-state
+      params:
+        DEBUG:
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+          BBL_STATE_DIR=bbl-state \
+              oratos-ci/scripts/cfcr.sh testing get-credentials
+
+          sha="$(cat sink-controller-image/tag)"
+          yq read namespace-drain/manifests/05-deployments/sink.yml --tojson | \
+            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller:'"$sha"'"' \
+            > namespace-drain/manifests/05-deployments/sink.json
+          rm namespace-drain/manifests/05-deployments/sink.yml
+          kubectl apply -R -f namespace-drain/manifests
+          patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
+          kubectl patch -R -f namespace-drain/manifests --patch "$patch"
+
+- name: crosstalk-test
+  serial: true
+  plan:
+  - aggregate:
+    - get: namespace-drain
+      trigger: true
+      passed:
+      - deploy-cfcr
+    - get: oratos-ci
+    - get: oratos-ci-testing-cfcr-bbl-state
+  - task: crosstalk-test
+    file: oratos-ci/tasks/sink-crosstalk/task.yml
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+    params:
+      GET_CREDENTIALS_HOOK: |
+        BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/cfcr.sh testing get-credentials
+      NAOMI_A_CERT: ((crosstalk.naomi_a_cert))
+      NAOMI_A_KEY: ((crosstalk.naomi_a_key))
+      NAOMI_B_CERT: ((crosstalk.naomi_b_cert))
+      NAOMI_B_KEY: ((crosstalk.naomi_b_key))
