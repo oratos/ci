@@ -20,6 +20,10 @@ params:
   PAPERTRAIL_DESTINATION:
 
   # - Required
+  # - The group used for the destination of the papertrailapp service.
+  PAPERTRAIL_GROUP:
+
+  # - Required
   # - The token required to connect with the papertrailapp service.
   PAPERTRAIL_TOKEN:
 

@@ -155,6 +155,7 @@ jobs:
         BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh bikepark get-credentials
       PAPERTRAIL_TOKEN: ((papertrail.token))
+      PAPERTRAIL_GROUP: oratos-blackbox-tests
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 60
       CYCLES: 10000
@@ -183,6 +184,7 @@ jobs:
         BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh bikepark get-credentials
       PAPERTRAIL_TOKEN: ((papertrail.token))
+      PAPERTRAIL_GROUP: oratos-blackbox-tests
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 600
       CYCLES: 1000
@@ -211,6 +213,7 @@ jobs:
         BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh bikepark get-credentials
       PAPERTRAIL_TOKEN: ((papertrail.token))
+      PAPERTRAIL_GROUP: oratos-blackbox-tests
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 60
       CYCLES: 1000
@@ -243,6 +246,7 @@ jobs:
         BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh bikepark get-credentials
       PAPERTRAIL_TOKEN: ((papertrail.token))
+      PAPERTRAIL_GROUP: oratos-blackbox-tests
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 60
       CYCLES: 10000
@@ -271,6 +275,7 @@ jobs:
         BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh bikepark get-credentials
       PAPERTRAIL_TOKEN: ((papertrail.token))
+      PAPERTRAIL_GROUP: oratos-blackbox-tests
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 600
       CYCLES: 1000
@@ -299,6 +304,7 @@ jobs:
         BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh bikepark get-credentials
       PAPERTRAIL_TOKEN: ((papertrail.token))
+      PAPERTRAIL_GROUP: oratos-blackbox-tests
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 60
       CYCLES: 1000

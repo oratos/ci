@@ -9,6 +9,10 @@ if [ -z "$SYSTEM_DOMAIN" ]; then
   echo SYSTEM_DOMAIN must be set
   exit 1
 fi
+if [ -z "$PAPERTRAIL_GROUP" ]; then
+  echo PAPERTRAIL_GROUP must be set
+  exit 1
+fi
 if [ -z "$PAPERTRAIL_DESTINATION" ]; then
   echo PAPERTRAIL_DESTINATION must be set
   exit 1
@@ -191,7 +195,11 @@ curl "http://localhost:8080?cycles=$CYCLES&delay=$DELAY$DELAY_UNIT&text=$MESSAGE
 sleep "$WAIT" # wait for a bit to collect logs
 
 echo "Collecting logs for $logspinner_pod_name"
-papertrail --min-time '30 minutes ago' "$MESSAGE" > output.txt
+papertrail \
+    --min-time '30 minutes ago' \
+    --group "$PAPERTRAIL_GROUP" \
+    "$MESSAGE" \
+    > output.txt
 
 # Dont quit the script if fails to grep
 set +e
