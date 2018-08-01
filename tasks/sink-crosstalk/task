@@ -1,0 +1,245 @@
+#!/bin/bash
+set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+function validate {
+    if [ -z "$GET_CREDENTIALS_HOOK" ]; then
+        echo GET_CREDENTIALS_HOOK is required.
+        exit 1
+    fi
+
+    if [ -z "$NAOMI_A_CERT" ]; then
+        echo NAOMI_A_CERT is required.
+        exit 1
+    fi
+
+    if [ -z "$NAOMI_A_KEY" ]; then
+        echo NAOMI_A_KEY is required.
+        exit 1
+    fi
+
+    if [ -z "$NAOMI_B_CERT" ]; then
+        echo NAOMI_B_CERT is required.
+        exit 1
+    fi
+
+    if [ -z "$NAOMI_B_KEY" ]; then
+        echo NAOMI_B_KEY is required.
+        exit 1
+    fi
+}
+
+function login_to_cluster_as_admin {
+    eval "$GET_CREDENTIALS_HOOK"
+}
+
+function apply_roles {
+    echo "
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: crosstalk-ns-a
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: crosstalk-ns-b
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: crosstalk-ns-a
+  name: crosstalk-ns-a-user
+rules:
+- apiGroups:
+  - \"\"
+  - apps
+  - extensions
+  - batch
+  - autoscaling
+  - apps.pivotal.io
+  resources:
+  - \"*\"
+  verbs:
+  - \"*\"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: crosstalk-ns-b
+  name: crosstalk-ns-b-user
+rules:
+- apiGroups:
+  - \"\"
+  - apps
+  - extensions
+  - batch
+  - autoscaling
+  - apps.pivotal.io
+  resources:
+  - \"*\"
+  verbs:
+  - \"*\"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: crosstalk-ns-a-user-binding
+  namespace: crosstalk-ns-a
+subjects:
+- kind: User
+  name: naomi-a
+  apiGroup: \"\"
+roleRef:
+  kind: Role
+  name: crosstalk-ns-a-user
+  apiGroup: \"\"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: crosstalk-ns-b-user-binding
+  namespace: crosstalk-ns-b
+subjects:
+- kind: User
+  name: naomi-b
+  apiGroup: \"\"
+roleRef:
+  kind: Role
+  name: crosstalk-ns-b-user
+  apiGroup: \"\"
+" | kubectl apply --filename -
+}
+
+created_crd=1
+function apply_crd {
+    kubectl apply --filename namespace-drain/manifests/00-crds/sink.yml
+    created_crd=$?
+}
+
+function cleanup {
+    set +e
+    kubectl delete namespace crosstalk-ns-a --cascade > /dev/null 2>&1
+    kubectl delete namespace crosstalk-ns-b --cascade > /dev/null 2>&1
+
+    if [ "$created_crd" -eq 0 ]; then
+        kubectl delete --filename \
+            namespace-drain/manifests/00-crds/sink.yml > /dev/null 2>&1
+    fi
+}
+
+function setup_contexts {
+    set +x
+    echo "$NAOMI_A_CERT" > /tmp/naomi-a.crt
+    echo "$NAOMI_A_KEY" > /tmp/naomi-a.key
+    echo "$NAOMI_B_CERT" > /tmp/naomi-b.crt
+    echo "$NAOMI_B_KEY" > /tmp/naomi-b.key
+    [ -n "$DEBUG" ] && set -x
+
+    context="$(kubectl config current-context)"
+    cluster="$(
+        kubectl config view --output json \
+            | jq --join-output '.contexts[] | select(.name == "'"$context"'") | .context.cluster'
+    )"
+
+    kubectl config set-credentials \
+        naomi-a \
+        --client-certificate /tmp/naomi-a.crt \
+        --client-key /tmp/naomi-a.key
+    kubectl config set-context \
+        naomi-a \
+        --cluster "$cluster" \
+        --user naomi-a
+
+    kubectl config set-credentials \
+        naomi-b \
+        --client-certificate /tmp/naomi-b.crt \
+        --client-key /tmp/naomi-b.key
+    kubectl config set-context \
+        naomi-b \
+        --cluster "$cluster" \
+        --user naomi-b
+}
+
+function crosstalk_test {
+    sink="
+apiVersion: apps.pivotal.io/v1beta1
+kind: Sink
+metadata:
+  name: crosstalk-test-sink
+spec:
+  type: syslog
+  host: example.com
+  port: 12345
+"
+
+    echo
+    echo "================="
+    echo "= STARTING TEST ="
+    echo "================="
+    echo
+    set +e
+
+    echo "testing naomi-a can write to ns-a"
+    echo "$sink" | \
+        kubectl apply \
+            --context naomi-a \
+            --namespace crosstalk-ns-a \
+            --filename -
+    assert_success $?
+
+    echo "testing naomi-a can write to ns-b"
+    echo "$sink" | \
+        kubectl apply \
+            --context naomi-a \
+            --namespace crosstalk-ns-b \
+            --filename -
+    assert_fail $?
+
+    echo "testing naomi-b can write to ns-a"
+    echo "$sink" | \
+        kubectl apply \
+            --context naomi-b \
+            --namespace crosstalk-ns-a \
+            --filename -
+    assert_fail $?
+
+    echo "testing naomi-b can write to ns-b"
+    echo "$sink" | \
+        kubectl apply \
+            --context naomi-b \
+            --namespace crosstalk-ns-b \
+            --filename -
+    assert_success $?
+    set -e
+    echo
+    echo "================="
+    echo "= TEST COMPLETE ="
+    echo "================="
+    echo
+}
+
+function assert_success {
+    if [ "$1" -ne 0 ]; then
+        echo Expected apply to succeed
+        exit 1
+    fi
+}
+
+function assert_fail {
+    if [ "$1" -eq 0 ]; then
+        echo Expected apply to fail
+        exit 1
+    fi
+}
+
+function main {
+    validate
+    trap cleanup EXIT
+    login_to_cluster_as_admin
+    apply_roles
+    apply_crd
+    setup_contexts
+
+    crosstalk_test
+}
+main

@@ -5,12 +5,18 @@ resource_types:
     repository: cfcommunity/slack-notification-resource
     tag: latest
 
+- name: vault
+  type: docker-image
+  source:
+    repository: wfernandes/vault-resource
+    tag: latest
+
 resources:
 - name: oratos-ci
   type: git
   source:
     uri: https://github.com/pivotal-cf/oratos-ci
-    branch: master
+    branch: crosstalk-wip
 
 - name: namespace-drain
   type: git
@@ -38,6 +44,15 @@ resources:
   type: slack-notification
   source:
     url: ((slack.notifications-url))
+
+- name: oratos-ci-testing-cfcr-bbl-state
+  type: vault
+  source:
+    url: https://vault.oratos.ci.cf-app.com
+    role_id: ((vault.role_id))
+    secret_id: ((vault.secret_id))
+    path: secret/envs/oratos-ci-testing-cfcr-bbl-state
+    tarball: true
 
 jobs:
 - name: unit-tests
@@ -133,6 +148,28 @@ jobs:
         params:
           text: Namespace Drain Verify Codegen failed
 
+- name: crosstalk-test
+  plan:
+  - aggregate:
+    - get: namespace-drain
+      trigger: true
+      passed:
+      - unit-tests
+    - get: oratos-ci
+    - get: oratos-ci-testing-cfcr-bbl-state
+  - task: crosstalk-test
+    file: oratos-ci/tasks/sink-crosstalk/task.yml
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+    params:
+      GET_CREDENTIALS_HOOK: |
+        BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/cfcr.sh testing get-credentials
+      NAOMI_A_CERT: ((crosstalk.naomi_a_cert))
+      NAOMI_A_KEY: ((crosstalk.naomi_a_key))
+      NAOMI_B_CERT: ((crosstalk.naomi_b_cert))
+      NAOMI_B_KEY: ((crosstalk.naomi_b_key))
+
 - name: build-sink-controller-image
   serial: true
   plan:
@@ -140,7 +177,7 @@ jobs:
     - get: namespace-drain
       trigger: true
       passed:
-      - unit-tests
+      - crosstalk-test
     - get: sink-controller-dockerfile
       trigger: true
     - get: oratos-ci
