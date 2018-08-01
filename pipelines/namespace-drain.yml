@@ -16,7 +16,7 @@ resources:
   type: git
   source:
     uri: https://github.com/pivotal-cf/oratos-ci
-    branch: crosstalk-wip
+    branch: master
 
 - name: namespace-drain
   type: git
