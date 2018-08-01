@@ -70,7 +70,7 @@ jobs:
     params:
       SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
       GET_CREDENTIALS_HOOK: |
-        BBL_STATE_DIR=bikepark-bbl-state \
+        BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh bikepark get-credentials
       WAIT: 60
       CYCLES: 10000
@@ -96,7 +96,7 @@ jobs:
     params:
       SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
       GET_CREDENTIALS_HOOK: |
-        BBL_STATE_DIR=bikepark-bbl-state \
+        BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh bikepark get-credentials
       WAIT: 600
       CYCLES: 1000
@@ -122,7 +122,7 @@ jobs:
     params:
       SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
       GET_CREDENTIALS_HOOK: |
-        BBL_STATE_DIR=bikepark-bbl-state \
+        BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh bikepark get-credentials
       WAIT: 60
       CYCLES: 1000
@@ -152,7 +152,7 @@ jobs:
     params:
       SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
       GET_CREDENTIALS_HOOK: |
-        BBL_STATE_DIR=bikepark-bbl-state \
+        BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh bikepark get-credentials
       PAPERTRAIL_TOKEN: ((papertrail.token))
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
@@ -180,7 +180,7 @@ jobs:
     params:
       SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
       GET_CREDENTIALS_HOOK: |
-        BBL_STATE_DIR=bikepark-bbl-state \
+        BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh bikepark get-credentials
       PAPERTRAIL_TOKEN: ((papertrail.token))
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
@@ -208,7 +208,7 @@ jobs:
     params:
       SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
       GET_CREDENTIALS_HOOK: |
-        BBL_STATE_DIR=bikepark-bbl-state \
+        BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh bikepark get-credentials
       PAPERTRAIL_TOKEN: ((papertrail.token))
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
@@ -240,7 +240,7 @@ jobs:
     params:
       SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
       GET_CREDENTIALS_HOOK: |
-        BBL_STATE_DIR=bikepark-bbl-state \
+        BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh bikepark get-credentials
       PAPERTRAIL_TOKEN: ((papertrail.token))
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
@@ -268,7 +268,7 @@ jobs:
     params:
       SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
       GET_CREDENTIALS_HOOK: |
-        BBL_STATE_DIR=bikepark-bbl-state \
+        BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh bikepark get-credentials
       PAPERTRAIL_TOKEN: ((papertrail.token))
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
@@ -296,7 +296,7 @@ jobs:
     params:
       SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
       GET_CREDENTIALS_HOOK: |
-        BBL_STATE_DIR=bikepark-bbl-state \
+        BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh bikepark get-credentials
       PAPERTRAIL_TOKEN: ((papertrail.token))
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
