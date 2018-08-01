@@ -12,4 +12,7 @@ RUN git config --global user.email "oratos-team@pivotal.io" && \
 RUN wget -q -O /usr/local/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl && \
     chmod +x /usr/local/bin/kubectl
 
+RUN wget -q -O /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/2.1.1/yq_linux_amd64 && \
+    chmod +x /usr/local/bin/yq
+
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b /usr/local/bin v1.9.1
