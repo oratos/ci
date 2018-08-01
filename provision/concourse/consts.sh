@@ -9,6 +9,7 @@ LASTPASS_X509_PATH="Shared-CF-Oratos/oratos.ci.cf-app.com certs/key"
 VALUES="
 concourse:
   externalURL: https://oratos.ci.cf-app.com
+  baggageclaimDriver: overlay
   githubAuth:
     enabled: true
     user: jasonkeene,wfernandes,dennyzhang,chentom88,ahevenor
@@ -26,6 +27,8 @@ web:
       hosts:
       - oratos.ci.cf-app.com
 credentialManager:
+  kubernetes:
+    enabled: false
   vault:
     enabled: true
     url: https://vault.oratos.ci.cf-app.com
