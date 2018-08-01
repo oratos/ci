@@ -83,6 +83,9 @@ MSG_COUNT=0
 
 eval "$GET_CREDENTIALS_HOOK"
 
+# TODO: remove this one we have support for multiple sinks
+kubectl delete sink --all --all-namespaces || true
+
 papertrail_host="$(echo "$PAPERTRAIL_DESTINATION" | awk -F ':' '{print $1}')"
 papertrail_port="$(echo "$PAPERTRAIL_DESTINATION" | awk -F ':' '{print $2}')"
 echo "
