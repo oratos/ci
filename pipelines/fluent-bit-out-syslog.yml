@@ -1,3 +1,12 @@
+groups:
+- name: main
+  jobs:
+  - unit-tests
+  - build-fluent-bit-out-syslog-image
+- name: release
+  jobs:
+  - release
+
 resource_types:
 - name: slack-notification
   type: docker-image
@@ -169,3 +178,106 @@ jobs:
       cache_tag: latest
     get_params:
       skip_download: true
+
+- name: release
+  serial: true
+  plan:
+  - task: release
+    privileged: true
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      params:
+        TAG: 848988cd2dd667528221a87116187fc5e547a0f6
+        VERSION: v0.1
+        DOCKERHUB_USERNAME: ((docker-hub.username))
+        DOCKERHUB_PASSWORD: ((docker-hub.password))
+        DEBUG:
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+          if [ -z "$TAG" ]; then
+            echo TAG param required
+            exit 1
+          fi
+          if ! [[ "$VERSION" =~ v ]]; then
+            echo VERSION param required to start with v
+            exit 1
+          fi
+
+          # Note: this was copied from the docker-image-resource
+          # https://github.com/concourse/docker-image-resource/blob/c725c6277ca2820016de1bfe2bdfabaad5fd5879/assets/common.sh#L4
+          sanitize_cgroups() {
+            mkdir -p /sys/fs/cgroup
+            mountpoint -q /sys/fs/cgroup || \
+              mount -t tmpfs -o uid=0,gid=0,mode=0755 cgroup /sys/fs/cgroup
+
+            mount -o remount,rw /sys/fs/cgroup
+
+            sed -e 1d /proc/cgroups | while read sys hierarchy num enabled; do
+              if [ "$enabled" != "1" ]; then
+                # subsystem disabled; skip
+                continue
+              fi
+
+              grouping="$(cat /proc/self/cgroup | cut -d: -f2 | grep "\\<$sys\\>")" || true
+              if [ -z "$grouping" ]; then
+                # subsystem not mounted anywhere; mount it on its own
+                grouping="$sys"
+              fi
+
+              mountpoint="/sys/fs/cgroup/$grouping"
+
+              mkdir -p "$mountpoint"
+
+              # clear out existing mount to make sure new one is read-write
+              if mountpoint -q "$mountpoint"; then
+                umount "$mountpoint"
+              fi
+
+              mount -n -t cgroup -o "$grouping" cgroup "$mountpoint"
+
+              if [ "$grouping" != "$sys" ]; then
+                if [ -L "/sys/fs/cgroup/$sys" ]; then
+                  rm "/sys/fs/cgroup/$sys"
+                fi
+
+                ln -s "$mountpoint" "/sys/fs/cgroup/$sys"
+              fi
+            done
+
+            if ! test -e /sys/fs/cgroup/systemd ; then
+              mkdir /sys/fs/cgroup/systemd
+              mount -t cgroup -o none,name=systemd none /sys/fs/cgroup/systemd
+            fi
+          }
+          sanitize_cgroups
+          service docker start
+          function cleanup {
+            service docker stop
+          }
+          trap cleanup EXIT
+
+          echo waiting 10 seconds while docker starts up
+          sleep 10
+
+          echo "$DOCKERHUB_PASSWORD" \
+            | docker login \
+              --username "$DOCKERHUB_USERNAME" \
+              --password-stdin
+
+          docker pull "oratos/fluent-bit-out-syslog:$TAG"
+          docker tag "oratos/fluent-bit-out-syslog:$TAG" \
+            "oratos/fluent-bit-out-syslog:$VERSION"
+          docker tag "oratos/fluent-bit-out-syslog:$TAG" \
+            "oratos/fluent-bit-out-syslog:latest"
+          docker push "oratos/fluent-bit-out-syslog:$VERSION"
+          docker push "oratos/fluent-bit-out-syslog:latest"
