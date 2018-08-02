@@ -329,10 +329,30 @@ jobs:
       - gke-tests
       params:
         save: true
+    - task: write-promote-tag
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: oratos/ci-base
+        outputs:
+        - name: promote
+        params:
+          DEBUG:
+        run:
+          path: /bin/bash
+          args:
+          - "-c"
+          - |
+            #!/bin/bash
+            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+            echo "release-elect" > promote/tag
   - put: sink-controller-image
     params:
       load: sink-controller-image
-      tag_as_latest: true
+      tag: promote/tag
       cache: true
       cache_tag: latest
     get_params:

@@ -131,19 +131,40 @@ jobs:
     - get: out-syslog-dockerfile
       trigger: true
     - get: oratos-ci
-  - task: prepare-build
-    file: oratos-ci/tasks/build-go-docker-image/task.yml
-    input_mapping:
-      context-repo: out-syslog-dockerfile
-      source-repo: out-syslog
-    params:
-      CONTEXT_PATH: docker-images/fluent-bit-out-syslog
-      BASE_PACKAGE: github.com/pivotal-cf/fluent-bit-out-syslog
+  - aggregate:
+    - task: prepare-build
+      file: oratos-ci/tasks/build-go-docker-image/task.yml
+      input_mapping:
+        context-repo: out-syslog-dockerfile
+        source-repo: out-syslog
+      params:
+        CONTEXT_PATH: docker-images/fluent-bit-out-syslog
+        BASE_PACKAGE: github.com/pivotal-cf/fluent-bit-out-syslog
+    - task: write-promote-tag
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: oratos/ci-base
+        outputs:
+        - name: promote
+        params:
+          DEBUG:
+        run:
+          path: /bin/bash
+          args:
+          - "-c"
+          - |
+            #!/bin/bash
+            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+            echo "release-elect" > promote/tag
   - put: fluent-bit-out-syslog-image
     params:
       build: build-image/build
       tag: build-image/tag
-      tag_as_latest: true
+      additional_tags: promote/tag
       cache: true
       cache_tag: latest
     get_params:
