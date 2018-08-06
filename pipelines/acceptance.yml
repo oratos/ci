@@ -59,6 +59,7 @@ resources:
     repository: oratos/namespace-drain
     username: ((docker-hub.username))
     password: ((docker-hub.password))
+    tag: release-elect
 
 - name: fluent-bit-out-syslog-image
   type: docker-image
@@ -66,6 +67,7 @@ resources:
     repository: oratos/fluent-bit-out-syslog
     username: ((docker-hub.username))
     password: ((docker-hub.password))
+    tag: release-elect
 
 - name: kubo-deployment
   type: git
