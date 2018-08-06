@@ -71,7 +71,7 @@ resources:
 - name: namespace-drain-release
   type: github-release
   source:
-    owner: pivota-cf
+    owner: pivotal-cf
     repository: namespace-drain
     access_token: ((github.oratos-bot-release-access-token))
 
@@ -391,9 +391,13 @@ jobs:
         source:
           repository: oratos/ci-base
       params:
-        GIT_REF: 38e5cf7d6141f004a6e90e77cfd354df97d2947c
-        VERSION: v0.1
-        FLUENT_BIT_OUT_SYSLOG_VERSION: v0.1
+        # namespace drain
+        GIT_REF: 38e5cf7d6141f004a6e90e77cfd354df97d2947c # ref to use to build the release
+        VERSION: v0.1 # version of the release
+
+        # fluent bit
+        FLUENT_BIT_OUT_SYSLOG_VERSION: v0.1 # version of the fluent-bit image to use
+
         DOCKERHUB_USERNAME: ((docker-hub.username))
         DOCKERHUB_PASSWORD: ((docker-hub.password))
         GITHUB_PRIVATE_KEY: ((github.oratos-bot-private-key))
@@ -509,14 +513,19 @@ jobs:
           echo "$VERSION" > github-release/name
           echo "$VERSION" > github-release/tag
 
+          pushd namespace-drain > /dev/null
+            git reset --hard HEAD
+          popd > /dev/null
+
           cat <<EOF > github-release/body
           These are the versions of the docker images used in this release:
 
-          - oratos/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION
-          - oratos/sink-controller:$VERSION
-          EOF
+          - [oratos/sink-controller][sink-controller]:$VERSION
+          - [oratos/fluent-bit-out-syslog][fluent-bit-out-syslog]:$FLUENT_BIT_OUT_SYSLOG_VERSION
 
-          exit 1
+          [sink-controller]: https://hub.docker.com/r/oratos/sink-controller/
+          [fluent-bit-out-syslog]: https://hub.docker.com/r/oratos/fluent-bit-out-syslog/
+          EOF
 
           echo "$DOCKERHUB_PASSWORD" \
             | docker login \
@@ -532,7 +541,6 @@ jobs:
           docker push "oratos/sink-controller:latest"
 
           pushd namespace-drain > /dev/null
-            git reset --hard HEAD
             git push origin --tags
           popd > /dev/null
   - put: namespace-drain-release
