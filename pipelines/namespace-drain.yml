@@ -1,3 +1,17 @@
+groups:
+- name: main
+  jobs:
+  - unit-tests
+  - build-sink-controller-image
+  - deploy-gke
+  - deploy-cfcr
+  - gke-tests
+  - cfcr-tests
+  - promote
+- name: release
+  jobs:
+  - release
+
 resource_types:
 - name: slack-notification
   type: docker-image
@@ -53,6 +67,13 @@ resources:
     secret_id: ((vault.secret_id))
     path: secret/envs/oratos-ci-testing-cfcr-bbl-state
     tarball: true
+
+- name: namespace-drain-release
+  type: github-release
+  source:
+    owner: pivota-cf
+    repository: namespace-drain
+    access_token: ((github.oratos-bot-release-access-token))
 
 jobs:
 - name: unit-tests
@@ -357,3 +378,167 @@ jobs:
       cache_tag: latest
     get_params:
       skip_download: true
+
+- name: release
+  serial: true
+  plan:
+  - task: release
+    privileged: true
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      params:
+        GIT_REF: 38e5cf7d6141f004a6e90e77cfd354df97d2947c
+        VERSION: v0.1
+        FLUENT_BIT_OUT_SYSLOG_VERSION: v0.1
+        DOCKERHUB_USERNAME: ((docker-hub.username))
+        DOCKERHUB_PASSWORD: ((docker-hub.password))
+        GITHUB_PRIVATE_KEY: ((github.oratos-bot-private-key))
+        DEBUG:
+      outputs:
+      - name: github-release
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+          if [ -z "$GIT_REF" ]; then
+            echo GIT_REF param required
+            exit 1
+          fi
+          if ! [[ "$VERSION" =~ v ]]; then
+            echo VERSION param required to start with v
+            exit 1
+          fi
+          if ! [[ "$FLUENT_BIT_OUT_SYSLOG_VERSION" =~ v ]]; then
+            echo FLUENT_BIT_OUT_SYSLOG_VERSION param required to start with v
+            exit 1
+          fi
+
+          # Note: this was copied from the docker-image-resource
+          # https://github.com/concourse/docker-image-resource/blob/c725c6277ca2820016de1bfe2bdfabaad5fd5879/assets/common.sh#L4
+          sanitize_cgroups() {
+            mkdir -p /sys/fs/cgroup
+            mountpoint -q /sys/fs/cgroup || \
+              mount -t tmpfs -o uid=0,gid=0,mode=0755 cgroup /sys/fs/cgroup
+
+            mount -o remount,rw /sys/fs/cgroup
+
+            sed -e 1d /proc/cgroups | while read sys hierarchy num enabled; do
+              if [ "$enabled" != "1" ]; then
+                # subsystem disabled; skip
+                continue
+              fi
+
+              grouping="$(cat /proc/self/cgroup | cut -d: -f2 | grep "\\<$sys\\>")" || true
+              if [ -z "$grouping" ]; then
+                # subsystem not mounted anywhere; mount it on its own
+                grouping="$sys"
+              fi
+
+              mountpoint="/sys/fs/cgroup/$grouping"
+
+              mkdir -p "$mountpoint"
+
+              # clear out existing mount to make sure new one is read-write
+              if mountpoint -q "$mountpoint"; then
+                umount "$mountpoint"
+              fi
+
+              mount -n -t cgroup -o "$grouping" cgroup "$mountpoint"
+
+              if [ "$grouping" != "$sys" ]; then
+                if [ -L "/sys/fs/cgroup/$sys" ]; then
+                  rm "/sys/fs/cgroup/$sys"
+                fi
+
+                ln -s "$mountpoint" "/sys/fs/cgroup/$sys"
+              fi
+            done
+
+            if ! test -e /sys/fs/cgroup/systemd ; then
+              mkdir /sys/fs/cgroup/systemd
+              mount -t cgroup -o none,name=systemd none /sys/fs/cgroup/systemd
+            fi
+          }
+          sanitize_cgroups
+          service docker start
+          function cleanup {
+            set +e
+            service docker stop
+            killall ssh-agent
+          }
+          trap cleanup EXIT
+
+          echo waiting 10 seconds while docker starts up
+          sleep 10
+
+          mkdir -p ~/.ssh/
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2> /dev/null
+          eval "$(ssh-agent)"
+          echo "$GITHUB_PRIVATE_KEY" > key
+          chmod 0600 key
+          ssh-add key
+          rm key
+          git clone git@github.com:pivotal-cf/namespace-drain
+          pushd namespace-drain > /dev/null
+            git checkout "$GIT_REF"
+            git tag "$VERSION"
+          popd > /dev/null
+
+          yq read namespace-drain/manifests/05-deployments/sink.yml --tojson | \
+            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller:'"$VERSION"'"' \
+            > namespace-drain/manifests/05-deployments/sink.json
+          rm namespace-drain/manifests/05-deployments/sink.yml
+
+          yq read namespace-drain/manifests/04-daemonsets/fluent-bit.yml --tojson | \
+            jq '(.spec.template.spec.containers[] | select(.name == "fluent-bit")).image = "oratos/fluent-bit-out-syslog:'"$FLUENT_BIT_OUT_SYSLOG_VERSION"'"' \
+            > namespace-drain/manifests/04-daemonsets/fluent-bit.json
+          rm namespace-drain/manifests/04-daemonsets/fluent-bit.yml
+
+          for f in namespace-drain/manifests/**/*; do
+            echo ---
+            cat "$f";
+          done > github-release/manifest.yml
+          echo "$VERSION" > github-release/name
+          echo "$VERSION" > github-release/tag
+
+          cat <<EOF > github-release/body
+          These are the versions of the docker images used in this release:
+
+          - oratos/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION
+          - oratos/sink-controller:$VERSION
+          EOF
+
+          exit 1
+
+          echo "$DOCKERHUB_PASSWORD" \
+            | docker login \
+              --username "$DOCKERHUB_USERNAME" \
+              --password-stdin
+
+          docker pull "oratos/sink-controller:$GIT_REF"
+          docker tag "oratos/sink-controller:$GIT_REF" \
+            "oratos/sink-controller:$VERSION"
+          docker tag "oratos/sink-controller:$GIT_REF" \
+            "oratos/sink-controller:latest"
+          docker push "oratos/sink-controller:$VERSION"
+          docker push "oratos/sink-controller:latest"
+
+          pushd namespace-drain > /dev/null
+            git reset --hard HEAD
+            git push origin --tags
+          popd > /dev/null
+  - put: namespace-drain-release
+    params:
+      name: github-release/name
+      body: github-release/body
+      tag: github-release/tag
+      globs:
+      - github-release/manifest.yml

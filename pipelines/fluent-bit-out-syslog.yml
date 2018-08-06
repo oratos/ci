@@ -191,7 +191,7 @@ jobs:
         source:
           repository: oratos/ci-base
       params:
-        TAG: 848988cd2dd667528221a87116187fc5e547a0f6
+        GIT_REF: 848988cd2dd667528221a87116187fc5e547a0f6
         VERSION: v0.1
         DOCKERHUB_USERNAME: ((docker-hub.username))
         DOCKERHUB_PASSWORD: ((docker-hub.password))
@@ -204,8 +204,8 @@ jobs:
           #!/bin/bash
           set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
 
-          if [ -z "$TAG" ]; then
-            echo TAG param required
+          if [ -z "$GIT_REF" ]; then
+            echo GIT_REF param required
             exit 1
           fi
           if ! [[ "$VERSION" =~ v ]]; then
@@ -274,10 +274,10 @@ jobs:
               --username "$DOCKERHUB_USERNAME" \
               --password-stdin
 
-          docker pull "oratos/fluent-bit-out-syslog:$TAG"
-          docker tag "oratos/fluent-bit-out-syslog:$TAG" \
+          docker pull "oratos/fluent-bit-out-syslog:$GIT_REF"
+          docker tag "oratos/fluent-bit-out-syslog:$GIT_REF" \
             "oratos/fluent-bit-out-syslog:$VERSION"
-          docker tag "oratos/fluent-bit-out-syslog:$TAG" \
+          docker tag "oratos/fluent-bit-out-syslog:$GIT_REF" \
             "oratos/fluent-bit-out-syslog:latest"
           docker push "oratos/fluent-bit-out-syslog:$VERSION"
           docker push "oratos/fluent-bit-out-syslog:latest"
