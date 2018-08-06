@@ -6,7 +6,7 @@ function set_globals {
 }
 
 function validate {
-    if [ "$pipeline" = "-h" ] || [ "$pipeline" = "--help" ] || [ -z "$pipeline" ]; then
+    if [ "$pipeline" = "-h" ] || [ "$pipeline" = "--help" ]; then
         print_usage
         exit 1
     fi
@@ -22,7 +22,7 @@ function sync_fly {
 }
 
 function set_pipelines {
-    if [ "$pipeline" = all ]; then
+    if [ "$pipeline" = all ] || [ -z "$pipeline" ]; then
         for pipeline_file in $(ls "pipelines/"); do
             set_pipeline "${pipeline_file%.yml}"
         done
@@ -33,7 +33,7 @@ function set_pipelines {
 }
 
 function print_usage {
-    echo "usage: $0 <pipeline | all>"
+    echo "usage: $0 <pipeline>"
 }
 
 function main {
