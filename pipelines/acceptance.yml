@@ -426,11 +426,13 @@ jobs:
       image_resource:
         type: docker-image
         source:
-          repository: loggregator/base
+          repository: oratos/ci-base
       inputs:
       - name: bikepark-bbl-state
       - name: namespace-drain-manifests
       - name: oratos-ci
+      - name: fluent-bit-out-syslog-image
+      - name: namespace-drain-image
       params:
         DEBUG:
       run:
@@ -445,6 +447,18 @@ jobs:
 
           BBL_STATE_DIR=bikepark-bbl-state \
               oratos-ci/scripts/cfcr.sh bikepark get-credentials
+
+          fluent_image_digest=$(cat fluent-bit-out-syslog-image/digest)
+          yq read namespace-drain-manifests/manifests/04-daemonsets/fluent-bit.yml --tojson | \
+            jq '(.spec.template.spec.containers[] | select(.name == "fluent-bit")).image = "oratos/fluent-bit-out-syslog@'"$fluent_image_digest"'"' \
+            > namespace-drain-manifests/manifests/04-daemonsets/fluent-bit.json
+          rm namespace-drain-manifests/manifests/04-daemonsets/fluent-bit.yml
+
+          namespace_drain_image_digest=$(cat namespace-drain-image/digest)
+          yq read namespace-drain-manifests/manifests/05-deployments/sink.yml --tojson | \
+            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller@'"$namespace_drain_image_digest"'"' \
+            > namespace-drain-manifests/manifests/05-deployments/sink.json
+          rm namespace-drain-manifests/manifests/05-deployments/sink.yml
 
           kubectl apply -R -f namespace-drain-manifests/manifests
           patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
