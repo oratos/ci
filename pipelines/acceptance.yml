@@ -53,10 +53,10 @@ resources:
     paths:
     - manifests
 
-- name: namespace-drain-image
+- name: sink-controller-image
   type: docker-image
   source:
-    repository: oratos/namespace-drain
+    repository: oratos/sink-controller
     username: ((docker-hub.username))
     password: ((docker-hub.password))
     tag: release-elect
@@ -410,7 +410,7 @@ jobs:
   - aggregate:
     - get: namespace-drain-manifests
       trigger: true
-    - get: namespace-drain-image
+    - get: sink-controller-image
       trigger: true
       params:
         skip_download: true
@@ -432,7 +432,7 @@ jobs:
       - name: namespace-drain-manifests
       - name: oratos-ci
       - name: fluent-bit-out-syslog-image
-      - name: namespace-drain-image
+      - name: sink-controller-image
       params:
         DEBUG:
       run:
@@ -454,7 +454,7 @@ jobs:
             > namespace-drain-manifests/manifests/04-daemonsets/fluent-bit.json
           rm namespace-drain-manifests/manifests/04-daemonsets/fluent-bit.yml
 
-          namespace_drain_image_digest=$(cat namespace-drain-image/digest)
+          namespace_drain_image_digest=$(cat sink-controller-image/digest)
           yq read namespace-drain-manifests/manifests/05-deployments/sink.yml --tojson | \
             jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller@'"$namespace_drain_image_digest"'"' \
             > namespace-drain-manifests/manifests/05-deployments/sink.json
