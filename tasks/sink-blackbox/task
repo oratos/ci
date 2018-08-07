@@ -35,9 +35,9 @@ echo "token: $PAPERTRAIL_TOKEN" > ~/.papertrail.yml
 [ -n "$DEBUG" ] && set -x
 
 function delete_sinks {
-    # TODO: remove this one we have support for multiple sinks
-    kubectl delete sink --all --namespace default || true
-    kubectl delete sink --all --namespace oratos || true
+    # only one blackbox tests can run at a given time
+    # delete all the sinks for the blackbox-tests namespace before and after
+    # tests run
     kubectl delete sink --all --namespace blackbox-tests || true
 }
 
