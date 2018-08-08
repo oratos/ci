@@ -386,7 +386,7 @@ jobs:
       - name: oratos-ci
       - name: bikepark-bbl-state
       params:
-        LOGGREGATOR_TLS_SECRETS: ((playground.loggregator-tls-secrets))
+        LOGGREGATOR_TLS_SECRETS: ((bikepark.loggregator-tls-secrets))
         DEBUG:
       run:
         path: /bin/bash
