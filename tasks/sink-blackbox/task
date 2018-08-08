@@ -134,7 +134,9 @@ spec:
   type: syslog
   host: $papertrail_host
   port: $papertrail_port
-" | kubectl apply -f -
+" | kubectl apply \
+        --namespace blackbox-tests \
+        -f -
 
 logspinner_pod_name="$(
     kubectl get pod \
