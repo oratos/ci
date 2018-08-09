@@ -195,6 +195,7 @@ jobs:
         VERSION: v0.2
         DOCKERHUB_USERNAME: ((docker-hub.username))
         DOCKERHUB_PASSWORD: ((docker-hub.password))
+        GITHUB_PRIVATE_KEY: ((github.oratos-bot-private-key))
         DEBUG:
       run:
         path: /bin/bash
@@ -269,10 +270,27 @@ jobs:
           echo waiting 10 seconds while docker starts up
           sleep 10
 
+          mkdir -p ~/.ssh/
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2> /dev/null
+          eval "$(ssh-agent)"
+          set +x
+          echo "$GITHUB_PRIVATE_KEY" > key
+          [ -n "$DEBUG" ] && set -x
+          chmod 0600 key
+          ssh-add key
+          rm key
+          git clone git@github.com:pivotal-cf/fluent-bit-out-syslog
+          pushd fluent-bit-out-syslog > /dev/null
+            git checkout "$GIT_REF"
+            git tag "$VERSION"
+          popd > /dev/null
+
+          set +x
           echo "$DOCKERHUB_PASSWORD" \
             | docker login \
               --username "$DOCKERHUB_USERNAME" \
               --password-stdin
+          [ -n "$DEBUG" ] && set -x
 
           docker pull "oratos/fluent-bit-out-syslog:$GIT_REF"
           docker tag "oratos/fluent-bit-out-syslog:$GIT_REF" \
@@ -281,3 +299,7 @@ jobs:
             "oratos/fluent-bit-out-syslog:latest"
           docker push "oratos/fluent-bit-out-syslog:$VERSION"
           docker push "oratos/fluent-bit-out-syslog:latest"
+
+          pushd fluent-bit-out-syslog > /dev/null
+            git push origin --tags
+          popd > /dev/null

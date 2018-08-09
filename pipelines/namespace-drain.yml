@@ -486,7 +486,9 @@ jobs:
           mkdir -p ~/.ssh/
           ssh-keyscan github.com >> ~/.ssh/known_hosts 2> /dev/null
           eval "$(ssh-agent)"
+          set +x
           echo "$GITHUB_PRIVATE_KEY" > key
+          [ -n "$DEBUG" ] && set -x
           chmod 0600 key
           ssh-add key
           rm key
@@ -527,10 +529,12 @@ jobs:
           [fluent-bit-out-syslog]: https://hub.docker.com/r/oratos/fluent-bit-out-syslog/
           EOF
 
+          set +x
           echo "$DOCKERHUB_PASSWORD" \
             | docker login \
               --username "$DOCKERHUB_USERNAME" \
               --password-stdin
+          [ -n "$DEBUG" ] && set -x
 
           docker pull "oratos/sink-controller:$GIT_REF"
           docker tag "oratos/sink-controller:$GIT_REF" \
