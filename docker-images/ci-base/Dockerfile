@@ -25,3 +25,8 @@ RUN cd /tmp \
   && wget https://github.com/cloudfoundry-incubator/credhub-cli/releases/download/1.7.5/credhub-linux-1.7.5.tgz \
   && tar xzvf credhub*.tgz ./credhub \
   && cp ./credhub /usr/local/bin/
+
+RUN curl -Lo ./bosh https://s3.amazonaws.com/bosh-cli-artifacts/bosh-cli-5.1.1-linux-amd64 \
+  && chmod +x ./bosh \
+  && sudo mv ./bosh /usr/local/bin/bosh \
+  && bosh -v
