@@ -223,7 +223,7 @@ jobs:
         image_resource:
           type: docker-image
           source:
-            repository: loggregator/base
+            repository: oratos/ci-base
         inputs:
         - name: bikepark-bbl-state
         - name: bikepark-cfcr-gcp-vars
@@ -248,7 +248,7 @@ jobs:
         image_resource:
           type: docker-image
           source:
-            repository: loggregator/base
+            repository: oratos/ci-base
         inputs:
         - name: kubo-deployment
         outputs:
@@ -313,7 +313,7 @@ jobs:
       image_resource:
         type: docker-image
         source:
-          repository: loggregator/base
+          repository: oratos/ci-base
       inputs:
       - name: kubo-deployment
       - name: bikepark-bbl-state
@@ -380,7 +380,7 @@ jobs:
       image_resource:
         type: docker-image
         source:
-          repository: loggregator/base
+          repository: oratos/ci-base
       inputs:
       - name: oratos-deployment
       - name: oratos-ci

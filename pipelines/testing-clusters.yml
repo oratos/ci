@@ -185,7 +185,7 @@ jobs:
         image_resource:
           type: docker-image
           source:
-            repository: loggregator/base
+            repository: oratos/ci-base
         inputs:
         - name: oratos-ci-testing-cfcr-bbl-state
         - name: oratos-ci-testing-cfcr-gcp-vars
@@ -210,7 +210,7 @@ jobs:
         image_resource:
           type: docker-image
           source:
-            repository: loggregator/base
+            repository: oratos/ci-base
         inputs:
         - name: kubo-deployment
         outputs:
@@ -275,7 +275,7 @@ jobs:
       image_resource:
         type: docker-image
         source:
-          repository: loggregator/base
+          repository: oratos/ci-base
       inputs:
       - name: kubo-deployment
       - name: oratos-ci-testing-cfcr-bbl-state
