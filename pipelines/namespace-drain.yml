@@ -498,15 +498,19 @@ jobs:
             git tag "$VERSION"
           popd > /dev/null
 
-          yq read namespace-drain/manifests/05-deployments/sink.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller:'"$VERSION"'"' \
+          yq read namespace-drain/manifests/05-deployments/sink.yml --tojson
+            | jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller:'"$VERSION"'"' \
             > namespace-drain/manifests/05-deployments/sink.json
-          rm namespace-drain/manifests/05-deployments/sink.yml
+          yq read namespace-drain/manifests/05-deployments/sink.json \
+            > namespace-drain/manifests/05-deployments/sink.yml
+          rm namespace-drain/manifests/05-deployments/sink.json
 
-          yq read namespace-drain/manifests/04-daemonsets/fluent-bit.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "fluent-bit")).image = "oratos/fluent-bit-out-syslog:'"$FLUENT_BIT_OUT_SYSLOG_VERSION"'"' \
+          yq read namespace-drain/manifests/04-daemonsets/fluent-bit.yml --tojson \
+            | jq '(.spec.template.spec.containers[] | select(.name == "fluent-bit")).image = "oratos/fluent-bit-out-syslog:'"$FLUENT_BIT_OUT_SYSLOG_VERSION"'"' \
             > namespace-drain/manifests/04-daemonsets/fluent-bit.json
-          rm namespace-drain/manifests/04-daemonsets/fluent-bit.yml
+          yq read namespace-drain/manifests/04-daemonsets/fluent-bit.json \
+            > namespace-drain/manifests/04-daemonsets/fluent-bit.yml
+          rm namespace-drain/manifests/04-daemonsets/fluent-bit.json
 
           for f in namespace-drain/manifests/**/*; do
             echo ---
