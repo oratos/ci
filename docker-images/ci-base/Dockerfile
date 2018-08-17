@@ -30,3 +30,11 @@ RUN curl -Lo ./bosh https://s3.amazonaws.com/bosh-cli-artifacts/bosh-cli-5.1.1-l
   && chmod +x ./bosh \
   && sudo mv ./bosh /usr/local/bin/bosh \
   && bosh -v
+
+RUN sudo apt-get -y update \
+  && sudo apt-get -y install ruby-full
+
+RUN cd /tmp \
+  && wget https://releases.hashicorp.com/terraform/0.11.8/terraform_0.11.8_linux_amd64.zip \
+  && unzip terraform*.zip \
+  && cp terraform /usr/local/bin/
