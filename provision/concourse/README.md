@@ -1,12 +1,11 @@
-
-## Provision Concourse Cluster
-
+## Provision Concourse
 Before you run this script make sure to install:
 
-- [helm][helm]
-- [kubectl][kubectl]
+- [git][git]
+- [vault][vault]
+- [bbl][bbl]
 - [gcloud][gcloud]
-- [lpass][lpass]
+- [bosh][bosh]
 
 You will need to login to gcloud via:
 
@@ -14,30 +13,46 @@ You will need to login to gcloud via:
 gcloud auth login
 ```
 
-You will need to login to lpass via:
+You will need to login to vault via:
 
 ```bash
-lpass login
+vault login -method=userpass username=<user>
 ```
 
-Additionally, you will need to have your secrets setup in lastpass as a note.
-This note should follow the format:
+### Updating the concourse deployment variables
+The concourse deployment is driven by variables that are stored in vault. 
+In order to modify those variables, following these steps:
 
-```yaml
-secrets:
-  some-secret: value
-  some-other-secret: value
+```bash
+vault read -field=concourse_vars.yml secret/envs/bosh-concourse-vars > /tmp/concourse_vars.yml
+vim /tmp/concourse_vars.yml  #make your desired edits
+vault write secret/envs/bosh-concourse-vars concourse_vars.yml=@/tmp/concourse_vars.yml
 ```
 
-You will need to configure the path to this note under `LASTPASS_SECRETS_PATH`
-at the top of the script.
+### To create a bosh environment and deploy concourse on it use the command below:
+```bash
+./deploy.sh
+```
 
-You will also need to configure the helm values, primarily `externalURL` at
-the top of the script.
+Currently, there are a couple of manual steps that must be performed after the
+concourse deployment is created. These are ...
+1. You must update the bbl created loadbalancer to route to the web instances
+   of your concourse deployment.
+1. You must update the DNS configuration of oratos.ci.cf-app.com to point to 
+   the bbl created loadbalancer.
 
-You will also need to enable the Kubernetes Engine API for your project.
+### If all you want is to redeploy concourse, use the command below:
+```bash
+./deploy_concourse.sh
+```
+
+### To delete the concourse deployment and bosh environment run this command: 
+```bash
+./destroy.sh
+````
 
 [gcloud]: https://cloud.google.com/sdk/
-[lpass]: https://github.com/lastpass/lastpass-cli
-[helm]: https://github.com/kubernetes/helm/releases/latest
-[kubectl]: https://kubernetes.io/docs/tasks/tools/install-kubectl/
+[vault]: https://www.vaultproject.io
+[bbl]: https://github.com/cloudfoundry/bosh-bootloader
+[bosh]: https://bosh.io
+[git]: https://git-scm.com

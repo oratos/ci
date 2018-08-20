@@ -3,7 +3,12 @@
 set -Eeo pipefail; [ -n "$DEBUG" ] && set -x; set -u
 
 source consts.sh
+source ../lib.sh
 source lib.sh
 
-bbl_up
-deploy_concourse
+function main {
+    delete_k8s_objects
+    delete_cluster
+}
+
+main

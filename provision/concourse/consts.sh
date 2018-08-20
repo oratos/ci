@@ -1,36 +1,9 @@
-PROJECT_NAME=oratos
-CLUSTER_NAME="$PROJECT_NAME-ci"
-CLUSTER_SIZE=6
-CLUSTER_ZONE=us-central1-a
-CLUSTER_VERSION=1.10
-NAMESPACE_NAME="$CLUSTER_NAME"
-LASTPASS_SECRETS_PATH="Shared-CF-Oratos/concourse-secrets.yml"
-LASTPASS_X509_PATH="Shared-CF-Oratos/oratos.ci.cf-app.com certs/key"
-VALUES="
-concourse:
-  externalURL: https://oratos.ci.cf-app.com
-  baggageclaimDriver: overlay
-  githubAuth:
-    enabled: true
-    user: jasonkeene,wfernandes,dennyzhang,chentom88,ahevenor
-web:
-  service:
-    type: NodePort
-  ingress:
-    annotations:
-      kubernetes.io/ingress.allow-http: false
-    enabled: true
-    hosts:
-    - oratos.ci.cf-app.com
-    tls:
-    - secretName: concourse-web-tls
-      hosts:
-      - oratos.ci.cf-app.com
-credentialManager:
-  kubernetes:
-    enabled: false
-  vault:
-    enabled: true
-    url: https://vault.oratos.ci.cf-app.com
-    pathPrefix: /secret/concourse
-"
+export BBL_IAAS=gcp
+export BBL_GCP_REGION=us-central1
+
+BBL_STATE_DIR="bbl-home"
+VAULT_BBL_STATE_PATH="secret/envs/bosh-concourse-bbl-state"
+VAULT_GCP_VARS_PATH="secret/envs/bosh-concourse-gcp-vars"
+VAULT_CONCOURSE_VARS="secret/envs/bosh-concourse-vars"
+GCP_PROJECT="cf-pks-observability1"
+GCP_SERVICE_ACCOUNT="bosh-concourse"
