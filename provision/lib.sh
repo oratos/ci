@@ -16,7 +16,11 @@ function delete_cluster {
 }
 
 function delete_k8s_objects {
-    kubectl delete all --all --all-namespaces --cascade
+    for namespace in $(kubectl get ns --output jsonpath="{.items[*].metadata.name}" \
+        | sed "s/kube-system//g")
+    do
+        kubectl -n $namespace delete all --all --cascade
+    done
 }
 
 function init_helm {
