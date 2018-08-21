@@ -26,6 +26,11 @@ resource_types:
     repository: wfernandes/vault-resource
     tag: latest
 
+- name: gcs-resource
+  type: docker-image
+  source:
+    repository: frodenas/gcs-resource
+
 resources:
 - name: oratos-ci
   type: git
@@ -91,13 +96,19 @@ resources:
     branch: master
     private_key: ((github.oratos-bot-private-key))
 
-- name: sink-resources-github-release
-  type: github-release
-  source:
-    owner: pivotal-cf
-    repository: sink-resources-release
-    access_token: ((github.oratos-bot-release-access-token))
+# - name: sink-resources-github-release
+#   type: github-release
+#   source:
+#     owner: pivotal-cf
+#     repository: sink-resources-release
+#     access_token: ((github.oratos-bot-release-access-token))
 
+- name: pks-releng-release-bucket
+  type: gcs-resource
+  source:
+    bucket: oratos-team-test-tile
+    json_key: ((pks-releng.gcp-json))
+    regexp: releases/*.tgz
 jobs:
 - name: unit-tests
   plan:
@@ -243,16 +254,16 @@ jobs:
   serial: true
   plan:
   - aggregate:
+    - get: namespace-drain
+      trigger: true
+      passed:
+      - deploy-gke
     - get: sink-controller-image
       trigger: true
       passed:
       - deploy-gke
       params:
         skip_download: true
-    - get: namespace-drain
-      trigger: true
-      passed:
-      - deploy-gke
   - task: run-crd-tests
     config:
       platform: linux
@@ -405,6 +416,7 @@ jobs:
 - name: release
   serial: true
   plan:
+  - get: sink-resources-release
   - task: release
     privileged: true
     config:
@@ -587,6 +599,9 @@ jobs:
 - name: update-bosh-release
   plan:
   - get: sink-resources-release
+    # trigger: true
+    # passed:
+    # - release
   - get: sink-release-controller-image
     params:
       save: true
@@ -628,9 +643,6 @@ jobs:
           pushd put-sink-resources-release
             echo "$PRIVATE_YML" > config/private.yml
 
-            # TODO: DELETE ME
-            rm -rf .final_builds releases
-
             bosh sync-blobs
 
             echo "Clean old blobs with pattern of ${blob_name}"
@@ -644,7 +656,7 @@ jobs:
             echo "Begin blob management"
             bosh add-blob "${output_file}" "container-images/${output_file}"
             rm "${output_file}"
-            # bosh upload-blobs
+            bosh upload-blobs
 
             echo "Create final release"
             bosh --non-interactive create-release \
@@ -657,24 +669,21 @@ jobs:
             mkdir -p ../bosh-release/binaries
             mv "${release_file}" ../bosh-release/binaries/
 
-            # TODO: improve this
-            if git tag -l | grep "$VERSION" >/dev/null &2>1; then
-              echo "git tag -d $VERSION"
-              git tag -d "$VERSION" || true
-              git push --delete origin "$VERSION" || true
-            fi
             git add .
-            git commit -m"Bump sink resource release from CI"
+            git commit -m"CI bump sink resource release - ${VERSION}"
           popd
 
           ls -alth bosh-release/binaries
-  - put: sink-resources-github-release
+  - put: pks-releng-release-bucket
     params:
-      name: bosh-release/name
-      tag: bosh-release/tag
-      globs:
-      - bosh-release/binaries/*.tgz
-  - put: sink-resources-release
-    params:
-      repository: put-sink-resources-release
-      name: bosh-release/name
+      file: bosh-release/binaries/*.tgz
+  # - put: sink-resources-release
+  #   params:
+  #     repository: put-sink-resources-release
+  #     name: bosh-release/name
+  # - put: sink-resources-github-release
+  #   params:
+  #     name: bosh-release/name
+  #     tag: bosh-release/tag
+  #     globs:
+  #     - bosh-release/binaries/*.tgz
