@@ -220,16 +220,16 @@ jobs:
   serial: true
   plan:
   - aggregate:
+    - get: namespace-drain
+      trigger: true
+      passed:
+      - deploy-gke
     - get: sink-controller-image
       trigger: true
       passed:
       - deploy-gke
       params:
         skip_download: true
-    - get: namespace-drain
-      trigger: true
-      passed:
-      - deploy-gke
   - task: run-crd-tests
     config:
       platform: linux
