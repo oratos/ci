@@ -392,8 +392,8 @@ jobs:
           repository: oratos/ci-base
       params:
         # namespace drain
-        GIT_REF: c998b4165cdb6dcbbfe5e270878d59391a0944ce # ref to use to build the release
-        VERSION: v0.2 # version of the release
+        GIT_REF: 00cbef49ed63ae44147b21d45116590311645342 # ref to use to build the release
+        VERSION: v0.3 # version of the release
 
         # fluent bit
         FLUENT_BIT_OUT_SYSLOG_VERSION: v0.2 # version of the fluent-bit image to use
@@ -498,7 +498,7 @@ jobs:
             git tag "$VERSION"
           popd > /dev/null
 
-          yq read namespace-drain/manifests/05-deployments/sink.yml --tojson
+          yq read namespace-drain/manifests/05-deployments/sink.yml --tojson \
             | jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller:'"$VERSION"'"' \
             > namespace-drain/manifests/05-deployments/sink.json
           yq read namespace-drain/manifests/05-deployments/sink.json \
