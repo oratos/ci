@@ -11,6 +11,7 @@ groups:
 - name: release
   jobs:
   - release
+  - update-bosh-release
 
 resource_types:
 - name: slack-notification
@@ -54,6 +55,14 @@ resources:
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
+- name: sink-release-controller-image
+  type: docker-image
+  source:
+    repository: oratos/sink-controller
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+    tag: v0.3
+
 - name: slack-alert
   type: slack-notification
   source:
@@ -73,6 +82,20 @@ resources:
   source:
     owner: pivotal-cf
     repository: namespace-drain
+    access_token: ((github.oratos-bot-release-access-token))
+
+- name: sink-resources-release
+  type: git
+  source:
+    uri: git@github.com:pivotal-cf/sink-resources-release
+    branch: master
+    private_key: ((github.oratos-bot-private-key))
+
+- name: sink-resources-github-release
+  type: github-release
+  source:
+    owner: pivotal-cf
+    repository: sink-resources-release
     access_token: ((github.oratos-bot-release-access-token))
 
 jobs:
@@ -548,6 +571,7 @@ jobs:
           docker push "oratos/sink-controller:$VERSION"
           docker push "oratos/sink-controller:latest"
 
+
           pushd namespace-drain > /dev/null
             git push origin --tags
           popd > /dev/null
@@ -556,5 +580,101 @@ jobs:
       name: github-release/name
       body: github-release/body
       tag: github-release/tag
+
       globs:
       - github-release/manifest.yml
+
+- name: update-bosh-release
+  plan:
+  - get: sink-resources-release
+  - get: sink-release-controller-image
+    params:
+      save: true
+  - task: update-bosh-release
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      inputs:
+      - name: sink-release-controller-image
+      - name: sink-resources-release
+      params:
+        DEBUG:
+        VERSION: v0.1
+        PRIVATE_YML: ((release.private_yml))
+      outputs:
+      - name: bosh-release
+      - name: put-sink-resources-release
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+          # tar docker image
+          blob_name="oratos_sink-controller"
+          tag=$(cat "sink-release-controller-image/tag")
+          output_file="${blob_name}:${tag}.tgz"
+          release_file="sink-resources-release-${VERSION}.tgz"
+
+          echo "$VERSION" > bosh-release/name
+          echo "$VERSION" > bosh-release/tag
+
+          git clone sink-resources-release put-sink-resources-release
+          pushd put-sink-resources-release
+            echo "$PRIVATE_YML" > config/private.yml
+
+            # TODO: DELETE ME
+            rm -rf .final_builds releases
+
+            bosh sync-blobs
+
+            echo "Clean old blobs with pattern of ${blob_name}"
+            for b in $(bosh blobs --column="Path" | grep "$blob_name"); do
+              echo "bosh remove-blob $b"
+              bosh remove-blob "$b"
+            done
+            ls -alh ../sink-release-controller-image/image
+            gzip -c ../sink-release-controller-image/image > "${output_file}"
+
+            echo "Begin blob management"
+            bosh add-blob "${output_file}" "container-images/${output_file}"
+            rm "${output_file}"
+            # bosh upload-blobs
+
+            echo "Create final release"
+            bosh --non-interactive create-release \
+                 --final \
+                 --force \
+                 --version="${VERSION}" \
+                 --tarball="${release_file}"
+
+            echo "Move build ${release_file} to bosh-release/binaries"
+            mkdir -p ../bosh-release/binaries
+            mv "${release_file}" ../bosh-release/binaries/
+
+            # TODO: improve this
+            if git tag -l | grep "$VERSION" >/dev/null &2>1; then
+              echo "git tag -d $VERSION"
+              git tag -d "$VERSION" || true
+              git push --delete origin "$VERSION" || true
+            fi
+            git add .
+            git commit -m"Bump sink resource release from CI"
+          popd
+
+          ls -alth bosh-release/binaries
+  - put: sink-resources-github-release
+    params:
+      name: bosh-release/name
+      tag: bosh-release/tag
+      globs:
+      - bosh-release/binaries/*.tgz
+  - put: sink-resources-release
+    params:
+      repository: put-sink-resources-release
+      name: bosh-release/name
