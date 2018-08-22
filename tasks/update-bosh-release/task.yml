@@ -5,9 +5,9 @@ image_resource:
     repository: oratos/ci-base
 inputs:
 - name: sink-resources-release
-- name: release-image
+- name: blob-release-image
 outputs:
-- name: blob-bosh-release
+- name: bosh-release
 - name: put-sink-resources-release
 params:
   # - Required
