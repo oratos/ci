@@ -4,6 +4,7 @@ image_resource:
   source:
     repository: oratos/ci-base
 inputs:
+- name: oratos-ci
 - name: sink-resources-release
 - name: blob-release-image
 outputs:
