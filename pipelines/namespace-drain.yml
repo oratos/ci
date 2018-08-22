@@ -431,7 +431,7 @@ jobs:
         VERSION: v0.4 # version of the release
 
         # fluent bit
-        FLUENT_BIT_OUT_SYSLOG_VERSION: v0.2 # version of the fluent-bit image to use
+        FLUENT_BIT_OUT_SYSLOG_VERSION: v0.3 # version of the fluent-bit image to use
 
         DOCKERHUB_USERNAME: ((docker-hub.username))
         DOCKERHUB_PASSWORD: ((docker-hub.password))
