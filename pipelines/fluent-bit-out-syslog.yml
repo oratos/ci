@@ -6,7 +6,6 @@ groups:
 - name: release
   jobs:
   - release
-  - update-bosh-release
 
 resource_types:
 - name: slack-notification
@@ -14,11 +13,6 @@ resource_types:
   source:
     repository: cfcommunity/slack-notification-resource
     tag: latest
-
-- name: gcs-resource
-  type: docker-image
-  source:
-    repository: frodenas/gcs-resource
 
 resources:
 - name: oratos-ci
@@ -48,39 +42,10 @@ resources:
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
-- name: blob-release-image
-  type: docker-image
-  source:
-    repository: oratos/fluent-bit-out-syslog
-    username: ((docker-hub.username))
-    password: ((docker-hub.password))
-    tag: v0.3
-
 - name: slack-alert
   type: slack-notification
   source:
     url: ((slack.notifications-url))
-
-- name: sink-resources-release
-  type: git
-  source:
-    uri: git@github.com:pivotal-cf/sink-resources-release
-    branch: master
-    private_key: ((github.oratos-bot-private-key))
-
-- name: sink-resources-github-release
-  type: github-release
-  source:
-    owner: pivotal-cf
-    repository: sink-resources-release
-    access_token: ((github.oratos-bot-release-access-token))
-
-- name: pks-releng-release-bucket
-  type: gcs-resource
-  source:
-    bucket: oratos-team-test-tile
-    json_key: ((pks-releng.gcp-json))
-    regexp: releases/*.tgzj
 
 jobs:
 - name: unit-tests
@@ -217,7 +182,6 @@ jobs:
 - name: release
   serial: true
   plan:
-  - get: fluent-bit-out-syslog-image
   - task: release
     privileged: true
     config:
@@ -340,32 +304,3 @@ jobs:
             git push origin --tags
           popd > /dev/null
 
-- name: update-bosh-release
-  plan:
-  - get: fluent-bit-out-syslog-image
-    trigger: true
-    passed:
-    - release
-  - get: oratos-ci
-  - get: sink-resources-release
-  - get: blob-release-image
-    params:
-      save: true
-  - task: update-bosh-release
-    file: oratos-ci/tasks/update-bosh-release/task.yml
-    params:
-      BLOB_NAME: oratos_fluent-bit-out-syslog
-      PRIVATE_YML: ((release.private_yml))
-  - put: pks-releng-release-bucket
-    params:
-      file: bosh-release/binaries/*.tgz
-  - put: sink-resources-release
-    params:
-      repository: put-sink-resources-release
-      name: bosh-release/name
-  - put: sink-resources-github-release
-    params:
-      name: bosh-release/name
-      tag: bosh-release/tag
-      globs:
-      - bosh-release/binaries/*.tgz
