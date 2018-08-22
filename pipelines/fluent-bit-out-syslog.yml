@@ -54,7 +54,7 @@ resources:
     repository: oratos/fluent-bit-out-syslog
     username: ((docker-hub.username))
     password: ((docker-hub.password))
-    tag: v0.2
+    tag: v0.3
 
 - name: slack-alert
   type: slack-notification
@@ -217,7 +217,7 @@ jobs:
 - name: release
   serial: true
   plan:
-  - get: out-syslog
+  - get: fluent-bit-out-syslog-image
   - task: release
     privileged: true
     config:
@@ -228,7 +228,7 @@ jobs:
           repository: oratos/ci-base
       params:
         GIT_REF: 786848048804e98e637c0c432f8594b93dd032aa
-        VERSION: v0.2
+        VERSION: v0.3
         DOCKERHUB_USERNAME: ((docker-hub.username))
         DOCKERHUB_PASSWORD: ((docker-hub.password))
         GITHUB_PRIVATE_KEY: ((github.oratos-bot-private-key))
@@ -342,10 +342,10 @@ jobs:
 
 - name: update-bosh-release
   plan:
-  - get: out-syslog
-    # trigger: true
-    # passed:
-    # - release
+  - get: fluent-bit-out-syslog-image
+    trigger: true
+    passed:
+    - release
   - get: oratos-ci
   - get: sink-resources-release
   - get: blob-release-image

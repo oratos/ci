@@ -60,13 +60,13 @@ resources:
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
-- name: sink-release-controller-image
+- name: blob-release-image
   type: docker-image
   source:
     repository: oratos/sink-controller
     username: ((docker-hub.username))
     password: ((docker-hub.password))
-    tag: v0.3
+    tag: v0.4
 
 - name: slack-alert
   type: slack-notification
@@ -416,7 +416,7 @@ jobs:
 - name: release
   serial: true
   plan:
-  - get: sink-resources-release
+  - get: sink-controller-image
   - task: release
     privileged: true
     config:
@@ -428,7 +428,7 @@ jobs:
       params:
         # namespace drain
         GIT_REF: 00cbef49ed63ae44147b21d45116590311645342 # ref to use to build the release
-        VERSION: v0.3 # version of the release
+        VERSION: v0.4 # version of the release
 
         # fluent bit
         FLUENT_BIT_OUT_SYSLOG_VERSION: v0.2 # version of the fluent-bit image to use
@@ -598,82 +598,20 @@ jobs:
 
 - name: update-bosh-release
   plan:
-  - get: sink-resources-release
+  - get: sink-controller-image
     trigger: true
     passed:
     - release
-  - get: sink-release-controller-image
+  - get: oratos-ci
+  - get: sink-resources-release
+  - get: blob-release-image
     params:
       save: true
   - task: update-bosh-release
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: oratos/ci-base
-      inputs:
-      - name: sink-release-controller-image
-      - name: sink-resources-release
-      params:
-        DEBUG:
-        PRIVATE_YML: ((release.private_yml))
-      outputs:
-      - name: bosh-release
-      - name: put-sink-resources-release
-      run:
-        path: /bin/bash
-        args:
-        - "-c"
-        - |
-          #!/bin/bash
-          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
-
-          # tar docker image
-          blob_name="oratos_sink-controller"
-          tag=$(cat "sink-release-controller-image/tag")
-          output_file="${blob_name}:${tag}.tgz"
-          release_file="sink-resources-release.tgz"
-
-          git clone sink-resources-release put-sink-resources-release
-          pushd put-sink-resources-release
-            echo "$PRIVATE_YML" > config/private.yml
-
-            bosh sync-blobs
-
-            echo "Clean old blobs with pattern of ${blob_name}"
-            for b in $(bosh blobs --column="Path" | grep "$blob_name"); do
-              echo "bosh remove-blob $b"
-              bosh remove-blob "$b"
-            done
-            ls -alh ../sink-release-controller-image/image
-            gzip -c ../sink-release-controller-image/image > "${output_file}"
-
-            echo "Begin blob management"
-            bosh add-blob "${output_file}" "container-images/${output_file}"
-            rm "${output_file}"
-            bosh upload-blobs
-
-            echo "Create final release"
-            bosh --non-interactive create-release \
-                 --final \
-                 --force \
-                 --tarball="${release_file}"
-
-            version=$(yq r releases/sink-resources-release/index.yml --tojson | jq -r ".builds[].version" | sort | tail -n1)
-
-            echo "Move build ${release_file} - ${version} to bosh-release/binaries"
-            mkdir -p ../bosh-release/binaries
-            mv "${release_file}" "../bosh-release/binaries/sink-resources-release-${version}.tgz"
-
-            git add .
-            git commit -m"CI bump sink resource release - ${version}"
-          popd
-
-          echo "$version" > bosh-release/name
-          echo "$version" > bosh-release/tag
-
-          ls -alth bosh-release/binaries
+    file: oratos-ci/tasks/update-bosh-release/task.yml
+    params:
+      BLOB_NAME: oratos_sink-controller
+      PRIVATE_YML: ((release.private_yml))
   - put: pks-releng-release-bucket
     params:
       file: bosh-release/binaries/*.tgz
