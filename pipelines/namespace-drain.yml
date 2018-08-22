@@ -96,12 +96,12 @@ resources:
     branch: master
     private_key: ((github.oratos-bot-private-key))
 
-# - name: sink-resources-github-release
-#   type: github-release
-#   source:
-#     owner: pivotal-cf
-#     repository: sink-resources-release
-#     access_token: ((github.oratos-bot-release-access-token))
+- name: sink-resources-github-release
+  type: github-release
+  source:
+    owner: pivotal-cf
+    repository: sink-resources-release
+    access_token: ((github.oratos-bot-release-access-token))
 
 - name: pks-releng-release-bucket
   type: gcs-resource
@@ -599,9 +599,9 @@ jobs:
 - name: update-bosh-release
   plan:
   - get: sink-resources-release
-    # trigger: true
-    # passed:
-    # - release
+    trigger: true
+    passed:
+    - release
   - get: sink-release-controller-image
     params:
       save: true
@@ -617,7 +617,6 @@ jobs:
       - name: sink-resources-release
       params:
         DEBUG:
-        VERSION: v0.1
         PRIVATE_YML: ((release.private_yml))
       outputs:
       - name: bosh-release
@@ -634,10 +633,7 @@ jobs:
           blob_name="oratos_sink-controller"
           tag=$(cat "sink-release-controller-image/tag")
           output_file="${blob_name}:${tag}.tgz"
-          release_file="sink-resources-release-${VERSION}.tgz"
-
-          echo "$VERSION" > bosh-release/name
-          echo "$VERSION" > bosh-release/tag
+          release_file="sink-resources-release.tgz"
 
           git clone sink-resources-release put-sink-resources-release
           pushd put-sink-resources-release
@@ -662,28 +658,32 @@ jobs:
             bosh --non-interactive create-release \
                  --final \
                  --force \
-                 --version="${VERSION}" \
                  --tarball="${release_file}"
 
-            echo "Move build ${release_file} to bosh-release/binaries"
+            version=$(yq r releases/sink-resources-release/index.yml --tojson | jq -r ".builds[].version" | sort | tail -n1)
+
+            echo "Move build ${release_file} - ${version} to bosh-release/binaries"
             mkdir -p ../bosh-release/binaries
-            mv "${release_file}" ../bosh-release/binaries/
+            mv "${release_file}" "../bosh-release/binaries/sink-resources-release-${version}.tgz"
 
             git add .
-            git commit -m"CI bump sink resource release - ${VERSION}"
+            git commit -m"CI bump sink resource release - ${version}"
           popd
+
+          echo "$version" > bosh-release/name
+          echo "$version" > bosh-release/tag
 
           ls -alth bosh-release/binaries
   - put: pks-releng-release-bucket
     params:
       file: bosh-release/binaries/*.tgz
-  # - put: sink-resources-release
-  #   params:
-  #     repository: put-sink-resources-release
-  #     name: bosh-release/name
-  # - put: sink-resources-github-release
-  #   params:
-  #     name: bosh-release/name
-  #     tag: bosh-release/tag
-  #     globs:
-  #     - bosh-release/binaries/*.tgz
+  - put: sink-resources-release
+    params:
+      repository: put-sink-resources-release
+      name: bosh-release/name
+  - put: sink-resources-github-release
+    params:
+      name: bosh-release/name
+      tag: bosh-release/tag
+      globs:
+      - bosh-release/binaries/*.tgz
