@@ -18,6 +18,10 @@ params:
   # - Code to run to setup kubectl to point to the cluster.
   GET_CREDENTIALS_HOOK:
 
+  # - Required
+  # - Address of vault server
+  VAULT_ADDR:
+
   # - Optional
   # - Set to true to output all commands that are ran.
   DEBUG:
