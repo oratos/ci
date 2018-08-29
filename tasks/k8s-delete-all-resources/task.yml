@@ -22,6 +22,14 @@ params:
   # - Address of vault server
   VAULT_ADDR:
 
+  # - Required
+  # - Vault role id for authentication
+  ROLE_ID:
+
+  # - Required
+  # - Vault secret id for authentication
+  SECRET_ID:
+
   # - Optional
   # - Set to true to output all commands that are ran.
   DEBUG:
