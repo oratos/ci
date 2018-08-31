@@ -1,7 +1,6 @@
 groups:
 - name: main
   jobs:
-  - oratos-deploy
   - namespace-drain-deploy
 - name: cfcr-lifecycle
   jobs:
@@ -20,13 +19,6 @@ resource_types:
     tag: latest
 
 resources:
-- name: oratos-deployment
-  type: git
-  source:
-    uri: git@github.com:pivotal-cf/oratos-deployment.git
-    branch: master
-    private_key: ((github.oratos-bot-private-key))
-
 - name: bikepark-bbl-state
   type: vault
   source:
@@ -366,44 +358,6 @@ jobs:
     params:
       DEPLOYMENT_NAME: cfcr
       IGNORE_ERRORS: true
-
-- name: oratos-deploy
-  serial: true
-  plan:
-  - aggregate:
-    - get: oratos-deployment
-      trigger: true
-    - get: bikepark-bbl-state
-    - get: oratos-ci
-  - task: oratos-deploy
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: oratos/ci-base
-      inputs:
-      - name: oratos-deployment
-      - name: oratos-ci
-      - name: bikepark-bbl-state
-      params:
-        LOGGREGATOR_TLS_SECRETS: ((bikepark.loggregator-tls-secrets))
-        DEBUG:
-      run:
-        path: /bin/bash
-        args:
-        - "-c"
-        - |
-          #!/bin/bash
-          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
-
-          BBL_STATE_DIR=bikepark-bbl-state \
-              oratos-ci/scripts/cfcr.sh bikepark get-credentials
-
-          echo "$LOGGREGATOR_TLS_SECRETS" > oratos-deployment/secrets/loggregator-tls-certs.yml
-          pushd oratos-deployment > /dev/null
-            ./deploy.sh
-          popd > /dev/null
 
 - name: namespace-drain-deploy
   serial: true
