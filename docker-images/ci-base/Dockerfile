@@ -38,7 +38,3 @@ RUN cd /tmp \
   && wget https://releases.hashicorp.com/terraform/0.11.8/terraform_0.11.8_linux_amd64.zip \
   && unzip terraform*.zip \
   && cp terraform /usr/local/bin/
-
-RUN wget -q https://releases.hashicorp.com/vault/0.11.0/vault_0.11.0_linux_amd64.zip \
-  && unzip vault_*.zip \
-  && cp vault /usr/local/bin/
