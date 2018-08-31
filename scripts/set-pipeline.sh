@@ -1,7 +1,8 @@
 #!/bin/bash
+set -Eeo pipefail; [ -n "$DEBUG" ] && set -x; set -u
 
 function set_globals {
-    pipeline=$1
+    pipeline="${1:-}"
     TARGET="${TARGET:-oratos}"
 }
 
@@ -14,11 +15,11 @@ function validate {
 
 function set_pipeline {
     echo setting pipeline for "$1"
-    fly -t $TARGET set-pipeline -p "$1" -c "pipelines/$1.yml"
+    fly -t "$TARGET" set-pipeline -p "$1" -c "pipelines/$1.yml"
 }
 
 function sync_fly {
-    fly -t $TARGET sync
+    fly -t "$TARGET" sync
 }
 
 function set_pipelines {
@@ -37,9 +38,11 @@ function print_usage {
 }
 
 function main {
-    set_globals $1
+    local pipeline="${1:-}"
+
+    set_globals "$pipeline"
     validate
     sync_fly
     set_pipelines
 }
-main $1 $2
+main $@
