@@ -357,7 +357,7 @@ jobs:
       bbl-state: bikepark-bbl-state
     params:
       GET_CREDENTIALS_HOOK: |
-        BBL_STATE_DIR=bikepark-bbl-state \
+        BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh bikepark get-credentials
   - task: cfcr-deployment-destroy
     file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
