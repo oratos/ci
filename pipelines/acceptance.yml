@@ -79,7 +79,7 @@ resources:
   type: bosh-io-release
   source:
     repository: cloudfoundry-incubator/kubo-release
-    regexp: "0\.19\.*"
+    regexp: "0.19.*"
 
 - name: cf-deployment-concourse-tasks
   type: git
