@@ -85,7 +85,7 @@ resources:
   type: git
   source:
     uri: https://github.com/cloudfoundry/cf-deployment-concourse-tasks
-    branch: v7.1
+    branch: v7.5
 
 - name: oratos-ci
   type: git
@@ -365,6 +365,7 @@ jobs:
       bbl-state: bikepark-bbl-state
     params:
       DEPLOYMENT_NAME: cfcr
+      IGNORE_ERRORS: true
 
 - name: oratos-deploy
   serial: true
