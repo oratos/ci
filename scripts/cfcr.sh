@@ -34,7 +34,7 @@ function cleanup_bbl_state {
 }
 
 function vault_login {
-  token="$( VAULT_FORMAT="json" vault write auth/approle/login role_id="$ROLE_ID" secret_id="$SECRET_ID" | \
+  token="$( vault write auth/approle/login role_id="$ROLE_ID" secret_id="$SECRET_ID" | \
             jq --raw-output .auth.client_token )"
 
   vault login "$token"
