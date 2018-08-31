@@ -11,8 +11,14 @@ eval "$GET_CREDENTIALS_HOOK"
 kubectl get namespaces --output json | \
   jq --raw-output .items[].metadata.name | \
   while read ns; do
-    kubectl --namespace "$ns" delete all --all --cascade --now
+    if [ "$ns" = "kube-system" ] || [ "$ns" = "default" ]; then
+        continue
+    fi
+    kubectl --namespace "$ns" delete all --all --cascade --now || true
   done
+
+kubectl --namespace default delete all --all --cascade --now || true
+kubectl --namespace kube-system delete all --all --cascade --now || true
 
 echo waiting for delete requests to complete
 iterations=0
