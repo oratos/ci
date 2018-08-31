@@ -5,8 +5,6 @@ set -Eeo pipefail; [ -n "$DEBUG" ] && set -x; set -u
 function cfcr_env_download-bbl-state {
     mkdir -p "$BBL_STATE_DIR"
     pushd "$BBL_STATE_DIR" > /dev/null
-        vault_login
-
         vault read -format json "$vault_path" \
             | jq --join-output .data.tarball \
             | base64 --decode \
@@ -31,13 +29,6 @@ function cleanup_bbl_state {
     echo "removing bbl state"
     rm -r "$BBL_STATE_DIR"
     exit 1
-}
-
-function vault_login {
-  token="$( vault write auth/approle/login role_id="$ROLE_ID" secret_id="$SECRET_ID" | \
-            jq --raw-output .auth.client_token )"
-
-  vault login "$token"
 }
 
 function cfcr_env_get-credentials {
