@@ -17,27 +17,5 @@ kubectl get namespaces --output json | \
     kubectl --namespace "$ns" delete all --all --cascade --now || true
   done
 
-kubectl --namespace default delete all --all --cascade --now || true
 kubectl --namespace kube-system delete all --all --cascade --now || true
-
-echo waiting for delete requests to complete
-iterations=0
-while true; do
-  if [ "$iterations" -gt 15 ]; then
-    echo "Polled too many times, failing"
-    exit 1
-  fi
-  echo -n .
-  count="$(
-    kubectl get all --all-namespaces --output json | \
-      jq --raw-output '.items | length'
-  )"
-  if [ -n "$count" ]; then
-    # kubernetes service might get recreated, thus 2
-    if ! [[ "$count" =~ '^[0-9]+$' ]] || [ "$count" -lt 2 ]; then
-      break
-    fi
-  fi
-  sleep 5
-  iterations+=1
-done
+kubectl --namespace default delete all --all --cascade --now || true
