@@ -79,6 +79,7 @@ resources:
   type: bosh-io-release
   source:
     repository: cloudfoundry-incubator/kubo-release
+    branch: v0.19.0
 
 - name: cf-deployment-concourse-tasks
   type: git
@@ -149,7 +150,6 @@ jobs:
     - get: kubo-deployment
       trigger: true
     - get: kubo-release-bosh-io
-      version: { version: "0.20.0" }
       trigger: true
   - aggregate:
     - task: upload-release
@@ -359,9 +359,6 @@ jobs:
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bikepark-bbl-state \
             oratos-ci/scripts/cfcr.sh bikepark get-credentials
-      VAULT_ADDR: https://vault.oratos.ci.cf-app.com
-      ROLE_ID: ((vault.role_id))
-      SECRET_ID: ((vault.secret_id))
   - task: cfcr-deployment-destroy
     file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
     input_mapping:
