@@ -273,6 +273,9 @@ jobs:
               path: /variables/name=~1dns_api_server_tls
             - type: remove
               path: /variables/name=~1dns_api_client_tls
+            - type: replace
+              path: /releases/name=kubo/version
+              value: 0.19.0
             EOF
             bosh interpolate kubo-deployment/manifests/cfcr.yml \
               --ops-file ops.yml \
