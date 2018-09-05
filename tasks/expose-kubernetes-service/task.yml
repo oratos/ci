@@ -8,7 +8,7 @@ image_resource:
 
 inputs:
 - name: oratos-ci   # - This repo
-- name: kube-config
+- name: bbl-state
 outputs:
 - name: lb-ip
 
@@ -16,6 +16,10 @@ run:
   path: oratos-ci/tasks/expose-kubernetes-service/task
 
 params:
+  # - Required
+  # - Code to run to setup kubectl to point to the cluster.
+  GET_CREDENTIALS_HOOK:
+
   # - Optional
   # - Set to true to output all commands that are ran.
   DEBUG:

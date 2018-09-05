@@ -1,8 +1,12 @@
 #!/bin/bash
 set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
 
-mkdir -p $HOME/.kube
-cp kube-config/config $HOME/.kube/config
+if [ -z "$GET_CREDENTIALS_HOOK" ]; then
+  echo GET_CREDENTIALS_HOOK must be set
+  exit 1
+fi
+
+eval "$GET_CREDENTIALS_HOOK"
 
 kubectl patch service kubernetes \
     --namespace default \
