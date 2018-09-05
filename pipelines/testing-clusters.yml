@@ -272,113 +272,21 @@ jobs:
     params:
       DEPLOYMENT_NAME: cfcr
       ERRAND_NAME: apply-addons
-  - task: setup-load-balancer-service
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: oratos/ci-base
-      inputs:
-      - name: kubo-deployment
-      - name: oratos-ci-testing-cfcr-bbl-state
-      - name: oratos-ci
-      outputs:
-      - name: lb-ip
-      params:
-        DEBUG:
-      run:
-        path: /bin/bash
-        args:
-        - "-c"
-        - |
-          #!/bin/bash
-          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
-
-          function cleanup {
-              set +e
-              killall -9 ssh > /dev/null 2>&1
-              killall -9 ssh-agent > /dev/null 2>&1
-          }
-          trap cleanup EXIT
-
-          BBL_STATE_DIR=oratos-ci-testing-cfcr-bbl-state \
-              oratos-ci/scripts/cfcr.sh testing get-credentials-tunnel
-
-          patch='{"spec": {"type": "LoadBalancer"}}'
-          kubectl patch service kubernetes \
-              --namespace default \
-              --patch "$patch" \
-              || true
-
-          count=1
-          echo -n "polling for lb ip address"
-          while true; do
-              echo -n .
-              ip="$(kubectl get service kubernetes \
-                      --namespace default \
-                      --output json \
-                      | jq .status.loadBalancer.ingress[0].ip --join-output)"
-              if [ "$ip" != "null" ] && [ "$ip" != "" ]; then
-                  break
-              fi
-              if [ "$count" -gt 30 ]; then
-                  echo "unable to get service lb ip address"
-                  exit 1
-              fi
-              sleep 5
-              ((count++))
-          done
-          echo "$ip" > lb-ip/ip
+  - task: cfcr-bbl-state-to-kube-config
+    file: oratos-ci/tasks/cfcr-bbl-state-to-kube-config/task.yml
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+    params:
+      ENV: testing
+  - task: expose-kubernetes-service
+    file: oratos-ci/tasks/expose-kubernetes-service/task.yml
   - task: configure-dns
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: mesosphere/aws-cli
-      inputs:
-      - name: lb-ip
-      params:
-        AWS_ACCESS_KEY_ID: ((aws.dev_dns_access_key_id))
-        AWS_SECRET_ACCESS_KEY: ((aws.dev_dns_secret_access_key))
-        ENV_DNS_NAME: testing-cfcr.oratos.ci.cf-app.com.
-        DEBUG:
-      run:
-        path: /bin/sh
-        args:
-        - "-c"
-        - |
-          #!/bin/sh
-          set -euo pipefail; [ -n "$DEBUG" ] && set -x
-
-          ip="$(cat lb-ip/ip)"
-
-          cat > /tmp/payload <<EOF
-          {
-            "Comment": "update DNS record for cfcr cluster with load balancer ip",
-            "Changes": [
-              {
-                "Action": "UPSERT",
-                "ResourceRecordSet": {
-                  "Name": "$ENV_DNS_NAME",
-                  "Type": "A",
-                  "TTL": 60,
-                  "ResourceRecords": [
-                    {
-                      "Value": "$ip"
-                    }
-                  ]
-                }
-              }
-            ]
-          }
-          EOF
-          payload="$(cat /tmp/payload)"
-          aws route53 change-resource-record-sets \
-              --hosted-zone-id /hostedzone/Z15MCPBTYDBNBO \
-              --change-batch "$payload"
-
+    file: oratos-ci/tasks/expose-kubernetes-service/task.yml
+    params:
+      AWS_ACCESS_KEY_ID: ((aws.dev_dns_access_key_id))
+      AWS_SECRET_ACCESS_KEY: ((aws.dev_dns_secret_access_key))
+      ENV_DNS_NAME: testing-cfcr.oratos.ci.cf-app.com.
+      DEBUG:
 - name: oratos-ci-testing-cfcr-destroy
   serial_groups:
   - oratos-ci-testing-cfcr-lifecycle

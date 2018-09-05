@@ -1,0 +1,21 @@
+---
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: oratos/ci-base
+
+inputs:
+- name: oratos-ci   # - This repo
+- name: kube-config
+outputs:
+- name: lb-ip
+
+run:
+  path: oratos-ci/tasks/expose-kubernetes-service/task
+
+params:
+  # - Optional
+  # - Set to true to output all commands that are ran.
+  DEBUG:

@@ -1,0 +1,42 @@
+#!/bin/bash
+set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+    echo ENV_DNS_NAME is required.
+    exit 1
+fi
+if [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+    echo ENV_DNS_NAME is required.
+    exit 1
+fi
+if [ -z "$ENV_DNS_NAME" ]; then
+    echo ENV_DNS_NAME is required.
+    exit 1
+fi
+
+ip="$(cat lb-ip/ip)"
+
+cat > /tmp/payload <<EOF
+{
+  "Comment": "update DNS record for cfcr cluster with load balancer ip",
+  "Changes": [
+    {
+      "Action": "UPSERT",
+      "ResourceRecordSet": {
+        "Name": "$ENV_DNS_NAME",
+        "Type": "A",
+        "TTL": 60,
+        "ResourceRecords": [
+          {
+            "Value": "$ip"
+          }
+        ]
+      }
+    }
+  ]
+}
+EOF
+payload="$(cat /tmp/payload)"
+aws route53 change-resource-record-sets \
+    --hosted-zone-id /hostedzone/Z15MCPBTYDBNBO \
+    --change-batch "$payload"
