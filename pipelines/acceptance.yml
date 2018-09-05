@@ -316,8 +316,6 @@ jobs:
         trap cleanup EXIT
         BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh bikepark get-credentials-tunnel
-  - task: expose-kubernetes-service
-    file: oratos-ci/tasks/expose-kubernetes-service/task.yml
   - task: configure-dev-dns-zone
     file: oratos-ci/tasks/configure-dev-dns-zone/task.yml
     params:
