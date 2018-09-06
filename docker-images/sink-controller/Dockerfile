@@ -1,6 +1,12 @@
 FROM golang:latest as builder
 
-COPY / /go/
+COPY / /home
+
+WORKDIR /home
+
+RUN go version
+
+RUN go mod download
 
 ENV GOOS=linux \
     GOARCH=amd64 \
@@ -10,7 +16,8 @@ RUN go build \
     -a \
     -installsuffix nocgo \
     -o /sink-controller \
-    github.com/pivotal-cf/namespace-drain/cmd
+    -mod=readonly \
+    cmd/main.go
 
 FROM alpine:latest
 
