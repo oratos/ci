@@ -1,4 +1,4 @@
-FROM golang:latest as builder
+FROM golang:1.11 as builder
 
 COPY / /home
 
