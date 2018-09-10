@@ -1,6 +1,12 @@
 FROM golang:latest as builder
 
-COPY / /go/
+COPY / /home
+
+WORKDIR /home
+
+RUN go version
+
+RUN go mod download
 
 ENV GOOS=linux \
     GOARCH=amd64
@@ -10,7 +16,8 @@ RUN go build \
     -installsuffix fluent \
     -buildmode c-shared \
     -o /out_syslog.so \
-    github.com/pivotal-cf/fluent-bit-out-syslog/cmd
+    -mod=readonly \
+    cmd/main.go
 
 FROM fluent/fluent-bit:0.13.4
 
