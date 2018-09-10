@@ -56,13 +56,9 @@ jobs:
     - get: oratos-ci
   - aggregate:
     - task: run-linter
-      file: oratos-ci/tasks/golangci-lint/task.yml
+      file: oratos-ci/tasks/golangci-lint-modules/task.yml
       input_mapping:
         source-repo: out-syslog
-      params:
-        IMPORT_PATH: github.com/pivotal-cf/fluent-bit-out-syslog
-        PKGS_HOOK: |
-          go list ./... | grep -v vendor | sed 's|github.com/pivotal-cf/fluent-bit-out-syslog/||'
       on_failure:
         put: slack-alert
         params:

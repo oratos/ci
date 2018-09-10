@@ -1,0 +1,11 @@
+#!/bin/bash
+set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+mkdir -p ~/.ssh/
+ssh-keyscan github.com >> ~/.ssh/known_hosts 2> /dev/null
+
+pushd source-repo > /dev/null
+  go mod download
+  # TODO: remove disable typecheck and megacheck once they support modules
+  golangci-lint run --deadline 20m --enable-all -D typecheck -D megacheck ./...
+popd > /dev/null
