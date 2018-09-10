@@ -74,56 +74,6 @@ jobs:
         source-repo: out-syslog
       params:
         IMPORT_PATH: github.com/pivotal-cf/fluent-bit-out-syslog
-        PRE_TEST_HOOK: |
-          # Note: this was copied from the docker-image-resource
-          # https://github.com/concourse/docker-image-resource/blob/c725c6277ca2820016de1bfe2bdfabaad5fd5879/assets/common.sh#L4
-          sanitize_cgroups() {
-            mkdir -p /sys/fs/cgroup
-            mountpoint -q /sys/fs/cgroup || \
-              mount -t tmpfs -o uid=0,gid=0,mode=0755 cgroup /sys/fs/cgroup
-
-            mount -o remount,rw /sys/fs/cgroup
-
-            sed -e 1d /proc/cgroups | while read sys hierarchy num enabled; do
-              if [ "$enabled" != "1" ]; then
-                # subsystem disabled; skip
-                continue
-              fi
-
-              grouping="$(cat /proc/self/cgroup | cut -d: -f2 | grep "\\<$sys\\>")" || true
-              if [ -z "$grouping" ]; then
-                # subsystem not mounted anywhere; mount it on its own
-                grouping="$sys"
-              fi
-
-              mountpoint="/sys/fs/cgroup/$grouping"
-
-              mkdir -p "$mountpoint"
-
-              # clear out existing mount to make sure new one is read-write
-              if mountpoint -q "$mountpoint"; then
-                umount "$mountpoint"
-              fi
-
-              mount -n -t cgroup -o "$grouping" cgroup "$mountpoint"
-
-              if [ "$grouping" != "$sys" ]; then
-                if [ -L "/sys/fs/cgroup/$sys" ]; then
-                  rm "/sys/fs/cgroup/$sys"
-                fi
-
-                ln -s "$mountpoint" "/sys/fs/cgroup/$sys"
-              fi
-            done
-
-            if ! test -e /sys/fs/cgroup/systemd ; then
-              mkdir /sys/fs/cgroup/systemd
-              mount -t cgroup -o none,name=systemd none /sys/fs/cgroup/systemd
-            fi
-          }
-          sanitize_cgroups
-          service docker start
-        POST_TEST_HOOK: service docker stop
       on_failure:
         put: slack-alert
         params:
@@ -142,13 +92,11 @@ jobs:
     - get: oratos-ci
   - aggregate:
     - task: prepare-build
-      file: oratos-ci/tasks/build-go-docker-image/task.yml
+      file: oratos-ci/tasks/build-go-modules-docker-image/task.yml
       input_mapping:
-        context-repo: out-syslog-dockerfile
         source-repo: out-syslog
       params:
-        CONTEXT_PATH: docker-images/fluent-bit-out-syslog
-        BASE_PACKAGE: github.com/pivotal-cf/fluent-bit-out-syslog
+        DOCKERFILE: oratos-ci/docker-images/fluent-bit-out-syslog/Dockerfile
     - task: write-promote-tag
       config:
         platform: linux

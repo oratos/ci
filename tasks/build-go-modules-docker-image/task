@@ -1,0 +1,16 @@
+#!/bin/bash
+set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+# record ci root for later use
+ciroot="$PWD"
+
+# compute sha for tagging the docker image
+sha="$(cd source-repo && git rev-parse @)"
+
+# copy over build context and tag
+mkdir -p "$ciroot/build-image/build"
+cp -r source-repo/. "$ciroot/build-image/build/"
+if [ -n "$DOCKERFILE" ]; then
+    cp "$DOCKERFILE" "$ciroot/build-image/build/"
+fi
+echo "$sha" > "$ciroot/build-image/tag"
