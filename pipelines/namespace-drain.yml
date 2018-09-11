@@ -371,8 +371,12 @@ jobs:
   serial: true
   plan:
   - aggregate:
-    - get: sink-controller-image
+    - get: namespace-drain
       trigger: true
+      passed:
+      - cfcr-tests
+      - gke-tests
+    - get: sink-controller-image
       passed:
       - cfcr-tests
       - gke-tests
