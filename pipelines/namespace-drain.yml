@@ -425,11 +425,11 @@ jobs:
           repository: oratos/ci-base
       params:
         # namespace drain
-        GIT_REF: 00cbef49ed63ae44147b21d45116590311645342 # ref to use to build the release
-        VERSION: v0.4 # version of the release
+        GIT_REF: e10036ca18fae84da0c60f52b3a381da9b1bdb02 # ref to use to build the release
+        VERSION: v0.5 # version of the release
 
         # fluent bit
-        FLUENT_BIT_OUT_SYSLOG_VERSION: v0.3 # version of the fluent-bit image to use
+        FLUENT_BIT_OUT_SYSLOG_VERSION: v0.4 # version of the fluent-bit image to use
 
         DOCKERHUB_USERNAME: ((docker-hub.username))
         DOCKERHUB_PASSWORD: ((docker-hub.password))
