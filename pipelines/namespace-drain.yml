@@ -118,13 +118,9 @@ jobs:
     - get: oratos-ci
   - aggregate:
     - task: run-linter
-      file: oratos-ci/tasks/golangci-lint/task.yml
+      file: oratos-ci/tasks/golangci-lint-modules/task.yml
       input_mapping:
         source-repo: namespace-drain
-      params:
-        IMPORT_PATH: github.com/pivotal-cf/namespace-drain
-        PKGS_HOOK: |
-          go list ./... | grep -v vendor | grep -v pkg/client | sed 's|github.com/pivotal-cf/namespace-drain/||'
       on_failure:
         put: slack-alert
         params:
