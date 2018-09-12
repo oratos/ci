@@ -1,3 +1,22 @@
+release_params: &release_params
+  # This is the git SHA for the sink-controller that you intend to release.
+  # This SHA needs to be a tag on the docker image on dockerhub here:
+  #   https://hub.docker.com/r/oratos/sink-controller/tags/
+  GIT_REF: e10036ca18fae84da0c60f52b3a381da9b1bdb02
+
+  # This is the version that you intend to release. This will be pushed as a
+  # git tag to:
+  #   https://github.com/pivotal-cf/namespace-drain/releases
+  # This will also be pushed as a tagged docker image to:
+  #   https://hub.docker.com/r/oratos/sink-controller/tags/
+  VERSION: &release_params_version v0.5
+
+  # This is the version of the fluent-bit-out-syslog image to be included in
+  # this release. This version needs to be a tag on the docker image on
+  # dockerhhub here:
+  #   https://hub.docker.com/r/oratos/fluent-bit-out-syslog/tags/
+  FLUENT_BIT_OUT_SYSLOG_VERSION: v0.4 # version of the fluent-bit image to use
+
 groups:
 - name: main
   jobs:
@@ -60,14 +79,6 @@ resources:
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
-- name: blob-release-image
-  type: docker-image
-  source:
-    repository: oratos/sink-controller
-    username: ((docker-hub.username))
-    password: ((docker-hub.password))
-    tag: v0.4
-
 - name: slack-alert
   type: slack-notification
   source:
@@ -109,6 +120,7 @@ resources:
     bucket: oratos-team-test-tile
     json_key: ((pks-releng.gcp-json))
     regexp: releases/*.tgz
+
 jobs:
 - name: unit-tests
   plan:
@@ -424,13 +436,7 @@ jobs:
         source:
           repository: oratos/ci-base
       params:
-        # namespace drain
-        GIT_REF: e10036ca18fae84da0c60f52b3a381da9b1bdb02 # ref to use to build the release
-        VERSION: v0.5 # version of the release
-
-        # fluent bit
-        FLUENT_BIT_OUT_SYSLOG_VERSION: v0.4 # version of the fluent-bit image to use
-
+        <<: *release_params
         DOCKERHUB_USERNAME: ((docker-hub.username))
         DOCKERHUB_PASSWORD: ((docker-hub.password))
         GITHUB_PRIVATE_KEY: ((github.oratos-bot-private-key))
@@ -573,14 +579,20 @@ jobs:
               --password-stdin
           [ -n "$DEBUG" ] && set -x
 
+          sc_docker_name="oratos/sink-controller:$VERSION"
+          fb_docker_name="oratos/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION"
+
           docker pull "oratos/sink-controller:$GIT_REF"
           docker tag "oratos/sink-controller:$GIT_REF" \
-            "oratos/sink-controller:$VERSION"
+            "$sc_docker_name"
           docker tag "oratos/sink-controller:$GIT_REF" \
             "oratos/sink-controller:latest"
-          docker push "oratos/sink-controller:$VERSION"
+          docker push "$sc_docker_name"
           docker push "oratos/sink-controller:latest"
 
+          docker pull "$fb_docker_name"
+          docker save "$sc_docker_name" | gzip > "github-release/oratos_sink-controller:$VERSION.tgz"
+          docker save "$fb_docker_name" | gzip > "github-release/oratos_fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION.tgz"
 
           pushd namespace-drain > /dev/null
             git push origin --tags
@@ -593,22 +605,21 @@ jobs:
 
       globs:
       - github-release/manifest.yml
+      - github-release/*.tgz
 
 - name: update-bosh-release
   plan:
-  - get: sink-controller-image
+  - get: namespace-drain-release
     trigger: true
     passed:
     - release
-  - get: oratos-ci
+    version:
+      tag: *release_params_version
   - get: sink-resources-release
-  - get: blob-release-image
-    params:
-      save: true
+  - get: oratos-ci
   - task: update-bosh-release
     file: oratos-ci/tasks/update-bosh-release/task.yml
     params:
-      BLOB_NAME: oratos_sink-controller
       PRIVATE_YML: ((release.private_yml))
   - put: pks-releng-release-bucket
     params:

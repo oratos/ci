@@ -4,9 +4,9 @@ image_resource:
   source:
     repository: oratos/ci-base
 inputs:
-- name: oratos-ci
 - name: sink-resources-release
-- name: blob-release-image
+- name: oratos-ci
+- name: namespace-drain-release
 outputs:
 - name: bosh-release
 - name: put-sink-resources-release
@@ -14,10 +14,6 @@ params:
   # - Required
   # - The private yaml file required to access the release blob store
   PRIVATE_YML:
-
-  # - Required
-  # - The blob name of the release resource to update
-  BLOB_NAME:
 
   # - Optional
   # - Set to true to output all commands that are ran.

@@ -1,10 +1,6 @@
 #!/bin/bash
 set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
 
-# tar docker image
-blob_name=${BLOB_NAME?"BLOB_NAME must be given"}
-tag=$(cat "blob-release-image/tag")
-output_file="${blob_name}:${tag}.tgz"
 release_file="sink-resources-release.tgz"
 
 git clone sink-resources-release put-sink-resources-release
@@ -13,17 +9,18 @@ pushd put-sink-resources-release
 
   bosh sync-blobs
 
-  echo "Clean old blobs with pattern of ${blob_name}"
-  for b in $(bosh blobs --column="Path" | grep "$blob_name"); do
+  echo "Clean old blobs"
+  for b in $(bosh blobs --column="Path"); do
     echo "bosh remove-blob $b"
     bosh remove-blob "$b"
   done
-  ls -alh ../blob-release-image/image
-  gzip -c ../blob-release-image/image > "${output_file}"
 
   echo "Begin blob management"
-  bosh add-blob "${output_file}" "container-images/${output_file}"
-  rm "${output_file}"
+  for file in ../namespace-drain-release/*.tgz; do
+    file_name=${file##*/}
+    bosh add-blob "${file}" "container-images/${file_name}"
+  done
+
   bosh upload-blobs
 
   echo "Create final release"
@@ -39,7 +36,7 @@ pushd put-sink-resources-release
   mv "${release_file}" "../bosh-release/binaries/sink-resources-release-${version}.tgz"
 
   git add .
-  git commit -m"CI bump sink resource release to ${version} for ${blob_name}"
+  git commit -m"CI bump sink resource release to ${version}"
 popd
 
 echo "$version" > bosh-release/name
