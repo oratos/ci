@@ -2,6 +2,7 @@ package tcpserver_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -15,35 +16,13 @@ import (
 )
 
 var _ = Describe("Tcpserver", func() {
-	It("shuts down the servers on Close()", func() {
-		s := tcpserver.New("something", "6061")
-		go s.Start()
-
-		_, err := net.Dial("tcp4", s.URL())
-		Expect(err).ToNot(HaveOccurred())
-
-		_, err = http.Get("http://localhost:6060/metrics")
-		Expect(err).ToNot(HaveOccurred())
-
-		s.Close()
-
-		_, err = net.Dial("tcp4", s.URL())
-		Expect(err).To(HaveOccurred())
-
-		_, err = http.Get("http://localhost:6060/metrics")
-		Expect(err).To(HaveOccurred())
-	})
-
-	It("counts the messages with matching namespace in expected count", func() {
-		s := tcpserver.New("namespace-a", "6061")
-		go s.Start()
+	It("counts messages by the namespace in structured data", func() {
+		s := tcpserver.New(":0", ":0")
 		defer s.Close()
 
-		writer, err := net.Dial("tcp4", s.URL())
+		writer, err := net.Dial("tcp", s.SyslogAddr())
 		Expect(err).ToNot(HaveOccurred())
-		defer func() {
-			writer.Close()
-		}()
+		defer writer.Close()
 
 		rfcLog := rfc5424.Message{
 			Priority:  rfc5424.Emergency,
@@ -53,6 +32,17 @@ var _ = Describe("Tcpserver", func() {
 			ProcessID: "procID",
 			MessageID: "msgID",
 			Message:   []byte("this is a message for namespace-a"),
+			StructuredData: []rfc5424.StructuredData{
+				{
+					ID: "kubernetes@47450",
+					Parameters: []rfc5424.SDParam{
+						{
+							Name:  "namespace_name",
+							Value: "foo",
+						},
+					},
+				},
+			},
 		}
 
 		_, err = rfcLog.WriteTo(writer)
@@ -60,27 +50,17 @@ var _ = Describe("Tcpserver", func() {
 		_, err = rfcLog.WriteTo(writer)
 		Expect(err).ToNot(HaveOccurred())
 
-		resp, err := http.Get("http://localhost:6060/metrics")
-		Expect(err).ToNot(HaveOccurred())
+		c := readCounters(s.MetricsAddr())
 
-		bytes, err := ioutil.ReadAll(resp.Body)
-		Expect(err).ToNot(HaveOccurred())
-		defer resp.Body.Close()
-		c := syslogCounters{}
-
-		err = json.Unmarshal(bytes, &c)
-		Expect(err).ToNot(HaveOccurred())
-
-		Expect(c.Expected).To(Equal(2))
-		Expect(c.Unexpected).To(Equal(0))
+		Expect(c.Namespaced["foo"]).To(Equal(2))
+		Expect(c.Cluster).To(Equal(0))
 	})
 
 	It("counts messages with non-matching namespace in unexpected count", func() {
-		s := tcpserver.New("namespace-a", "6061")
-		go s.Start()
+		s := tcpserver.New(":0", ":0")
 		defer s.Close()
 
-		writer, err := net.Dial("tcp4", s.URL())
+		writer, err := net.Dial("tcp4", s.SyslogAddr())
 		Expect(err).ToNot(HaveOccurred())
 
 		rfcLog := rfc5424.Message{
@@ -98,7 +78,7 @@ var _ = Describe("Tcpserver", func() {
 		_, err = rfcLog.WriteTo(writer)
 		Expect(err).ToNot(HaveOccurred())
 
-		resp, err := http.Get("http://localhost:6060/metrics")
+		resp, err := http.Get(fmt.Sprintf("http://%s/metrics", s.MetricsAddr()))
 		Expect(err).ToNot(HaveOccurred())
 
 		bytes, err := ioutil.ReadAll(resp.Body)
@@ -109,12 +89,44 @@ var _ = Describe("Tcpserver", func() {
 		err = json.Unmarshal(bytes, &c)
 		Expect(err).ToNot(HaveOccurred())
 
-		Expect(c.Expected).To(Equal(0))
-		Expect(c.Unexpected).To(Equal(2))
+		Expect(c.Namespaced).To(BeEmpty())
+		Expect(c.Cluster).To(Equal(2))
+	})
+
+	It("shuts down the servers on Close()", func() {
+		s := tcpserver.New(":0", ":0")
+
+		_, err := net.Dial("tcp", s.SyslogAddr())
+		Expect(err).ToNot(HaveOccurred())
+
+		_, err = http.Get(fmt.Sprintf("http://%s/metrics", s.MetricsAddr()))
+		Expect(err).ToNot(HaveOccurred())
+
+		s.Close()
+
+		_, err = net.Dial("tcp", s.SyslogAddr())
+		Expect(err).To(HaveOccurred())
+
+		_, err = http.Get(fmt.Sprintf("http://%s/metrics", s.MetricsAddr()))
+		Expect(err).To(HaveOccurred())
 	})
 })
 
 type syslogCounters struct {
-	Expected   int `json:"expected"`
-	Unexpected int `json:"unexpected"`
+	Namespaced map[string]int `json:"namespaced"`
+	Cluster    int            `json:"cluster"`
+}
+
+func readCounters(addr string) syslogCounters {
+	resp, err := http.Get(fmt.Sprintf("http://%s/metrics", addr))
+	Expect(err).ToNot(HaveOccurred())
+
+	bytes, err := ioutil.ReadAll(resp.Body)
+	Expect(err).ToNot(HaveOccurred())
+	defer resp.Body.Close()
+
+	c := syslogCounters{}
+	err = json.Unmarshal(bytes, &c)
+	Expect(err).ToNot(HaveOccurred())
+	return c
 }

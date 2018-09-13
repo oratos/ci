@@ -1,18 +1,23 @@
-FROM golang:latest as builder
+FROM golang:1.11 as builder
 
-COPY / /go/
+WORKDIR /root
 
 ENV GOOS=linux \
     GOARCH=amd64 \
     CGO_ENABLED=0
 
-RUN go version
+COPY /go.mod /go.sum /root/
+
+RUN go version && \
+    go mod download
+
+COPY / /root/
 
 RUN go build \
     -a \
     -installsuffix nocgo \
     -o /syslog-receiver \
-    tools/syslog-receiver
+    -mod=readonly
 
 FROM alpine:latest
 

@@ -1,10 +1,8 @@
 package tcpserver
 
 import (
-	"bytes"
 	"expvar"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/http"
@@ -14,26 +12,45 @@ import (
 )
 
 var (
-	expectedMsgCount   *expvar.Int
-	unexpectedMsgCount *expvar.Int
+	namespacedCount *expvar.Map
+	clusterCount    *expvar.Int
 )
 
 func init() {
-	expectedMsgCount = expvar.NewInt("expected")
-	unexpectedMsgCount = expvar.NewInt("unexpected")
+	namespacedCount = expvar.NewMap("namespaced")
+	clusterCount = expvar.NewInt("cluster")
 }
 
 type tcpServer struct {
-	listener  net.Listener
-	metrics   http.Server
-	namespace string
+	syslogAddr      string
+	metricsAddr     string
+	syslogListener  net.Listener
+	metricsListener net.Listener
+	metricsServer   http.Server
 }
 
-func New(namespace, port string) *tcpServer {
-	expectedMsgCount.Set(0)
-	unexpectedMsgCount.Set(0)
+func New(syslogAddr, metricsAddr string) *tcpServer {
+	// clear these for tests
+	namespacedCount.Init()
+	clusterCount.Set(0)
+	ts := &tcpServer{
+		syslogAddr:  syslogAddr,
+		metricsAddr: metricsAddr,
+	}
+	ts.start()
+	return ts
+}
 
-	l, err := net.Listen("tcp4", fmt.Sprintf(":%s", port))
+func (t *tcpServer) start() {
+	log.Printf("Starting syslog server on: %s", t.syslogAddr)
+	var err error
+	t.syslogListener, err = net.Listen("tcp", t.syslogAddr)
+	if err != nil {
+		log.Fatal("failed to start up tcp server")
+	}
+
+	log.Printf("Starting metrics server on: %s", t.metricsAddr)
+	t.metricsListener, err = net.Listen("tcp", t.metricsAddr)
 	if err != nil {
 		log.Fatal("failed to start up tcp server")
 	}
@@ -41,45 +58,44 @@ func New(namespace, port string) *tcpServer {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", expvar.Handler())
 
-	s := http.Server{
-		Addr:         ":6060",
+	t.metricsServer = http.Server{
+		Addr:         t.metricsAddr,
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 
-	return &tcpServer{
-		listener:  l,
-		metrics:   s,
-		namespace: namespace,
-	}
-}
-
-func (t *tcpServer) Start() {
 	go func() {
-		log.Println("Starting metrics server on 6060")
-		t.metrics.ListenAndServe()
+		t.metricsServer.Serve(t.metricsListener)
 	}()
 
-	for {
-		conn, err := t.listener.Accept()
-		if err != nil {
-			log.Printf("Error accepting: %s", err)
-			continue
+	go func() {
+		for {
+			conn, err := t.syslogListener.Accept()
+			if err != nil {
+				return
+			}
+
+			go t.handle(conn)
 		}
-		log.Println("accepted connection")
+	}()
+}
 
-		go t.handle(conn)
+func (t *tcpServer) SyslogAddr() string {
+	return t.syslogListener.Addr().String()
+}
+
+func (t *tcpServer) MetricsAddr() string {
+	return t.metricsListener.Addr().String()
+}
+
+func (t *tcpServer) Close() error {
+	err1 := t.syslogListener.Close()
+	err2 := t.metricsServer.Close()
+	if err1 != nil || err2 != nil {
+		return fmt.Errorf("error in cleanup up servers: %s %s", err1, err2)
 	}
-}
-
-func (t *tcpServer) URL() string {
-	return t.listener.Addr().String()
-}
-
-func (t *tcpServer) Close() {
-	t.listener.Close()
-	t.metrics.Close()
+	return nil
 }
 
 func (t *tcpServer) handle(conn net.Conn) {
@@ -89,17 +105,24 @@ func (t *tcpServer) handle(conn net.Conn) {
 	for {
 		_, err := msg.ReadFrom(conn)
 		if err != nil {
-			if err == io.EOF {
-				return
-			}
-			log.Printf("ReadFrom err: %s", err)
 			return
 		}
 
-		if bytes.Contains(msg.Message, []byte(t.namespace)) {
-			expectedMsgCount.Add(1)
-		} else {
-			unexpectedMsgCount.Add(1)
+		countMessage(msg)
+	}
+}
+
+func countMessage(msg rfc5424.Message) {
+	for _, sd := range msg.StructuredData {
+		if sd.ID == "kubernetes@47450" {
+			for _, param := range sd.Parameters {
+				if param.Name == "namespace_name" {
+					namespacedCount.Add(param.Value, 1)
+					return
+				}
+			}
 		}
 	}
+
+	clusterCount.Add(1)
 }
