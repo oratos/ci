@@ -1,7 +1,7 @@
 module github.com/pivotal-cf/oratos-ci/tools/syslog-receiver
 
 require (
-	code.cloudfoundry.org/rfc5424 v0.0.0-20170822183049-769e2ed6887e
+	code.cloudfoundry.org/rfc5424 v0.0.0-20180905210152-236a6d29298a
 	github.com/fsnotify/fsnotify v1.4.7 // indirect
 	github.com/golang/protobuf v1.2.0 // indirect
 	github.com/hpcloud/tail v1.0.0 // indirect

@@ -24,6 +24,7 @@ func init() {
 type tcpServer struct {
 	syslogAddr      string
 	metricsAddr     string
+	handleMsg       func(rfc5424.Message)
 	syslogListener  net.Listener
 	metricsListener net.Listener
 	metricsServer   http.Server
@@ -36,7 +37,9 @@ func New(syslogAddr, metricsAddr string) *tcpServer {
 	ts := &tcpServer{
 		syslogAddr:  syslogAddr,
 		metricsAddr: metricsAddr,
+		handleMsg:   countMessage,
 	}
+
 	ts.start()
 	return ts
 }
@@ -108,7 +111,7 @@ func (t *tcpServer) handle(conn net.Conn) {
 			return
 		}
 
-		countMessage(msg)
+		t.handleMsg(msg)
 	}
 }
 
