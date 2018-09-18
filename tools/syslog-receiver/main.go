@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net"
 	"os"
 	"os/signal"
 
@@ -9,13 +10,17 @@ import (
 )
 
 func main() {
-	p := os.Getenv("PORT")
+	syslogPort := os.Getenv("SYSLOG_PORT")
+	metricsPort := os.Getenv("METRICS_PORT")
 
-	if len(p) == 0 {
-		log.Fatal("PORT is required")
+	if len(syslogPort) == 0 || len(metricsPort) == 0 {
+		log.Fatal("SYSLOG_PORT and METRICS_PORT are required")
 	}
 
-	server := tcpserver.New(p)
+	server := tcpserver.New(
+		net.JoinHostPort("", syslogPort),
+		net.JoinHostPort("", metricsPort),
+	)
 	defer server.Close()
 
 	c := make(chan os.Signal, 1)
