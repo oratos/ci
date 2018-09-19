@@ -32,6 +32,74 @@ function login_to_cluster_as_admin {
     eval "$GET_CREDENTIALS_HOOK"
 }
 
+function apply_syslog_receiver {
+    local namespace=${1?}
+    echo "
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: syslog-receiver-$namespace
+  namespace: default
+  labels:
+    app: syslog-receiver-$namespace
+spec:
+  containers:
+  - name: syslog-receiver
+    image: oratos/syslog-receiver:latest
+    imagePullPolicy: Always
+    env:
+    - name: SYSLOG_PORT
+      value: \"8080\"
+    - name: METRICS_PORT
+      value: \"6061\"
+    ports:
+    - name: syslog
+      containerPort: 8080
+    - name: metrics
+      containerPort: 6061
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: syslog-receiver-$namespace
+  namespace: default
+spec:
+  selector:
+    app: syslog-receiver-$namespace
+  ports:
+  - protocol: TCP
+    port: 8080
+" | kubectl apply --filename -
+}
+
+function apply_emitter {
+    local namespace=${1?}
+    local count=${2?}
+    echo "
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: emitter
+  namespace: $namespace
+spec:
+  template:
+    spec:
+      containers:
+      - name: syslog-receiver
+        image: ubuntu:latest
+        command:
+        - bash
+        - -c
+        - |
+          for i in {1..$count}; do
+            echo \"log \$i line for $namespace\"
+          done
+        imagePullPolicy: Always
+      restartPolicy: Never
+" | kubectl apply --filename -
+}
+
 function apply_roles {
     echo "
 apiVersion: v1
@@ -118,6 +186,11 @@ function apply_crd {
 
 function cleanup {
     set +e
+    kubectl --namespace default delete pod syslog-receiver-crosstalk-ns-a > /dev/null 2>&1
+    kubectl --namespace default delete pod syslog-receiver-crosstalk-ns-b > /dev/null 2>&1
+    kubectl --namespace default delete pod syslog-receiver-cluster > /dev/null 2>&1
+
+
     kubectl delete namespace crosstalk-ns-a --cascade > /dev/null 2>&1
     kubectl delete namespace crosstalk-ns-b --cascade > /dev/null 2>&1
 
@@ -125,6 +198,15 @@ function cleanup {
         kubectl delete --filename \
             namespace-drain/manifests/00-crds/sink.yml > /dev/null 2>&1
     fi
+
+    kubectl --namespace default delete service syslog-receiver-crosstalk-ns-a > /dev/null 2>&1
+    kubectl --namespace default delete service syslog-receiver-crosstalk-ns-b > /dev/null 2>&1
+    kubectl --namespace default delete service syslog-receiver-cluster > /dev/null 2>&1
+
+    kubectl delete clustersink crosstalk-cluster-sink > /dev/null 2>&1
+
+    # Clean up port forwarding
+    killall -9 kubectl > /dev/null 2>&1
 }
 
 function setup_contexts {
@@ -160,7 +242,7 @@ function setup_contexts {
         --user naomi-b
 }
 
-function crosstalk_test {
+function test_sink_authorization {
     sink="
 apiVersion: apps.pivotal.io/v1beta1
 kind: Sink
@@ -168,14 +250,14 @@ metadata:
   name: crosstalk-test-sink
 spec:
   type: syslog
-  host: example.com
-  port: 12345
+  host: localhost
+  port: 8080
 "
 
     echo
-    echo "================="
-    echo "= STARTING TEST ="
-    echo "================="
+    echo "==============================="
+    echo "= STARTING AUTHORIZATION TEST ="
+    echo "==============================="
     echo
     set +e
 
@@ -184,15 +266,19 @@ spec:
         kubectl apply \
             --context naomi-a \
             --namespace crosstalk-ns-a \
-            --filename -
+            --filename - > /dev/null 2>&1
     assert_success $?
+    kubectl delete \
+        --context naomi-a \
+        --namespace crosstalk-ns-a \
+        sink crosstalk-test-sink > /dev/null 2>&1
 
     echo "testing naomi-a can write to ns-b"
     echo "$sink" | \
         kubectl apply \
             --context naomi-a \
             --namespace crosstalk-ns-b \
-            --filename -
+            --filename - > /dev/null 2>&1
     assert_fail $?
 
     echo "testing naomi-b can write to ns-a"
@@ -200,7 +286,7 @@ spec:
         kubectl apply \
             --context naomi-b \
             --namespace crosstalk-ns-a \
-            --filename -
+            --filename - > /dev/null 2>&1
     assert_fail $?
 
     echo "testing naomi-b can write to ns-b"
@@ -208,13 +294,18 @@ spec:
         kubectl apply \
             --context naomi-b \
             --namespace crosstalk-ns-b \
-            --filename -
+            --filename - > /dev/null 2>&1
     assert_success $?
+    kubectl delete \
+        --context naomi-b \
+        --namespace crosstalk-ns-b \
+        sink crosstalk-test-sink > /dev/null 2>&1
     set -e
+
     echo
-    echo "================="
-    echo "= TEST COMPLETE ="
-    echo "================="
+    echo "==============================="
+    echo "= AUTHORIZATION TEST COMPLETE ="
+    echo "==============================="
     echo
 }
 
@@ -232,14 +323,189 @@ function assert_fail {
     fi
 }
 
+function apply_receivers {
+    apply_syslog_receiver crosstalk-ns-a
+    apply_syslog_receiver crosstalk-ns-b
+    apply_syslog_receiver cluster
+}
+
+function apply_emitters {
+    apply_emitter crosstalk-ns-a 7
+    apply_emitter crosstalk-ns-b 12
+}
+
+function apply_sinks {
+    apply_namespace_sink crosstalk-ns-a
+    apply_namespace_sink crosstalk-ns-b
+    apply_cluster_sink
+}
+
+function apply_namespace_sink {
+    local namespace=${1?}
+
+    echo "
+apiVersion: apps.pivotal.io/v1beta1
+kind: Sink
+metadata:
+  name: crosstalk-sink
+  namespace: $namespace
+spec:
+  type: syslog
+  host: syslog-receiver-$namespace.default.svc.cluster.local
+  port: 8080
+" | kubectl apply --filename -
+}
+
+function apply_cluster_sink {
+    echo "
+apiVersion: apps.pivotal.io/v1beta1
+kind: ClusterSink
+metadata:
+  name: crosstalk-cluster-sink
+spec:
+  type: syslog
+  host: syslog-receiver-cluster.default.svc.cluster.local
+  port: 8080
+" | kubectl apply --filename -
+}
+
+function setup_tunnels {
+    kubectl --namespace default port-forward syslog-receiver-crosstalk-ns-a 6062:6061 > /dev/null 2>&1 &
+    kubectl --namespace default port-forward syslog-receiver-crosstalk-ns-b 6063:6061 > /dev/null 2>&1 &
+    kubectl --namespace default port-forward syslog-receiver-cluster 6064:6061 > /dev/null 2>&1 &
+}
+
+function check_result_cnt {
+    local expected=${1?}
+    local result=${2?}
+    local msg=${3?}
+
+    if [ "$result" = "null" ]; then
+       result="0"
+    fi
+
+    if [ "$result" != "$expected" ]; then
+        echo "$msg, but was $result"
+        exit 1
+    fi
+}
+
+function assert_metrics {
+    local result
+
+    echo
+    echo "========================="
+    echo "= STARTING MESSAGE TEST ="
+    echo "========================="
+    echo
+
+    ns_a_result="$(curl -s http://localhost:6062/metrics)"
+    echo "ns-a-receiver:"
+    echo -n "  crosstalk-ns-a: "
+    echo "$ns_a_result" | jq '.namespaced["crosstalk-ns-a"]' --raw-output
+    echo -n "  crosstalk-ns-b: "
+    echo "$ns_a_result" | jq '.namespaced["crosstalk-ns-b"]' --raw-output
+    echo -n "  cluster: "
+    echo "$ns_a_result" | jq '.cluster' --raw-output
+
+    ns_b_result="$(curl -s http://localhost:6063/metrics)"
+    echo "ns-b-receiver:"
+    echo -n "  crosstalk-ns-a: "
+    echo "$ns_b_result" | jq '.namespaced["crosstalk-ns-a"]' --raw-output
+    echo -n "  crosstalk-ns-b: "
+    echo "$ns_b_result" | jq '.namespaced["crosstalk-ns-b"]' --raw-output
+    echo -n "  cluster: "
+    echo "$ns_b_result" | jq '.cluster' --raw-output
+
+    cluster_result="$(curl -s http://localhost:6064/metrics)"
+    echo "cluster-receiver:"
+    echo -n "  crosstalk-ns-a: "
+    echo "$cluster_result" | jq '.namespaced["crosstalk-ns-a"]' --raw-output
+    echo -n "  crosstalk-ns-b: "
+    echo "$cluster_result" | jq '.namespaced["crosstalk-ns-b"]' --raw-output
+    echo -n "  cluster: "
+    echo "$cluster_result" | jq '.cluster' --raw-output
+
+    expected="7"
+    result="$(echo "$ns_a_result" | jq '.namespaced["crosstalk-ns-a"]' --join-output)"
+    check_result_cnt "$expected" "$result" \
+        "Expected syslog-receiver-crosstalk-ns-a to have value $expected for crosstalk-ns-a"
+
+    expected="0"
+    result="$(echo "$ns_a_result" | jq '.namespace["crosstalk-ns-b"]' --join-output)"
+    check_result_cnt "$expected" "$result" \
+        "Expected syslog-receiver-crosstalk-ns-a to have value $expected for crosstalk-ns-b"
+
+    expected="0"
+    result="$(echo "$ns_a_result" | jq '.cluster' --join-output)"
+    check_result_cnt "$expected" "$result" \
+        "Expected syslog-receiver-crosstalk-ns-a to have value $expected for cluster"
+
+    expected="0"
+    result="$(echo "$ns_b_result" | jq '.namespaced["crosstalk-ns-a"]' --join-output)"
+    check_result_cnt "$expected" "$result" \
+        "Expected syslog-receiver-crosstalk-ns-b to have value $expected for crosstalk-ns-a"
+
+    expected="12"
+    result="$(echo "$ns_b_result" | jq '.namespaced["crosstalk-ns-b"]' --join-output)"
+    check_result_cnt "$expected" "$result" \
+        "Expected syslog-receiver-crosstalk-ns-b to have value $expected for crosstalk-ns-b"
+
+    expected="0"
+    result="$(echo "$ns_b_result" | jq '.cluster' --join-output)"
+    check_result_cnt "$expected" "$result" \
+        "Expected syslog-receiver-crosstalk-ns-l to have value $expected for cluster"
+
+    expected="7"
+    result="$(echo "$cluster_result" | jq '.namespaced["crosstalk-ns-a"]' --join-output)"
+    check_result_cnt "$expected" "$result" \
+        "Expected syslog-receiver-cluster to have value $expected for crosstalk-ns-a"
+
+    expected="12"
+    result="$(echo "$cluster_result" | jq '.namespaced["crosstalk-ns-b"]' --join-output)"
+    check_result_cnt "$expected" "$result" \
+        "Expected syslog-receiver-cluster to have value $expected for crosstalk-ns-b"
+
+    expected="0"
+    result="$(echo "$cluster_result" | jq '.cluster' --join-output)"
+    check_result_cnt "$expected" "$result" \
+        "Expected syslog-receiver-cluster to have value $expected for cluster"
+
+    echo
+    echo "========================="
+    echo "= MESSAGE TEST COMPLETE ="
+    echo "========================="
+    echo
+}
+
 function main {
     validate
     trap cleanup EXIT
     login_to_cluster_as_admin
+
     apply_roles
     apply_crd
     setup_contexts
 
-    crosstalk_test
+    test_sink_authorization
+
+    apply_receivers
+    apply_sinks
+
+    # TODO: This sleep gives the sinks time to get wired into fluent bit and
+    # allow messages to start receiving. This should be changed so that the
+    # system is primed and the the test immediately follows. This would
+    # prevent the test from always taking at least 150 seconds. In addition to
+    # waiting for the sinks, we are also waiting for the receivers to come up.
+    sleep 60
+
+    apply_emitters
+    setup_tunnels
+
+    # TODO: Similarly, this sleep can be removed and replaces with metric
+    # polling with a deadline.
+    sleep 60
+
+    assert_metrics
 }
 main
