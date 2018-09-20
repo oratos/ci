@@ -2,7 +2,7 @@
 set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
 
 # shellcheck disable=SC1091,SC1090
-source "$(dirname "$0")/common.sh"
+source oratos-ci/tasks/sink-crosstalk/common.sh
 
 function validate {
     ensure_variable_isset "$GET_CREDENTIALS_HOOK" "GET_CREDENTIALS_HOOK"
@@ -15,22 +15,26 @@ function validate {
 created_crd=1
 function apply_crd {
     kubectl apply --filename namespace-drain/manifests/00-crds/sink.yml
+    kubectl apply --filename namespace-drain/manifests/00-crds/cluster-sink.yml
     created_crd=$?
+}
+
+function show_status {
+    echo "outputs.conf in config map"
+    kubectl get cm fluent-bit -n oratos -o json | grep \"outputs.conf\"
 }
 
 function cleanup {
     set +e
+    show_status
+
+    print_section_msg  "STARTING CLEANUP ENV"
     kubectl --namespace default delete pod syslog-receiver-crosstalk-ns-a > /dev/null 2>&1
     kubectl --namespace default delete pod syslog-receiver-crosstalk-ns-b > /dev/null 2>&1
     kubectl --namespace default delete pod syslog-receiver-cluster > /dev/null 2>&1
 
     kubectl delete namespace crosstalk-ns-a --cascade > /dev/null 2>&1
     kubectl delete namespace crosstalk-ns-b --cascade > /dev/null 2>&1
-
-    if [ "$created_crd" -eq 0 ]; then
-        kubectl delete --filename \
-            namespace-drain/manifests/00-crds/sink.yml > /dev/null 2>&1
-    fi
 
     kubectl --namespace default delete service syslog-receiver-crosstalk-ns-a > /dev/null 2>&1
     kubectl --namespace default delete service syslog-receiver-crosstalk-ns-b > /dev/null 2>&1
@@ -255,25 +259,23 @@ function main {
     # system is primed and the the test immediately follows. This would
     # prevent the test from always taking at least 150 seconds. In addition to
     # waiting for the sinks, we are also waiting for the receivers to come up.
-##    retry_command "kubectl get pods -n default -l app=syslog-receiver-crosstalk-ns-a | grep Running" 60
-##    retry_command "kubectl get pods -n default -l app=syslog-receiver-crosstalk-ns-b | grep Running" 60
-##    retry_command "kubectl get pods -n default -l app=syslog-receiver-cluster | grep Running" 60
-##
-##    retry_command "kubectl get sinks -n crosstalk-ns-a | grep crosstalk-sink" 60
-##    retry_command "kubectl get sinks -n crosstalk-ns-b | grep crosstalk-sink" 60
-##    retry_command "kubectl get clustersinks | grep crosstalk-cluster-sink" 60
+    retry_command "kubectl get pods -n default -l app=syslog-receiver-crosstalk-ns-a | grep Running" 60
+    retry_command "kubectl get pods -n default -l app=syslog-receiver-crosstalk-ns-b | grep Running" 60
+    retry_command "kubectl get pods -n default -l app=syslog-receiver-cluster | grep Running" 60
 
-    sleep 60
+    retry_command "kubectl get sinks -n crosstalk-ns-a | grep crosstalk-sink" 60
+    retry_command "kubectl get sinks -n crosstalk-ns-b | grep crosstalk-sink" 60
+    retry_command "kubectl get clustersinks | grep crosstalk-cluster-sink" 60
 
     apply_emitters
     setup_tunnels
 
-    sleep 60
     # Wait for retry
-##    retry_command "curl -I http://localhost:6062/metrics | grep '200 OK'" 60
-##    retry_command "curl -I http://localhost:6063/metrics | grep '200 OK'" 60
-##    retry_command "curl -I http://localhost:6064/metrics | grep '200 OK'" 60
+    retry_command "curl -s http://localhost:6062/metrics | grep namespaced.*crosstalk-ns-a" 60
+    retry_command "curl -s http://localhost:6063/metrics | grep namespaced.*crosstalk-ns-b" 60
+    retry_command "curl -s http://localhost:6064/metrics | grep namespaced.*crosstalk-ns" 60
 
     assert_metrics
 }
+
 main
