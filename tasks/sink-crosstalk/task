@@ -1,8 +1,8 @@
 #!/bin/bash
 set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
 
-# shellcheck disable=SC1091
-source common.sh
+# shellcheck disable=SC1091,SC1090
+source "$(dirname "$0")/common.sh"
 
 function validate {
     ensure_variable_isset "$GET_CREDENTIALS_HOOK" "GET_CREDENTIALS_HOOK"
@@ -39,7 +39,7 @@ function cleanup {
     kubectl delete clustersink crosstalk-cluster-sink > /dev/null 2>&1
 
     # Clean up port forwarding with retry
-    killall -9 kubectl > /dev/null 2>&1 || sleep 3 || killall -9 kubectl > /dev/null 2>&1
+    killall -9 kubectl > /dev/null 2>&1
 }
 
 function setup_contexts {
@@ -159,7 +159,7 @@ function setup_tunnels {
 
 function assert_metrics {
     local result
-    print_section_msg "$STARTING MESSAGE TEST"
+    print_section_msg "STARTING MESSAGE TEST"
 
     ns_a_result="$(curl -s http://localhost:6062/metrics)"
     echo "ns-a-receiver:"
@@ -255,14 +255,24 @@ function main {
     # system is primed and the the test immediately follows. This would
     # prevent the test from always taking at least 150 seconds. In addition to
     # waiting for the sinks, we are also waiting for the receivers to come up.
+##    retry_command "kubectl get pods -n default -l app=syslog-receiver-crosstalk-ns-a | grep Running" 60
+##    retry_command "kubectl get pods -n default -l app=syslog-receiver-crosstalk-ns-b | grep Running" 60
+##    retry_command "kubectl get pods -n default -l app=syslog-receiver-cluster | grep Running" 60
+##
+##    retry_command "kubectl get sinks -n crosstalk-ns-a | grep crosstalk-sink" 60
+##    retry_command "kubectl get sinks -n crosstalk-ns-b | grep crosstalk-sink" 60
+##    retry_command "kubectl get clustersinks | grep crosstalk-cluster-sink" 60
+
     sleep 60
 
     apply_emitters
     setup_tunnels
 
-    # TODO: Similarly, this sleep can be removed and replaces with metric
-    # polling with a deadline.
     sleep 60
+    # Wait for retry
+##    retry_command "curl -I http://localhost:6062/metrics | grep '200 OK'" 60
+##    retry_command "curl -I http://localhost:6063/metrics | grep '200 OK'" 60
+##    retry_command "curl -I http://localhost:6064/metrics | grep '200 OK'" 60
 
     assert_metrics
 }
