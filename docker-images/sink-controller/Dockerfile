@@ -18,7 +18,7 @@ RUN go build \
     -installsuffix nocgo \
     -o /sink-controller \
     -mod=readonly \
-    cmd/main.go
+    cmd/sink-controller/main.go
 
 FROM alpine:latest
 
