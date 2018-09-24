@@ -2,7 +2,7 @@
 set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
 
 # shellcheck disable=SC1091
-source common.sh
+source oratos-ci/tasks/sink-crosstalk/common.sh
 
 function validate {
     ensure_variable_isset "$GET_CREDENTIALS_HOOK" "GET_CREDENTIALS_HOOK"
