@@ -45,6 +45,25 @@ function ensure_variable_isset {
         exit 1
     fi
 }
+
+function retry_command {
+    local command=${1?}
+    local timeout_seconds=${2?}
+    local check_interval=${3:-"3"}
+    n=0
+    until [ "$n" -ge "$timeout_seconds" ]
+    do
+        if eval "$command" >/dev/null 2>&1; then
+            return
+        fi
+        n=$((n+check_interval))
+        echo "Sleep $check_interval seconds: $command"
+        sleep "$check_interval"
+    done
+    echo "After waiting for $timeout_seconds seconds, it still fails"
+    exit 1
+}
+
 ################################################################################
 function login_to_cluster_as_admin {
     eval "$GET_CREDENTIALS_HOOK"
