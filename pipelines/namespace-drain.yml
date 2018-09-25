@@ -9,6 +9,7 @@ release_params: &release_params
   #   https://github.com/pivotal-cf/namespace-drain/releases
   # This will also be pushed as a tagged docker image to:
   #   https://hub.docker.com/r/oratos/sink-controller/tags/
+  #   https://hub.docker.com/r/oratos/events-controller/tags/
   VERSION: &release_params_version v0.5
 
   # This is the version of the fluent-bit-out-syslog image to be included in
@@ -22,6 +23,7 @@ groups:
   jobs:
   - unit-tests
   - build-sink-controller-image
+  - build-events-controller-image
   - deploy-gke
   - deploy-cfcr
   - gke-tests
@@ -72,10 +74,25 @@ resources:
     paths:
     - docker-images/sink-controller
 
+- name: events-controller-dockerfile
+  type: git
+  source:
+    uri: https://github.com/pivotal-cf/oratos-ci
+    branch: master
+    paths:
+    - docker-images/events-controller
+
 - name: sink-controller-image
   type: docker-image
   source:
     repository: oratos/sink-controller
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
+- name: events-controller-image
+  type: docker-image
+  source:
+    repository: oratos/events-controller
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
@@ -207,6 +224,32 @@ jobs:
     get_params:
       skip_download: true
 
+- name: build-events-controller-image
+  serial: true
+  plan:
+  - aggregate:
+    - get: namespace-drain
+      trigger: true
+      passed:
+      - unit-tests
+    - get: events-controller-dockerfile
+      trigger: true
+    - get: oratos-ci
+  - task: prepare-build
+    file: oratos-ci/tasks/build-go-modules-docker-image/task.yml
+    input_mapping:
+      source-repo: namespace-drain
+    params:
+      DOCKERFILE: oratos-ci/docker-images/events-controller/Dockerfile
+  - put: events-controller-image
+    params:
+      build: build-image/build
+      tag: build-image/tag
+      cache: true
+      cache_tag: latest
+    get_params:
+      skip_download: true
+
 - name: deploy-gke
   serial: true
   plan:
@@ -215,10 +258,17 @@ jobs:
       trigger: true
       passed:
       - build-sink-controller-image
+      - build-events-controller-image
     - get: sink-controller-image
       trigger: true
       passed:
       - build-sink-controller-image
+      params:
+        skip_download: true
+    - get: events-controller-image
+      trigger: true
+      passed:
+      - build-events-controller-image
       params:
         skip_download: true
   - task: deploy
@@ -231,6 +281,7 @@ jobs:
       inputs:
       - name: namespace-drain
       - name: sink-controller-image
+      - name: events-controller-image
       params:
         SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
         DEBUG:
@@ -248,11 +299,18 @@ jobs:
           gcloud container clusters get-credentials oratos-ci-testing \
             --zone us-central1-a
 
-          sha="$(cat sink-controller-image/tag)"
-          yq read namespace-drain/manifests/05-deployments/sink.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller:'"$sha"'"' \
-            > namespace-drain/manifests/05-deployments/sink.json
-          rm namespace-drain/manifests/05-deployments/sink.yml
+          sink_sha="$(cat sink-controller-image/tag)"
+          yq read namespace-drain/manifests/60-deployments/sink.yml --tojson | \
+            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller:'"$sink_sha"'"' \
+            > namespace-drain/manifests/60-deployments/sink.json
+          rm namespace-drain/manifests/60-deployments/sink.yml
+
+          events_sha="$(cat events-controller-image/tag)"
+          yq read namespace-drain/manifests/60-deployments/events.yml --tojson | \
+            jq '(.spec.template.spec.containers[] | select(.name == "events-controller")).image = "oratos/events-controller:'"$events_sha"'"' \
+            > namespace-drain/manifests/60-deployments/events.json
+          rm namespace-drain/manifests/60-deployments/events.yml
+
           kubectl apply -R -f namespace-drain/manifests
           patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
           kubectl patch -R -f namespace-drain/manifests --patch "$patch"
@@ -266,6 +324,10 @@ jobs:
       passed:
       - deploy-gke
     - get: sink-controller-image
+      trigger: true
+      passed:
+      - deploy-gke
+    - get: events-controller-image
       trigger: true
       passed:
       - deploy-gke
@@ -307,10 +369,17 @@ jobs:
       trigger: true
       passed:
       - build-sink-controller-image
+      - build-events-controller-image
     - get: sink-controller-image
       trigger: true
       passed:
       - build-sink-controller-image
+      params:
+        skip_download: true
+    - get: events-controller-image
+      trigger: true
+      passed:
+      - build-events-controller-image
       params:
         skip_download: true
     - get: oratos-ci-testing-cfcr-bbl-state
@@ -327,6 +396,7 @@ jobs:
       inputs:
       - name: namespace-drain
       - name: sink-controller-image
+      - name: events-controller-image
       - name: oratos-ci
       - name: bbl-state
       params:
@@ -343,10 +413,17 @@ jobs:
               oratos-ci/scripts/cfcr.sh testing get-credentials
 
           sha="$(cat sink-controller-image/tag)"
-          yq read namespace-drain/manifests/05-deployments/sink.yml --tojson | \
+          yq read namespace-drain/manifests/60-deployments/sink.yml --tojson | \
             jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller:'"$sha"'"' \
-            > namespace-drain/manifests/05-deployments/sink.json
-          rm namespace-drain/manifests/05-deployments/sink.yml
+            > namespace-drain/manifests/60-deployments/sink.json
+          rm namespace-drain/manifests/60-deployments/sink.yml
+
+          events_sha="$(cat events-controller-image/tag)"
+          yq read namespace-drain/manifests/60-deployments/events.yml --tojson | \
+            jq '(.spec.template.spec.containers[] | select(.name == "events-controller")).image = "oratos/events-controller:'"$events_sha"'"' \
+            > namespace-drain/manifests/60-deployments/events.json
+          rm namespace-drain/manifests/60-deployments/events.yml
+
           kubectl apply -R -f namespace-drain/manifests
           patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
           kubectl patch -R -f namespace-drain/manifests --patch "$patch"
@@ -360,6 +437,12 @@ jobs:
       passed:
       - deploy-cfcr
     - get: sink-controller-image
+      trigger: true
+      passed:
+      - deploy-cfcr
+      params:
+        skip_download: true
+    - get: events-controller-image
       trigger: true
       passed:
       - deploy-cfcr
@@ -395,6 +478,12 @@ jobs:
       - gke-tests
       params:
         save: true
+    - get: events-controller-image
+      passed:
+      - cfcr-tests
+      - gke-tests
+      params:
+        save: true
     - task: write-promote-tag
       config:
         platform: linux
@@ -423,11 +512,20 @@ jobs:
       cache_tag: latest
     get_params:
       skip_download: true
+  - put: events-controller-image
+    params:
+      load: events-controller-image
+      tag: promote/tag
+      cache: true
+      cache_tag: latest
+    get_params:
+      skip_download: true
 
 - name: release
   serial: true
   plan:
   - get: sink-controller-image
+  - get: events-controller-image
   - task: release
     privileged: true
     config:
@@ -538,19 +636,26 @@ jobs:
             git tag "$VERSION"
           popd > /dev/null
 
-          yq read namespace-drain/manifests/05-deployments/sink.yml --tojson \
+          yq read namespace-drain/manifests/60-deployments/sink.yml --tojson \
             | jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller:'"$VERSION"'"' \
-            > namespace-drain/manifests/05-deployments/sink.json
-          yq read namespace-drain/manifests/05-deployments/sink.json \
-            > namespace-drain/manifests/05-deployments/sink.yml
-          rm namespace-drain/manifests/05-deployments/sink.json
+            > namespace-drain/manifests/60-deployments/sink.json
+          yq read namespace-drain/manifests/60-deployments/sink.json \
+            > namespace-drain/manifests/60-deployments/sink.yml
+          rm namespace-drain/manifests/60-deployments/sink.json
 
-          yq read namespace-drain/manifests/04-daemonsets/fluent-bit.yml --tojson \
+          yq read namespace-drain/manifests/60-deployments/events.yml --tojson \
+            | jq '(.spec.template.spec.containers[] | select(.name == "events-controller")).image = "oratos/events-controller:'"$VERSION"'"' \
+            > namespace-drain/manifests/60-deployments/events.json
+          yq read namespace-drain/manifests/60-deployments/events.json \
+            > namespace-drain/manifests/60-deployments/events.yml
+          rm namespace-drain/manifests/60-deployments/events.json
+
+          yq read namespace-drain/manifests/50-daemonsets/fluent-bit.yml --tojson \
             | jq '(.spec.template.spec.containers[] | select(.name == "fluent-bit")).image = "oratos/fluent-bit-out-syslog:'"$FLUENT_BIT_OUT_SYSLOG_VERSION"'"' \
-            > namespace-drain/manifests/04-daemonsets/fluent-bit.json
-          yq read namespace-drain/manifests/04-daemonsets/fluent-bit.json \
-            > namespace-drain/manifests/04-daemonsets/fluent-bit.yml
-          rm namespace-drain/manifests/04-daemonsets/fluent-bit.json
+            > namespace-drain/manifests/50-daemonsets/fluent-bit.json
+          yq read namespace-drain/manifests/50-daemonsets/fluent-bit.json \
+            > namespace-drain/manifests/50-daemonsets/fluent-bit.yml
+          rm namespace-drain/manifests/50-daemonsets/fluent-bit.json
 
           for f in namespace-drain/manifests/**/*; do
             echo ---
@@ -565,11 +670,12 @@ jobs:
 
           cat <<EOF > github-release/body
           These are the versions of the docker images used in this release:
-
           - [oratos/sink-controller][sink-controller]:$VERSION
+          - [oratos/events-controller][events-controller]:$VERSION
           - [oratos/fluent-bit-out-syslog][fluent-bit-out-syslog]:$FLUENT_BIT_OUT_SYSLOG_VERSION
 
           [sink-controller]: https://hub.docker.com/r/oratos/sink-controller/
+          [events-controller]: https://hub.docker.com/r/oratos/events-controller/
           [fluent-bit-out-syslog]: https://hub.docker.com/r/oratos/fluent-bit-out-syslog/
           EOF
 
@@ -581,18 +687,24 @@ jobs:
           [ -n "$DEBUG" ] && set -x
 
           sc_docker_name="oratos/sink-controller:$VERSION"
+          ec_docker_name="oratos/events-controller:$VERSION"
           fb_docker_name="oratos/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION"
 
           docker pull "oratos/sink-controller:$GIT_REF"
-          docker tag "oratos/sink-controller:$GIT_REF" \
-            "$sc_docker_name"
-          docker tag "oratos/sink-controller:$GIT_REF" \
-            "oratos/sink-controller:latest"
+          docker tag "oratos/sink-controller:$GIT_REF" "$sc_docker_name"
+          docker tag "oratos/sink-controller:$GIT_REF" "oratos/sink-controller:latest"
           docker push "$sc_docker_name"
           docker push "oratos/sink-controller:latest"
 
+          docker pull "oratos/events-controller:$GIT_REF"
+          docker tag "oratos/events-controller:$GIT_REF" "$ec_docker_name"
+          docker tag "oratos/events-controller:$GIT_REF" "oratos/events-controller:latest"
+          docker push "$ec_docker_name"
+          docker push "oratos/events-controller:latest"
+
           docker pull "$fb_docker_name"
           docker save "$sc_docker_name" | gzip > "github-release/oratos_sink-controller:$VERSION.tgz"
+          docker save "$ec_docker_name" | gzip > "github-release/oratos_events-controller:$VERSION.tgz"
           docker save "$fb_docker_name" | gzip > "github-release/oratos_fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION.tgz"
 
           pushd namespace-drain > /dev/null
