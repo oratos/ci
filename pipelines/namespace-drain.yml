@@ -55,7 +55,7 @@ resources:
   type: git
   source:
     uri: https://github.com/pivotal-cf/oratos-ci
-    branch: cleanup-crosstalk-test
+    branch: master
 
 - name: namespace-drain
   type: git
