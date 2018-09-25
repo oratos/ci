@@ -392,16 +392,16 @@ jobs:
               oratos-ci/scripts/cfcr.sh bikepark get-credentials
 
           fluent_image_digest=$(cat fluent-bit-out-syslog-image/digest)
-          yq read namespace-drain-manifests/manifests/04-daemonsets/fluent-bit.yml --tojson | \
+          yq read namespace-drain-manifests/manifests/50-daemonsets/fluent-bit.yml --tojson | \
             jq '(.spec.template.spec.containers[] | select(.name == "fluent-bit")).image = "oratos/fluent-bit-out-syslog@'"$fluent_image_digest"'"' \
-            > namespace-drain-manifests/manifests/04-daemonsets/fluent-bit.json
-          rm namespace-drain-manifests/manifests/04-daemonsets/fluent-bit.yml
+            > namespace-drain-manifests/manifests/50-daemonsets/fluent-bit.json
+          rm namespace-drain-manifests/manifests/50-daemonsets/fluent-bit.yml
 
           namespace_drain_image_digest=$(cat sink-controller-image/digest)
-          yq read namespace-drain-manifests/manifests/05-deployments/sink.yml --tojson | \
+          yq read namespace-drain-manifests/manifests/60-deployments/sink.yml --tojson | \
             jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller@'"$namespace_drain_image_digest"'"' \
-            > namespace-drain-manifests/manifests/05-deployments/sink.json
-          rm namespace-drain-manifests/manifests/05-deployments/sink.yml
+            > namespace-drain-manifests/manifests/60-deployments/sink.json
+          rm namespace-drain-manifests/manifests/60-deployments/sink.yml
 
           kubectl apply -R -f namespace-drain-manifests/manifests
           patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
