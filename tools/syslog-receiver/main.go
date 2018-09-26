@@ -20,6 +20,7 @@ func main() {
 	server := tcpserver.New(
 		net.JoinHostPort("", syslogPort),
 		net.JoinHostPort("", metricsPort),
+		tcpserver.CountMessage,
 	)
 	defer server.Close()
 

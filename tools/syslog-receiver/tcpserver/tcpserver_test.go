@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"time"
+	"expvar"
 
 	"code.cloudfoundry.org/rfc5424"
 	"github.com/pivotal-cf/oratos-ci/tools/syslog-receiver/tcpserver"
@@ -17,7 +18,8 @@ import (
 
 var _ = Describe("Tcpserver", func() {
 	It("counts messages by the namespace in structured data", func() {
-		s := tcpserver.New(":0", ":0")
+		s := tcpserver.New(":0", ":0", tcpserver.CountMessage,
+			tcpserver.HandlerOptions{"/metrics", expvar.Handler()})
 		defer s.Close()
 
 		writer, err := net.Dial("tcp", s.SyslogAddr())
@@ -57,7 +59,9 @@ var _ = Describe("Tcpserver", func() {
 	})
 
 	It("counts messages with non-matching namespace in unexpected count", func() {
-		s := tcpserver.New(":0", ":0")
+		s := tcpserver.New(":0", ":0", tcpserver.CountMessage,
+			tcpserver.HandlerOptions{"/metrics", expvar.Handler()})
+
 		defer s.Close()
 
 		writer, err := net.Dial("tcp4", s.SyslogAddr())
@@ -94,7 +98,8 @@ var _ = Describe("Tcpserver", func() {
 	})
 
 	It("shuts down the servers on Close()", func() {
-		s := tcpserver.New(":0", ":0")
+		s := tcpserver.New(":0", ":0", tcpserver.CountMessage,
+			tcpserver.HandlerOptions{"/metrics", expvar.Handler()})
 
 		_, err := net.Dial("tcp", s.SyslogAddr())
 		Expect(err).ToNot(HaveOccurred())

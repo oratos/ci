@@ -30,21 +30,27 @@ type tcpServer struct {
 	metricsServer   http.Server
 }
 
-func New(syslogAddr, metricsAddr string) *tcpServer {
+type HandlerOptions struct {
+	Path string
+	Handler http.Handler
+}
+
+func New(syslogAddr, metricsAddr string, handleFunc func(rfc5424.Message),
+	handlerOptions ...HandlerOptions ) *tcpServer {
 	// clear these for tests
 	namespacedCount.Init()
 	clusterCount.Set(0)
 	ts := &tcpServer{
 		syslogAddr:  syslogAddr,
 		metricsAddr: metricsAddr,
-		handleMsg:   countMessage,
+		handleMsg:   handleFunc,
 	}
 
-	ts.start()
+	ts.start(handlerOptions...)
 	return ts
 }
 
-func (t *tcpServer) start() {
+func (t *tcpServer) start(handlerOptions ...HandlerOptions) {
 	log.Printf("Starting syslog server on: %s", t.syslogAddr)
 	var err error
 	t.syslogListener, err = net.Listen("tcp", t.syslogAddr)
@@ -59,7 +65,9 @@ func (t *tcpServer) start() {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/metrics", expvar.Handler())
+	for _, op := range handlerOptions {
+		mux.Handle(op.Path, op.Handler)
+	}
 
 	t.metricsServer = http.Server{
 		Addr:         t.metricsAddr,
@@ -115,7 +123,7 @@ func (t *tcpServer) handle(conn net.Conn) {
 	}
 }
 
-func countMessage(msg rfc5424.Message) {
+func CountMessage(msg rfc5424.Message) {
 	for _, sd := range msg.StructuredData {
 		if sd.ID == "kubernetes@47450" {
 			for _, param := range sd.Parameters {

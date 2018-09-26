@@ -1,0 +1,4 @@
+#!/bin/bash
+set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+echo "TODO"
