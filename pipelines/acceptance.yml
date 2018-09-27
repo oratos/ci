@@ -208,7 +208,7 @@ jobs:
             set -x
 
             bosh upload-stemcell \
-              "https://bosh.io/d/stemcells/bosh-google-kvm-ubuntu-trusty-go_agent?v=$version"
+              "https://bosh.io/d/stemcells/bosh-google-kvm-ubuntu-xenial-go_agent?v=$version"
     - task: upload-vars-to-credhub
       config:
         platform: linux
