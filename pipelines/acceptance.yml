@@ -65,13 +65,13 @@ resources:
   type: git
   source:
     uri: https://github.com/cloudfoundry-incubator/kubo-deployment
-    branch: v0.19.0
+    branch: v0.21.0
 
 - name: kubo-release-bosh-io
   type: bosh-io-release
   source:
     repository: cloudfoundry-incubator/kubo-release
-    regexp: "0.19.*"
+    regexp: "0.21.*"
 
 - name: cf-deployment-concourse-tasks
   type: git
@@ -275,7 +275,7 @@ jobs:
               path: /variables/name=~1dns_api_client_tls
             - type: replace
               path: /releases/name=kubo/version
-              value: 0.19.0
+              value: 0.21.0
             EOF
             bosh interpolate kubo-deployment/manifests/cfcr.yml \
               --ops-file ops.yml \
