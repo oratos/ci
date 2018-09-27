@@ -196,7 +196,7 @@ jobs:
             pushd kubo-deployment > /dev/null
               version="$(
                 bosh int manifests/cfcr.yml \
-                  --path /stemcells/alias=trusty/version
+                  --path /stemcells/alias=default/version
               )"
             popd > /dev/null
 
