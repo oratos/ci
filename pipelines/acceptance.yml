@@ -207,6 +207,11 @@ jobs:
             popd > /dev/null
             set -x
 
+            # TODO: We need to remove this as soon as bosh.io can download the
+            # "latest" version again. That is, if version=latest bosh.io will
+            # return a 404.
+            version="97.18"
+
             bosh upload-stemcell \
               "https://bosh.io/d/stemcells/bosh-google-kvm-ubuntu-xenial-go_agent?v=$version"
     - task: upload-vars-to-credhub
