@@ -16,11 +16,12 @@ COPY / /root/
 RUN go build \
     -a \
     -installsuffix nocgo \
-    -o /syslog-receiver \
-    -mod=readonly
+    -o /crosstalk-receiver \
+    -mod=readonly \
+    cmd/crosstalk-receiver/main.go
 
 FROM alpine:latest
 
-COPY --from=builder /syslog-receiver /srv/
+COPY --from=builder /crosstalk-receiver /srv/
 WORKDIR /srv
-CMD [ "/srv/syslog-receiver" ]
+CMD [ "/srv/crosstalk-receiver" ]

@@ -1,4 +1,4 @@
-package tcpserver_test
+package main_test
 
 import (
 	"io/ioutil"
@@ -9,8 +9,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestTcpserver(t *testing.T) {
+func TestCrosstalkReceiver(t *testing.T) {
 	RegisterFailHandler(Fail)
 	log.SetOutput(ioutil.Discard)
-	RunSpecs(t, "Tcpserver Suite")
+	RunSpecs(t, "CrosstalkReceiver Suite")
 }
