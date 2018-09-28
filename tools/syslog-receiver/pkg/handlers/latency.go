@@ -78,13 +78,13 @@ func NewLatencyHandler(
 func (lh *LatencyHandler) MessageHandler() tcpserver.MessageHandler {
 	return func(msg rfc5424.Message) {
 		lh.listMutex.Lock()
+		defer lh.listMutex.Unlock()
 		ll := LatencyLog{}
 		err := json.Unmarshal(msg.Message, &ll)
 		if err != nil {
 			log.Panicf("invalid LatencyLog in syslog message")
 		}
 		lh.latencies = append(lh.latencies, msg.Timestamp.Sub(ll.Timestamp))
-		lh.listMutex.Unlock()
 
 		if len(lh.latencies) == lh.numLogsEmitted {
 			lh.runDone <- true

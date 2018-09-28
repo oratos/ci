@@ -82,6 +82,24 @@ var _ = Describe("Latency Receiver", func() {
 			}
 		})
 
+		It("handles messages concurrently", func() {
+			se := &spyLogEmitter{}
+			latencyHandler := handlers.NewLatencyHandler(
+				se,
+				10*time.Second,
+				numLogsEmitted,
+			)
+
+			msgHandler := latencyHandler.MessageHandler()
+
+			ll := handlers.LatencyLog{}
+			llData, err := json.Marshal(ll)
+			Expect(err).ToNot(HaveOccurred())
+
+			go msgHandler(rfc5424.Message{Message: llData})
+			msgHandler(rfc5424.Message{Message: llData})
+		})
+
 		It("validates the http method", func() {
 			se := &spyLogEmitter{}
 			latencyHandler := handlers.NewLatencyHandler(
