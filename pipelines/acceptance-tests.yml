@@ -4,6 +4,9 @@ groups:
   - sink-dripspinner
   - sink-flowspinner
   - sink-floodspinner
+- name: latency
+  jobs:
+  - latency-test
 
 resource_types:
 - name: vault
@@ -13,6 +16,11 @@ resource_types:
     tag: latest
 
 resources:
+- name: 5m
+  type: time
+  source:
+    interval: 5m
+
 - name: 15m
   type: time
   source:
@@ -125,3 +133,16 @@ jobs:
       DELAY_UNIT: "ms"
       MESSAGE: "HOURLY"
     timeout: 15m
+
+- name: latency-test
+  build_logs_to_retain: 50
+  plan:
+  - aggregate:
+    - get: 5m
+      trigger: true
+    - get: bikepark-bbl-state
+    - get: oratos-ci
+  - task: run-test
+    file: oratos-ci/tasks/latency-test/task.yml
+    params:
+      DATADOG_API_KEY: ((datadog.loggregator-ci-api-key))
