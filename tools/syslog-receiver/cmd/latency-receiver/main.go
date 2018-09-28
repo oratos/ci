@@ -23,7 +23,8 @@ func main() {
 	lh := handlers.NewLatencyHandler(
 		stdOutLogEmitter{},
 		10*time.Second,
-		15)
+		15,
+	)
 
 	server := tcpserver.New(
 		net.JoinHostPort("", syslogPort),

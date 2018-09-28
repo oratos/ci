@@ -28,7 +28,7 @@ type LatencyResponse struct {
 func NewLatencyResponse(runId string, latencies []time.Duration) LatencyResponse {
 	lresp := LatencyResponse{}
 	for i, latency := range latencies {
-		sequenceTag := fmt.Sprintf("index: %d ", i)
+		sequenceTag := fmt.Sprintf("index: %d", i)
 		lresp.Series = append(lresp.Series, LatencyMetric{
 			Metric: LatencyMetricName,
 			Points: []time.Duration{latency},
@@ -82,7 +82,8 @@ func (lh *LatencyHandler) MessageHandler() tcpserver.MessageHandler {
 		ll := LatencyLog{}
 		err := json.Unmarshal(msg.Message, &ll)
 		if err != nil {
-			log.Panicf("invalid LatencyLog in syslog message")
+			// message wasn't a valid json object, so just skip it
+			return
 		}
 		lh.latencies = append(lh.latencies, msg.Timestamp.Sub(ll.Timestamp))
 
@@ -119,12 +120,13 @@ func (lh *LatencyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case <-lh.runDone:
 		lh.listMutex.Lock()
 		lresp := NewLatencyResponse(lh.runID, lh.latencies)
+		lh.listMutex.Unlock()
+
 		bytes, err := json.Marshal(lresp)
 		if err != nil {
 			log.Panic("failed to marshal latency response")
 		}
 		w.Write(bytes)
-		lh.listMutex.Unlock()
 		return
 	case <-timeout.C:
 		http.Error(w, "test timed out", http.StatusRequestTimeout)
