@@ -4,7 +4,7 @@ image_resource:
   source:
     repository: oratos/ci-base
 inputs:
-- name: sink-resources-release
+- name: sink-resources-github-release
 - name: oratos-ci
 - name: sink-resources-release
 outputs:
