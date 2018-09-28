@@ -14,8 +14,8 @@ function validate {
 
 created_crd=1
 function apply_crd {
-    kubectl apply --filename namespace-drain/manifests/00-crds/sink.yml
-    kubectl apply --filename namespace-drain/manifests/00-crds/cluster-sink.yml
+    kubectl apply --filename sink-resources/manifests/00-crds/sink.yml
+    kubectl apply --filename sink-resources/manifests/00-crds/cluster-sink.yml
     created_crd=$?
 }
 

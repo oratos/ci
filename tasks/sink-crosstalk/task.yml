@@ -5,7 +5,7 @@ image_resource:
     repository: oratos/ci-base
 inputs:
 - name: oratos-ci
-- name: namespace-drain
+- name: sink-resources
 - name: bbl-state
 params:
   # - Required

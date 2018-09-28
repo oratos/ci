@@ -6,7 +6,7 @@ image_resource:
 inputs:
 - name: sink-resources-release
 - name: oratos-ci
-- name: namespace-drain-release
+- name: sink-resources-release
 outputs:
 - name: bosh-release
 - name: put-sink-resources-release
