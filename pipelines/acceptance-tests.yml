@@ -135,7 +135,6 @@ jobs:
     timeout: 15m
 
 - name: latency-test
-  build_logs_to_retain: 50
   plan:
   - aggregate:
     - get: 5m

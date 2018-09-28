@@ -15,7 +15,11 @@ function validate {
 
 function set_pipeline {
     echo setting pipeline for "$1"
-    fly -t "$TARGET" set-pipeline -p "$1" -c "pipelines/$1.yml"
+    fly -t "$TARGET" set-pipeline -p "$1" -c <(
+        cat "pipelines/$1.yml" \
+            | yq read - --tojson \
+            | jq '.jobs[].build_logs_to_retain = 20'
+    )
 }
 
 function sync_fly {
