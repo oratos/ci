@@ -53,6 +53,14 @@ resources:
     password: ((docker-hub.password))
     tag: release-elect
 
+- name: events-controller-image
+  type: docker-image
+  source:
+    repository: oratos/events-controller
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+    tag: release-elect
+
 - name: fluent-bit-out-syslog-image
   type: docker-image
   source:
@@ -362,6 +370,10 @@ jobs:
       trigger: true
       params:
         skip_download: true
+    - get: events-controller-image
+      trigger: true
+      params:
+        skip_download: true
     - get: fluent-bit-out-syslog-image
       trigger: true
       params:
@@ -381,6 +393,7 @@ jobs:
       - name: oratos-ci
       - name: fluent-bit-out-syslog-image
       - name: sink-controller-image
+      - name: events-controller-image
       params:
         DEBUG:
       run:
@@ -402,11 +415,17 @@ jobs:
             > namespace-drain-manifests/manifests/50-daemonsets/fluent-bit.json
           rm namespace-drain-manifests/manifests/50-daemonsets/fluent-bit.yml
 
-          namespace_drain_image_digest=$(cat sink-controller-image/digest)
+          sink_controller_image_digest=$(cat sink-controller-image/digest)
           yq read namespace-drain-manifests/manifests/60-deployments/sink.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller@'"$namespace_drain_image_digest"'"' \
+            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller@'"$sink_controller_image_digest"'"' \
             > namespace-drain-manifests/manifests/60-deployments/sink.json
           rm namespace-drain-manifests/manifests/60-deployments/sink.yml
+
+          events_controller_image_digest=$(cat events-controller-image/digest)
+          yq read namespace-drain-manifests/manifests/60-deployments/events.yml --tojson | \
+            jq '(.spec.template.spec.containers[] | select(.name == "events-controller")).image = "oratos/events-controller@'"$events_controller_image_digest"'"' \
+            > namespace-drain-manifests/manifests/60-deployments/events.json
+          rm namespace-drain-manifests/manifests/60-deployments/events.yml
 
           kubectl apply -R -f namespace-drain-manifests/manifests
           patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
