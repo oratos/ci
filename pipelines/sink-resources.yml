@@ -110,7 +110,7 @@ resources:
     path: secret/envs/oratos-ci-testing-cfcr-bbl-state
     tarball: true
 
-- name: sink-resources-release
+- name: sink-resources-github-release
   type: github-release
   source:
     owner: pivotal-cf
@@ -124,7 +124,7 @@ resources:
     branch: master
     private_key: ((github.oratos-bot-private-key))
 
-- name: sink-resources-github-release
+- name: sink-resources-release-github-release
   type: github-release
   source:
     owner: pivotal-cf
@@ -710,7 +710,7 @@ jobs:
           pushd sink-resources > /dev/null
             git push origin --tags
           popd > /dev/null
-  - put: sink-resources-release
+  - put: sink-resources-github-release
     params:
       name: github-release/name
       body: github-release/body
@@ -722,7 +722,7 @@ jobs:
 
 - name: update-bosh-release
   plan:
-  - get: sink-resources-release
+  - get: sink-resources-github-release
     trigger: true
     passed:
     - release
@@ -741,7 +741,7 @@ jobs:
     params:
       repository: put-sink-resources-release
       name: bosh-release/name
-  - put: sink-resources-github-release
+  - put: sink-resources-release-github-release
     params:
       name: bosh-release/name
       tag: bosh-release/tag
