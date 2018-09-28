@@ -1,0 +1,79 @@
+#!/bin/bash
+set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+BBL_STATE_DIR=bikepark-bbl-state \
+  oratos-ci/scripts/cfcr.sh bikepark get-credentials
+
+function cleanup {
+     kubectl -n latency-test delete sink latency-sink || true
+     kubectl -n latency-test delete pod latency-receiver || true
+     kubectl -n latency-test delete service latency-receiver || true
+     kubectl delete namespace latency-test || true
+     killall -9 kubectl > /dev/null 2>&1
+}
+trap cleanup EXIT
+
+# create namespace
+echo "
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: latency-test
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: latency-receiver
+  namespace: latency-test
+  labels:
+    app: latency-receiver
+spec:
+  containers:
+  - name: latency-receiver
+    image: oratos/latency-receiver:dev
+    imagePullPolicy: Always
+    env:
+    - name: SYSLOG_PORT
+      value: \"8080\"
+    - name: API_PORT
+      value: \"6060\"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: latency-receiver
+  namespace: latency-test
+spec:
+  selector:
+    app: latency-receiver
+  ports:
+  - protocol: TCP
+    port: 8080
+    name: syslog
+---
+apiVersion: apps.pivotal.io/v1beta1
+kind: Sink
+metadata:
+  name: latency-sink
+  namespace: latency-test
+spec:
+  type: syslog
+  host: latency-receiver.latency-test.svc.cluster.local
+  port: 8080
+" | kubectl apply --filename -
+
+sleep 30
+# create port forward for latency-receiver
+kubectl --namespace latency-test port-forward latency-receiver 6060:6060 > /dev/null 2>&1 &
+sleep 10
+
+# curl latency receiver to emit
+latency="$(curl --silent --fail http://localhost:6060/latency)"
+
+# send response to datadog
+echo posting to datadog
+curl --fail -X POST -H "Content-type: application/json" \
+    -d "$latency" \
+    'https://app.datadoghq.com/api/v1/series?api_key='"$DATADOG_API_KEY"
+echo
+echo post complete

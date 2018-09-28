@@ -5,10 +5,14 @@ image_resource:
     repository: oratos/ci-base
 inputs:
 - name: oratos-ci
-- name: namespace-drain
+- name: bikepark-bbl-state
 params:
   # - Optional
   # - Set to true to output all commands that are ran.
   DEBUG:
+
+  # - Required
+  # - Set to the data account that latency metrics need to be sent to
+  DATADOG_API_KEY:
 run:
-  path: oratos-ci/tasks/latency-tests/task
+  path: oratos-ci/tasks/latency-test/task
