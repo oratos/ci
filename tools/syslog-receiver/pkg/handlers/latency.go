@@ -27,13 +27,17 @@ type LatencyResponse struct {
 
 func NewLatencyResponse(runId string, latencies []time.Duration) LatencyResponse {
 	lresp := LatencyResponse{}
+	t := time.Now()
 	for i, latency := range latencies {
 		sequenceTag := fmt.Sprintf("index: %d", i)
 		lresp.Series = append(lresp.Series, LatencyMetric{
 			Metric: LatencyMetricName,
-			Points: []time.Duration{latency},
-			Type:   "gauge",
-			Tags:   []string{runId, sequenceTag},
+			Points: [][]int64{{
+				t.Unix(),
+				latency.Nanoseconds(),
+			}},
+			Type: "gauge",
+			Tags: []string{runId, sequenceTag},
 		})
 	}
 	return lresp
@@ -41,10 +45,10 @@ func NewLatencyResponse(runId string, latencies []time.Duration) LatencyResponse
 }
 
 type LatencyMetric struct {
-	Metric string          `json:"metric"`
-	Points []time.Duration `json:"points"`
-	Type   string          `json:"type"`
-	Tags   []string        `json:"tags"`
+	Metric string    `json:"metric"`
+	Points [][]int64 `json:"points"`
+	Type   string    `json:"type"`
+	Tags   []string  `json:"tags"`
 }
 
 type LatencyHandler struct {

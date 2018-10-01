@@ -221,11 +221,14 @@ var _ = Describe("Latency Receiver", func() {
 			Expect(lresp.Series).To(HaveLen(numLogsEmitted))
 			Expect(lresp.Series[0].Metric).To(Equal(handlers.LatencyMetricName))
 			Expect(lresp.Series[0].Points).To(HaveLen(1))
+			Expect(lresp.Series[0].Points[0]).To(HaveLen(2))
 
 			// Have to do a range check on time because we seem to be losing
 			// precison
-			Expect(lresp.Series[0].Points[0]).To(BeNumerically(">", 1999500*time.Microsecond))
-			Expect(lresp.Series[0].Points[0]).To(BeNumerically("<", 2000500*time.Microsecond))
+			Expect(lresp.Series[0].Points[0][0]).ToNot(Equal(0))
+
+			Expect(lresp.Series[0].Points[0][1]).To(BeNumerically(">", 1999500*time.Microsecond))
+			Expect(lresp.Series[0].Points[0][1]).To(BeNumerically("<", 2000500*time.Microsecond))
 
 			Expect(lresp.Series[0].Type).To(Equal("gauge"))
 			Expect(lresp.Series[0].Tags).To(HaveLen(2))
