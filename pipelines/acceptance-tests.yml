@@ -144,4 +144,4 @@ jobs:
   - task: run-test
     file: oratos-ci/tasks/latency-test/task.yml
     params:
-      DATADOG_API_KEY: ((datadog.loggregator-ci-api-key))
+      DATADOG_API_KEY: ((datadog.oratos-ci-api-key))
