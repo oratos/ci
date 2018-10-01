@@ -136,7 +136,7 @@ resources:
   source:
     bucket: pks-releng-final-releases
     json_key: ((pks-releng.gcp-json))
-    regexp: "*.tgz"
+    regexp: '[a-zA-Z0-9/\-._]+\.tgz'
 
 jobs:
 - name: unit-tests
