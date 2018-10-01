@@ -1,3 +1,12 @@
+groups:
+- name: ci
+  jobs:
+  - ci-base
+- name: test-images
+  jobs:
+  - crosstalk-receiver
+  - latency-receiver
+
 resources:
 - name: base-image-docker-build-context
   type: git
@@ -14,6 +23,26 @@ resources:
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
+- name: crosstalk-receiver-image
+  type: docker-image
+  source:
+    repository: oratos/crosstalk-receiver
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
+- name: latency-receiver-image
+  type: docker-image
+  source:
+    repository: oratos/latency-receiver
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
+- name: oratos-ci
+  type: git
+  source:
+    uri: https://github.com/pivotal-cf/oratos-ci
+    branch: master
+
 jobs:
 - name: ci-base
   plan:
@@ -23,6 +52,74 @@ jobs:
     params:
       build: base-image-docker-build-context/docker-images/ci-base
       tag_as_latest: true
+      cache_tag: latest
+    get_params:
+      skip_download: true
+
+- name: crosstalk-receiver
+  plan:
+  - get: oratos-ci
+  - task: write-version
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      params:
+        VERSION: v0.1
+        DEBUG:
+      outputs:
+      - name: tags
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+          echo "$VERSION" > tags/version
+  - put: crosstalk-receiver-image
+    params:
+      build: oratos-ci/tools/syslog-receiver
+      dockerfile: oratos-ci/tools/syslog-receiver/cmd/crosstalk-receiver/Dockerfile
+      tag_as_latest: true
+      tag: tags/version
+      cache_tag: latest
+    get_params:
+      skip_download: true
+
+- name: latency-receiver
+  plan:
+  - get: oratos-ci
+  - task: write-version
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      params:
+        VERSION: v0.1
+        DEBUG:
+      outputs:
+      - name: tags
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+          echo "$VERSION" > tags/version
+  - put: latency-receiver-image
+    params:
+      build: oratos-ci/tools/syslog-receiver
+      dockerfile: oratos-ci/tools/syslog-receiver/cmd/latency-receiver/Dockerfile
+      tag_as_latest: true
+      tag: tags/version
       cache_tag: latest
     get_params:
       skip_download: true
