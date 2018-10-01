@@ -30,7 +30,7 @@ metadata:
 spec:
   containers:
   - name: latency-receiver
-    image: oratos/latency-receiver:dev
+    image: oratos/latency-receiver:v0.1
     imagePullPolicy: Always
     env:
     - name: SYSLOG_PORT

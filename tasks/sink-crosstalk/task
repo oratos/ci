@@ -29,16 +29,16 @@ function cleanup {
     show_status
 
     print_section_msg  "STARTING CLEANUP ENV"
-    kubectl --namespace default delete pod syslog-receiver-crosstalk-ns-a > /dev/null 2>&1
-    kubectl --namespace default delete pod syslog-receiver-crosstalk-ns-b > /dev/null 2>&1
-    kubectl --namespace default delete pod syslog-receiver-cluster > /dev/null 2>&1
+    kubectl --namespace default delete pod crosstalk-receiver-crosstalk-ns-a > /dev/null 2>&1
+    kubectl --namespace default delete pod crosstalk-receiver-crosstalk-ns-b > /dev/null 2>&1
+    kubectl --namespace default delete pod crosstalk-receiver-cluster > /dev/null 2>&1
 
     kubectl delete namespace crosstalk-ns-a --cascade > /dev/null 2>&1
     kubectl delete namespace crosstalk-ns-b --cascade > /dev/null 2>&1
 
-    kubectl --namespace default delete service syslog-receiver-crosstalk-ns-a > /dev/null 2>&1
-    kubectl --namespace default delete service syslog-receiver-crosstalk-ns-b > /dev/null 2>&1
-    kubectl --namespace default delete service syslog-receiver-cluster > /dev/null 2>&1
+    kubectl --namespace default delete service crosstalk-receiver-crosstalk-ns-a > /dev/null 2>&1
+    kubectl --namespace default delete service crosstalk-receiver-crosstalk-ns-b > /dev/null 2>&1
+    kubectl --namespace default delete service crosstalk-receiver-cluster > /dev/null 2>&1
 
     kubectl delete clustersink crosstalk-cluster-sink > /dev/null 2>&1
 
@@ -139,9 +139,9 @@ spec:
 }
 
 function apply_receivers {
-    apply_syslog_receiver crosstalk-ns-a
-    apply_syslog_receiver crosstalk-ns-b
-    apply_syslog_receiver cluster
+    apply_crosstalk_receiver crosstalk-ns-a
+    apply_crosstalk_receiver crosstalk-ns-b
+    apply_crosstalk_receiver cluster
 }
 
 function apply_emitters {
@@ -156,9 +156,9 @@ function apply_sinks {
 }
 
 function setup_tunnels {
-    kubectl --namespace default port-forward syslog-receiver-crosstalk-ns-a 6062:6061 > /dev/null 2>&1 &
-    kubectl --namespace default port-forward syslog-receiver-crosstalk-ns-b 6063:6061 > /dev/null 2>&1 &
-    kubectl --namespace default port-forward syslog-receiver-cluster 6064:6061 > /dev/null 2>&1 &
+    kubectl --namespace default port-forward crosstalk-receiver-crosstalk-ns-a 6062:6061 > /dev/null 2>&1 &
+    kubectl --namespace default port-forward crosstalk-receiver-crosstalk-ns-b 6063:6061 > /dev/null 2>&1 &
+    kubectl --namespace default port-forward crosstalk-receiver-cluster 6064:6061 > /dev/null 2>&1 &
 }
 
 function assert_metrics {
@@ -195,47 +195,47 @@ function assert_metrics {
     expected="7"
     result="$(echo "$ns_a_result" | jq '.namespaced["crosstalk-ns-a"]' --join-output)"
     check_result_cnt "$expected" "$result" \
-        "Expected syslog-receiver-crosstalk-ns-a to have value $expected for crosstalk-ns-a"
+        "Expected crosstalk-receiver-crosstalk-ns-a to have value $expected for crosstalk-ns-a"
 
     expected="0"
     result="$(echo "$ns_a_result" | jq '.namespace["crosstalk-ns-b"]' --join-output)"
     check_result_cnt "$expected" "$result" \
-        "Expected syslog-receiver-crosstalk-ns-a to have value $expected for crosstalk-ns-b"
+        "Expected crosstalk-receiver-crosstalk-ns-a to have value $expected for crosstalk-ns-b"
 
     expected="0"
     result="$(echo "$ns_a_result" | jq '.cluster' --join-output)"
     check_result_cnt "$expected" "$result" \
-        "Expected syslog-receiver-crosstalk-ns-a to have value $expected for cluster"
+        "Expected crosstalk-receiver-crosstalk-ns-a to have value $expected for cluster"
 
     expected="0"
     result="$(echo "$ns_b_result" | jq '.namespaced["crosstalk-ns-a"]' --join-output)"
     check_result_cnt "$expected" "$result" \
-        "Expected syslog-receiver-crosstalk-ns-b to have value $expected for crosstalk-ns-a"
+        "Expected crosstalk-receiver-crosstalk-ns-b to have value $expected for crosstalk-ns-a"
 
     expected="12"
     result="$(echo "$ns_b_result" | jq '.namespaced["crosstalk-ns-b"]' --join-output)"
     check_result_cnt "$expected" "$result" \
-        "Expected syslog-receiver-crosstalk-ns-b to have value $expected for crosstalk-ns-b"
+        "Expected crosstalk-receiver-crosstalk-ns-b to have value $expected for crosstalk-ns-b"
 
     expected="0"
     result="$(echo "$ns_b_result" | jq '.cluster' --join-output)"
     check_result_cnt "$expected" "$result" \
-        "Expected syslog-receiver-crosstalk-ns-l to have value $expected for cluster"
+        "Expected crosstalk-receiver-crosstalk-ns-l to have value $expected for cluster"
 
     expected="7"
     result="$(echo "$cluster_result" | jq '.namespaced["crosstalk-ns-a"]' --join-output)"
     check_result_cnt "$expected" "$result" \
-        "Expected syslog-receiver-cluster to have value $expected for crosstalk-ns-a"
+        "Expected crosstalk-receiver-cluster to have value $expected for crosstalk-ns-a"
 
     expected="12"
     result="$(echo "$cluster_result" | jq '.namespaced["crosstalk-ns-b"]' --join-output)"
     check_result_cnt "$expected" "$result" \
-        "Expected syslog-receiver-cluster to have value $expected for crosstalk-ns-b"
+        "Expected crosstalk-receiver-cluster to have value $expected for crosstalk-ns-b"
 
     expected="0"
     result="$(echo "$cluster_result" | jq '.cluster' --join-output)"
     check_result_cnt "$expected" "$result" \
-        "Expected syslog-receiver-cluster to have value $expected for cluster"
+        "Expected crosstalk-receiver-cluster to have value $expected for cluster"
 
     print_section_msg "MESSAGE TEST COMPLETE"
 }
@@ -259,9 +259,9 @@ function main {
     # system is primed and the the test immediately follows. This would
     # prevent the test from always taking at least 150 seconds. In addition to
     # waiting for the sinks, we are also waiting for the receivers to come up.
-    retry_command "kubectl get pods -n default -l app=syslog-receiver-crosstalk-ns-a | grep Running" 60
-    retry_command "kubectl get pods -n default -l app=syslog-receiver-crosstalk-ns-b | grep Running" 60
-    retry_command "kubectl get pods -n default -l app=syslog-receiver-cluster | grep Running" 60
+    retry_command "kubectl get pods -n default -l app=crosstalk-receiver-crosstalk-ns-a | grep Running" 60
+    retry_command "kubectl get pods -n default -l app=crosstalk-receiver-crosstalk-ns-b | grep Running" 60
+    retry_command "kubectl get pods -n default -l app=crosstalk-receiver-cluster | grep Running" 60
 
     retry_command "kubectl get sinks -n crosstalk-ns-a | grep crosstalk-sink" 60
     retry_command "kubectl get sinks -n crosstalk-ns-b | grep crosstalk-sink" 60

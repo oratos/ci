@@ -69,21 +69,21 @@ function login_to_cluster_as_admin {
     eval "$GET_CREDENTIALS_HOOK"
 }
 
-function apply_syslog_receiver {
+function apply_crosstalk_receiver {
     local namespace=${1?}
     echo "
 ---
 apiVersion: v1
 kind: Pod
 metadata:
-  name: syslog-receiver-$namespace
+  name: crosstalk-receiver-$namespace
   namespace: default
   labels:
-    app: syslog-receiver-$namespace
+    app: crosstalk-receiver-$namespace
 spec:
   containers:
-  - name: syslog-receiver
-    image: oratos/syslog-receiver:latest
+  - name: crosstalk-receiver
+    image: oratos/crosstalk-receiver:v0.1
     imagePullPolicy: Always
     env:
     - name: SYSLOG_PORT
@@ -99,11 +99,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: syslog-receiver-$namespace
+  name: crosstalk-receiver-$namespace
   namespace: default
 spec:
   selector:
-    app: syslog-receiver-$namespace
+    app: crosstalk-receiver-$namespace
   ports:
   - protocol: TCP
     port: 8080
@@ -123,7 +123,7 @@ spec:
   template:
     spec:
       containers:
-      - name: syslog-receiver
+      - name: crosstalk-receiver
         image: ubuntu:latest
         command:
         - bash
@@ -223,7 +223,7 @@ metadata:
   name: crosstalk-cluster-sink
 spec:
   type: syslog
-  host: syslog-receiver-cluster.default.svc.cluster.local
+  host: crosstalk-receiver-cluster.default.svc.cluster.local
   port: 8080
 " | kubectl apply --filename -
 }
@@ -239,7 +239,7 @@ metadata:
   namespace: $namespace
 spec:
   type: syslog
-  host: syslog-receiver-$namespace.default.svc.cluster.local
+  host: crosstalk-receiver-$namespace.default.svc.cluster.local
   port: 8080
 " | kubectl apply --filename -
 }
