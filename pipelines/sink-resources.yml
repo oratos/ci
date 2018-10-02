@@ -57,7 +57,7 @@ resources:
   type: git
   source:
     uri: https://github.com/pivotal-cf/oratos-ci
-    branch: master
+    branch: crosstalk-fix
 
 - name: sink-resources
   type: git

@@ -83,7 +83,7 @@ metadata:
 spec:
   containers:
   - name: crosstalk-receiver
-    image: oratos/crosstalk-receiver:v0.1
+    image: oratos/crosstalk-receiver:dev
     imagePullPolicy: Always
     env:
     - name: SYSLOG_PORT
@@ -130,7 +130,7 @@ spec:
         - -c
         - |
           for i in {1..$count}; do
-            echo \"log \$i line for $namespace\"
+            echo \"crosstalk-test: log \$i line for $namespace\"
           done
         imagePullPolicy: Always
       restartPolicy: Never

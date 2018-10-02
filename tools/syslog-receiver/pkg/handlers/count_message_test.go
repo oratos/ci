@@ -52,7 +52,7 @@ var _ = Describe("Crosstalk Receiver", func() {
 			AppName:   "some-app",
 			ProcessID: "procID",
 			MessageID: "msgID",
-			Message:   []byte("this is a message for namespace-a"),
+			Message:   []byte("crosstalk-test: this is a message for namespace-a"),
 			StructuredData: []rfc5424.StructuredData{
 				{
 					ID: "kubernetes@47450",
@@ -77,6 +77,72 @@ var _ = Describe("Crosstalk Receiver", func() {
 		Expect(c.Cluster).To(Equal(0))
 	})
 
+	It("only counts messages intended for test", func() {
+		s := tcpserver.New(":0", ":0", handlers.NewCountMessageHandler(testNamespacedCount, testClusterCount),
+			tcpserver.Handler{
+				"/metrics",
+				expvar.Handler(),
+			})
+		defer s.Close()
+
+		writer, err := net.Dial("tcp", s.SyslogAddr())
+		Expect(err).ToNot(HaveOccurred())
+		defer writer.Close()
+
+		rfcLog := rfc5424.Message{
+			Priority:  rfc5424.Emergency,
+			Timestamp: time.Now(),
+			Hostname:  "some-host",
+			AppName:   "some-app",
+			ProcessID: "procID",
+			MessageID: "msgID",
+			Message:   []byte("crosstalk-test: this is a message for namespace-a"),
+			StructuredData: []rfc5424.StructuredData{
+				{
+					ID: "kubernetes@47450",
+					Parameters: []rfc5424.SDParam{
+						{
+							Name:  "namespace_name",
+							Value: "foo",
+						},
+					},
+				},
+			},
+		}
+
+		rfcIgnoredLog := rfc5424.Message{
+			Priority:  rfc5424.Emergency,
+			Timestamp: time.Now(),
+			Hostname:  "some-host",
+			AppName:   "some-app",
+			ProcessID: "procID",
+			MessageID: "msgID",
+			Message:   []byte("this is a message for namespace-a"),
+			StructuredData: []rfc5424.StructuredData{
+				{
+					ID: "kubernetes@47450",
+					Parameters: []rfc5424.SDParam{
+						{
+							Name:  "namespace_name",
+							Value: "foo",
+						},
+					},
+				},
+			},
+		}
+		_, err = rfcLog.WriteTo(writer)
+		Expect(err).ToNot(HaveOccurred())
+		_, err = rfcLog.WriteTo(writer)
+		Expect(err).ToNot(HaveOccurred())
+		_, err = rfcIgnoredLog.WriteTo(writer)
+		Expect(err).ToNot(HaveOccurred())
+
+		c := readCounters(s.ApiAddr())
+
+		Expect(c.Namespaced["foo"]).To(Equal(2))
+		Expect(c.Cluster).To(Equal(0))
+	})
+
 	It("counts messages with non-matching namespace in unexpected count", func() {
 		s := tcpserver.New(":0", ":0", handlers.NewCountMessageHandler(testNamespacedCount, testClusterCount),
 			tcpserver.Handler{"/metrics", expvar.Handler()})
@@ -93,7 +159,7 @@ var _ = Describe("Crosstalk Receiver", func() {
 			AppName:   "some-app",
 			ProcessID: "procID",
 			MessageID: "msgID",
-			Message:   []byte("this is a message for namespace-b"),
+			Message:   []byte("crosstalk-test: this is a message for namespace-b"),
 		}
 
 		_, err = rfcLog.WriteTo(writer)
