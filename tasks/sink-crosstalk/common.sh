@@ -83,7 +83,7 @@ metadata:
 spec:
   containers:
   - name: crosstalk-receiver
-    image: oratos/crosstalk-receiver:dev
+    image: oratos/crosstalk-receiver:v0.1
     imagePullPolicy: Always
     env:
     - name: SYSLOG_PORT
