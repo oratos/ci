@@ -20,7 +20,7 @@ RUN go build \
     -mod=readonly \
     cmd/main.go
 
-FROM fluent/fluent-bit:0.13.4
+FROM fluent/fluent-bit:latest
 
 COPY --from=builder /out_syslog.so /fluent-bit/bin/
 WORKDIR "/fluent-bit/etc"

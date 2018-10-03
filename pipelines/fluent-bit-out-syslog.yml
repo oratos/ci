@@ -42,6 +42,13 @@ resources:
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
+- name: fluent-bit-image
+  type: docker-image
+  source:
+    repository: fluent/fluent-bit
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
 - name: slack-alert
   type: slack-notification
   source:
@@ -83,6 +90,10 @@ jobs:
       trigger: true
       passed:
       - unit-tests
+    - get: fluent-bit-image
+      trigger: true
+      params:
+        skip_download: true
     - get: out-syslog-dockerfile
       trigger: true
     - get: oratos-ci
