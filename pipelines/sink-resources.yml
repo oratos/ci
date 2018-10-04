@@ -2,7 +2,7 @@ release_params: &release_params
   # This is the git SHA for the sink-controller that you intend to release.
   # This SHA needs to be a tag on the docker image on dockerhub here:
   #   https://hub.docker.com/r/oratos/sink-controller/tags/
-  GIT_REF: e10036ca18fae84da0c60f52b3a381da9b1bdb02
+  GIT_REF: d9985a950248db68e3eb8675e4cdc8694889a6ba
 
   # This is the version that you intend to release. This will be pushed as a
   # git tag to:
@@ -10,13 +10,13 @@ release_params: &release_params
   # This will also be pushed as a tagged docker image to:
   #   https://hub.docker.com/r/oratos/sink-controller/tags/
   #   https://hub.docker.com/r/oratos/events-controller/tags/
-  VERSION: &release_params_version v0.5
+  VERSION: &release_params_version v0.6
 
   # This is the version of the fluent-bit-out-syslog image to be included in
   # this release. This version needs to be a tag on the docker image on
   # dockerhhub here:
   #   https://hub.docker.com/r/oratos/fluent-bit-out-syslog/tags/
-  FLUENT_BIT_OUT_SYSLOG_VERSION: v0.4 # version of the fluent-bit image to use
+  FLUENT_BIT_OUT_SYSLOG_VERSION: v0.6 # version of the fluent-bit image to use
 
 groups:
 - name: main
@@ -136,7 +136,7 @@ resources:
   source:
     bucket: pks-releng-final-releases
     json_key: ((pks-releng.gcp-json))
-    regexp: '[a-zA-Z0-9/\-._]+\.tgz'
+    regexp: '.*\.tgz'
 
 jobs:
 - name: unit-tests
@@ -535,7 +535,9 @@ jobs:
         source:
           repository: oratos/ci-base
       params:
-        <<: *release_params
+        GIT_REF: ((sink_resource_release_params.GIT_REF))
+        VERSION: ((sink_resource_release_params.VERSION))
+        FLUENT_BIT_OUT_SYSLOG_VERSION: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
         DOCKERHUB_USERNAME: ((docker-hub.username))
         DOCKERHUB_PASSWORD: ((docker-hub.password))
         GITHUB_PRIVATE_KEY: ((github.oratos-bot-private-key))
