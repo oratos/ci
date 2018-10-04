@@ -129,6 +129,10 @@ function set_globals {
             domain=testing-cfcr.oratos.ci.cf-app.com
             vault_path=secret/envs/oratos-ci-testing-cfcr-bbl-state
             ;;
+        control-plane-test)
+            domain=control-plane-test-cfcr.oratos.ci.cf-app.com
+            vault_path=secret/envs/control-plane-test-bbl-state
+            ;;
         "")
             print_usage
             exit 0

@@ -243,3 +243,32 @@ spec:
   port: 8080
 " | kubectl apply --filename -
 }
+
+function check_result_gt {
+    local expected=${1?}
+    local result=${2?}
+
+    if [ "$result" = "null" ]; then
+       result="0"
+    fi
+
+    if [ "$result" <= "$expected" ]; then
+        echo "We did not receive enough logs.  Received $result but wanted greater than $expected"
+        exit 1
+    fi
+}
+
+function sleep_verify_logs {
+    local namespace=${1?}
+    local startingCount=${2?}
+    sleep 30
+
+    cluster_result="$(curl -s http://localhost:6060/metrics)"
+    result="$(echo "$cluster_result" | jq '.namespaced["oratos"]' --join-output)"
+    check_result_gt "$startingCount" "$result"
+    echo $cluster_result
+}
+
+function stop_control_plane {
+    bosh -d cfcr stop master -n
+}

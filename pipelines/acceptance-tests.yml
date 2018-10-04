@@ -37,6 +37,12 @@ resources:
     uri: https://github.com/pivotal-cf/oratos-ci
     branch: master
 
+- name: sink-resources
+  type: git
+  source:
+    uri: https://github.com/pivotal-cf/sink-resources
+    branch: master
+
 - name: bikepark-bbl-state
   type: vault
   source:
@@ -145,3 +151,80 @@ jobs:
     file: oratos-ci/tasks/latency-test/task.yml
     params:
       DATADOG_API_KEY: ((datadog.oratos-ci-api-key))
+
+- name: control-plane-test
+  plan:
+  - aggregate:
+    - get: 1h
+      trigger: true
+    - get: control-plane-test-bbl-state
+    - get: sink-resources
+    - get: oratos-ci
+  - task: run-test
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      inputs:
+      - name: control-plane-test-bbl-state
+      - name: oratos-ci
+      - name: sink-resources
+      params:
+        DEBUG:
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+
+          source "oratos-ci/scripts/test/common.sh"
+
+          function clean_up {
+            bosh -d cfcf start master -n
+            kubectl delete -Rf sink-resources/manifests
+
+            kubectl delete -f oratos-ci/tools/logspewer/manifest/deployment.yml
+            kubectl delete pod crosstalk-receiver-oratos
+
+            killall -9 kubectl > /dev/null 2>&1
+          }
+
+          # set bosh env vars
+          set +x
+          pushd control-plane-test-bbl-state/bbl-state > /dev/null
+            eval "$(bbl print-env)"
+          popd > /dev/null
+          set -x
+
+          oratos-ci/scripts/cfcr.sh control-plane-test get-credentials
+
+          #Test
+          # Create sink resources
+          kubectl apply -Rf sink-resources/manifests
+
+          # Create crosstalk-receiver pod
+          apply_crosstalk_receiver oratos
+
+          # Create sink connected to crosstalk-receiver
+          apply_namespace_sink oratos
+
+          # Create emitter
+          kubectl apply -f oratos-ci/tools/logspewer/manifests/deployment.yml
+
+          # Set up port forward to receiver
+          kubectl --namespace oratos port-forward crosstalk-receiver-oratos 6060:6060 > /dev/null 2>&1 &
+          trap clean_up EXIT
+
+          # Verify receiver is receiving logs
+          sleep_verify_logs oratos 0
+
+          # Stop control plane
+          stop_control_plane
+          local count=$(sleep_verify_logs oratos 0)
+
+          # Verify receiver is still receiving logs
+          sleep_verify_logs oratos $count
