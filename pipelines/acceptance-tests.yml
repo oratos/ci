@@ -70,7 +70,7 @@ jobs:
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 60
       CYCLES: 10000
-      DATADOG_API_KEY: ((datadog.loggregator-ci-api-key))
+      DATADOG_API_KEY: ((datadog.oratos-ci-api-key))
       DELAY: "2"
       DELAY_UNIT: "us"
       MESSAGE: "FIFTEEN-MINUTE"
@@ -99,7 +99,7 @@ jobs:
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 600
       CYCLES: 1000
-      DATADOG_API_KEY: ((datadog.loggregator-ci-api-key))
+      DATADOG_API_KEY: ((datadog.oratos-ci-api-key))
       DELAY: "500"
       DELAY_UNIT: "ms"
       MESSAGE: "HOURLY"
@@ -128,7 +128,7 @@ jobs:
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
       WAIT: 60
       CYCLES: 1000
-      DATADOG_API_KEY: ((datadog.loggregator-ci-api-key))
+      DATADOG_API_KEY: ((datadog.oratos-ci-api-key))
       DELAY: "1"
       DELAY_UNIT: "ms"
       MESSAGE: "HOURLY"
