@@ -19,6 +19,26 @@ function shellcheck_tasks {
     done
 }
 
+function shellcheck_pipelines {
+    local temp_dir
+    local pipeline
+    for pipeline in pipelines/*.yml; do
+        temp_dir="$(mktemp -d)"
+        yq read "$pipeline" --tojson \
+            | jq '[.jobs[].plan[] | recurse | select(.config?.run.path == "/bin/bash") | {name: .task, script: .config.run.args[1]}]' \
+            | python -c 'import json, sys, os.path
+temp_dir = "'"$temp_dir"'"
+for s in json.load(sys.stdin):
+    path = os.path.join(temp_dir, s["name"]+".sh")
+    with open(path, "w") as f:
+        f.write(s["script"])'
+
+        if [ -n "$(ls -A "$temp_dir")" ]; then
+            shellcheck "$temp_dir"/*.sh
+        fi
+    done
+}
+
 function set_pipeline {
     echo setting pipeline for "$1"
     fly -t "$TARGET" set-pipeline -p "$1" \
@@ -49,7 +69,7 @@ function print_usage {
 
 function verify_dependencies {
     local failed=false
-    local deps=( shellcheck fly yq jq )
+    local deps=( shellcheck fly yq jq python )
 
     for d in "${deps[@]}"; do
         if ! command -v "$d" > /dev/null 2>&1; then
@@ -71,6 +91,7 @@ function main {
     validate_args
     sync_fly
     shellcheck_tasks
+    shellcheck_pipelines
     set_pipelines
 }
 main "$@"
