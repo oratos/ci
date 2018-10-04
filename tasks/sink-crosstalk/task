@@ -12,11 +12,9 @@ function validate {
     ensure_variable_isset "$NAOMI_B_KEY" "NAOMI_B_KEY"
 }
 
-created_crd=1
 function apply_crd {
     kubectl apply --filename sink-resources/manifests/00-crds/sink.yml
     kubectl apply --filename sink-resources/manifests/00-crds/cluster-sink.yml
-    created_crd=$?
 }
 
 function show_status {

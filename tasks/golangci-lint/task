@@ -14,9 +14,9 @@ pushd workspace > /dev/null
   pushd "src/$IMPORT_PATH" > /dev/null
     go get -t -d ./...
     if [ "$PKGS_HOOK" != "" ]; then
-      golangci-lint run --deadline 20m $(eval "$PKGS_HOOK")
+      golangci-lint run --deadline 20m "$(eval "$PKGS_HOOK")"
     else
-      golangci-lint run --deadline 20m $(go list ./... | grep -v vendor)
+      golangci-lint run --deadline 20m "$(go list ./... | grep -v vendor)"
     fi
   popd > /dev/null
 popd > /dev/null

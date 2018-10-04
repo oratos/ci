@@ -24,7 +24,7 @@ cp -r source-repo/. "$workspace_code_path/"
 
 # download all the dependencies
 export GOPATH="$PWD/workspace"
-go get -d -v $BASE_PACKAGE/$SUB_PACKAGE/...
+go get -d -v "$BASE_PACKAGE"/"$SUB_PACKAGE"/...
 
 # copy over build context and tag
 pushd "context-repo/$CONTEXT_PATH" > /dev/null

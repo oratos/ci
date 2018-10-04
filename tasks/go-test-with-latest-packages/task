@@ -15,9 +15,9 @@ pushd workspace > /dev/null
     go get -t -d ./...
     eval "$PRE_TEST_HOOK"
     if [ "$PKGS_HOOK" != "" ]; then
-      go test $(eval "$PKGS_HOOK") -race
+      go test "$(eval "$PKGS_HOOK")" -race
     else
-      go test $(go list ./... | grep -v vendor) -race
+      go test "$(go list ./... | grep -v vendor)" -race
     fi
     eval "$POST_TEST_HOOK"
   popd > /dev/null

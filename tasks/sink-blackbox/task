@@ -184,7 +184,7 @@ set -e
 
 echo "The number of messages received: $MSG_COUNT"
 echo "The number of messages sent    : $CYCLES"
-if [ "$MSG_COUNT" -lt $(($CYCLES * 99 / 100)) ]; then
+if [ "$MSG_COUNT" -lt $((CYCLES * 99 / 100)) ]; then
     echo =========================================
     echo THE RELIABILITY TEST DID NOT MEET OUR SLO
     echo =========================================

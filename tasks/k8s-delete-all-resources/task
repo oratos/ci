@@ -10,7 +10,7 @@ eval "$GET_CREDENTIALS_HOOK"
 
 kubectl get namespaces --output json | \
   jq --raw-output .items[].metadata.name | \
-  while read ns; do
+  while read -r ns; do
     if [ "$ns" = "kube-system" ] || [ "$ns" = "default" ]; then
         continue
     fi
