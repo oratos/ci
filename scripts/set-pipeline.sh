@@ -15,7 +15,9 @@ function validate_args {
 
 function shellcheck_tasks {
     for task in tasks/**/task; do
-       shellcheck "$task"
+        pushd .. > /dev/null 2>&1
+            shellcheck -x oratos-ci/"$task"
+        popd > /dev/null 2>&1
     done
 }
 
@@ -34,7 +36,9 @@ for s in json.load(sys.stdin):
         f.write(s["script"])'
 
         if [ -n "$(ls -A "$temp_dir")" ]; then
-            shellcheck "$temp_dir"/*.sh
+            pushd .. > /dev/null 2>&1
+                shellcheck -x "$temp_dir"/*.sh
+            popd > /dev/null 2>&1
         fi
     done
 }

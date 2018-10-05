@@ -35,12 +35,6 @@ resources:
   type: git
   source:
     uri: https://github.com/pivotal-cf/oratos-ci
-    branch: control-plane-test
-
-- name: sink-resources
-  type: git
-  source:
-    uri: https://github.com/pivotal-cf/sink-resources
     branch: master
 
 - name: bikepark-bbl-state
@@ -50,15 +44,6 @@ resources:
     role_id: ((vault.role_id))
     secret_id: ((vault.secret_id))
     path: secret/envs/bikepark-bbl-state
-    tarball: true
-
-- name: control-plane-test-bbl-state
-  type: vault
-  source:
-    url: https://vault.oratos.ci.cf-app.com
-    role_id: ((vault.role_id))
-    secret_id: ((vault.secret_id))
-    path: secret/envs/control-plane-test-bbl-state
     tarball: true
 
 jobs:
@@ -160,87 +145,3 @@ jobs:
     file: oratos-ci/tasks/latency-test/task.yml
     params:
       DATADOG_API_KEY: ((datadog.oratos-ci-api-key))
-
-- name: control-plane-test
-  plan:
-  - aggregate:
-    # - get: 1h
-    #   trigger: true
-    - get: control-plane-test-bbl-state
-    - get: sink-resources
-    - get: oratos-ci
-  - task: run-test
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: oratos/ci-base
-      inputs:
-      - name: control-plane-test-bbl-state
-      - name: oratos-ci
-      - name: sink-resources
-      params:
-        DEBUG:
-      run:
-        path: /bin/bash
-        args:
-        - "-c"
-        - |
-          #!/bin/bash
-          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
-
-          source "oratos-ci/scripts/test/common.sh"
-
-          function clean_up {
-            bosh -d cfcr start master -n
-
-            kubectl delete --recursive --filename sink-resources/manifests
-            kubectl delete --filename oratos-ci/tools/logspewer/manifest/deployment.yml
-            kubectl delete pod crosstalk-receiver-oratos
-
-            set +e
-            killall -9 kubectl > /dev/null 2>&1 # clean up port forwarding
-          }
-
-          # set bosh env vars
-          set +x
-          pushd control-plane-test-bbl-state/bbl-state > /dev/null
-            eval "$(bbl print-env)"
-          popd > /dev/null
-          set -x
-
-          oratos-ci/scripts/cfcr.sh control-plane-test get-credentials
-
-          # cleanup test state
-          trap clean_up EXIT
-
-          # create sink resources
-          kubectl apply --recursive --filename sink-resources/manifests
-
-          # create crosstalk-receiver pod
-          apply_crosstalk_receiver oratos
-
-          # create sink connected to crosstalk-receiver
-          apply_namespace_sink oratos
-
-          # create emitter
-          kubectl apply --filename oratos-ci/tools/logspewer/manifests/deployment.yml
-
-          # set up port forward to receiver
-          kubectl --namespace oratos port-forward crosstalk-receiver-oratos 6060:6060 > /dev/null 2>&1 &
-          sleep 5 # ensure port forwarding is active
-
-          # verify receiver is receiving logs
-          assert_log_count_gt 0 oratos
-
-          # stop control plane
-          bosh --deployment cfcr stop master --non-interactive
-          sleep 10 # wait for master to stop
-
-          # get base count
-          local count="$(assert_log_count_gt 0 oratos)"
-
-          # verify receiver is still receiving logs
-          sleep 10 # wait for logs to build up
-          assert_log_count_gt "$count" oratos

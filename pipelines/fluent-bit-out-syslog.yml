@@ -178,13 +178,13 @@ jobs:
 
             mount -o remount,rw /sys/fs/cgroup
 
-            sed -e 1d /proc/cgroups | while read sys hierarchy num enabled; do
+            sed -e 1d /proc/cgroups | while read -r sys _ _ enabled; do
               if [ "$enabled" != "1" ]; then
                 # subsystem disabled; skip
                 continue
               fi
 
-              grouping="$(cat /proc/self/cgroup | cut -d: -f2 | grep "\\<$sys\\>")" || true
+              grouping="$(cut -d: -f2 /proc/self/cgroup | grep "\\<$sys\\>")" || true
               if [ -z "$grouping" ]; then
                 # subsystem not mounted anywhere; mount it on its own
                 grouping="$sys"
