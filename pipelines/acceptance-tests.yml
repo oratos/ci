@@ -194,12 +194,13 @@ jobs:
 
           function clean_up {
             bosh -d cfcr start master -n
-            kubectl delete --recursive --filename sink-resources/manifests
 
+            kubectl delete --recursive --filename sink-resources/manifests
             kubectl delete --filename oratos-ci/tools/logspewer/manifest/deployment.yml
             kubectl delete pod crosstalk-receiver-oratos
 
-            killall -9 kubectl > /dev/null 2>&1
+            set +e
+            killall -9 kubectl > /dev/null 2>&1 # clean up port forwarding
           }
 
           # set bosh env vars
@@ -211,29 +212,35 @@ jobs:
 
           oratos-ci/scripts/cfcr.sh control-plane-test get-credentials
 
-          #Test
-          # Create sink resources
-          kubectl apply --recursive --filename sink-resources/manifests
-
-          # Create crosstalk-receiver pod
-          apply_crosstalk_receiver oratos
-
-          # Create sink connected to crosstalk-receiver
-          apply_namespace_sink oratos
-
-          # Create emitter
-          kubectl apply --filename oratos-ci/tools/logspewer/manifests/deployment.yml
-
-          # Set up port forward to receiver
-          kubectl --namespace oratos port-forward crosstalk-receiver-oratos 6060:6060 > /dev/null 2>&1 &
+          # cleanup test state
           trap clean_up EXIT
 
-          # Verify receiver is receiving logs
-          sleep_verify_logs oratos 0
+          # create sink resources
+          kubectl apply --recursive --filename sink-resources/manifests
 
-          # Stop control plane
-          stop_control_plane
-          local count=$(sleep_verify_logs oratos 0)
+          # create crosstalk-receiver pod
+          apply_crosstalk_receiver oratos
 
-          # Verify receiver is still receiving logs
-          sleep_verify_logs oratos $count
+          # create sink connected to crosstalk-receiver
+          apply_namespace_sink oratos
+
+          # create emitter
+          kubectl apply --filename oratos-ci/tools/logspewer/manifests/deployment.yml
+
+          # set up port forward to receiver
+          kubectl --namespace oratos port-forward crosstalk-receiver-oratos 6060:6060 > /dev/null 2>&1 &
+          sleep 5 # ensure port forwarding is active
+
+          # verify receiver is receiving logs
+          assert_log_count_gt 0 oratos
+
+          # stop control plane
+          bosh --deployment cfcr stop master --non-interactive
+          sleep 10 # wait for master to stop
+
+          # get base count
+          local count="$(assert_log_count_gt 0 oratos)"
+
+          # verify receiver is still receiving logs
+          sleep 10 # wait for logs to build up
+          assert_log_count_gt "$count" oratos

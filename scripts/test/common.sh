@@ -244,7 +244,7 @@ spec:
 " | kubectl apply --filename -
 }
 
-function check_result_gt {
+function assert_result_gt {
     local expected=${1?}
     local result=${2?}
 
@@ -258,17 +258,12 @@ function check_result_gt {
     fi
 }
 
-function sleep_verify_logs {
-    local namespace=${1?}
-    local startingCount=${2?}
-    sleep 30
+function assert_log_count_gt {
+    local startingCount=${1?}
+    local namespace=${2?}
 
     cluster_result="$(curl --silent http://localhost:6060/metrics)"
-    result="$(echo "$cluster_result" | jq '.namespaced["oratos"]' --join-output)"
-    check_result_gt "$startingCount" "$result"
+    result="$(echo "$cluster_result" | jq '.namespaced["'"$namespace"'"]' --join-output)"
+    assert_result_gt "$startingCount" "$result"
     echo $cluster_result
-}
-
-function stop_control_plane {
-    bosh --deployment cfcr stop master --non-interactive
 }
