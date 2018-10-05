@@ -252,7 +252,7 @@ function assert_result_gt {
        result="0"
     fi
 
-    if [ "$result" <= "$expected" ]; then
+    if [ "$result" -le "$expected" ]; then
         echo "We did not receive enough logs.  Received $result but wanted greater than $expected"
         exit 1
     fi
@@ -262,8 +262,8 @@ function assert_log_count_gt {
     local startingCount=${1?}
     local namespace=${2?}
 
-    cluster_result="$(curl --silent http://localhost:6060/metrics)"
+    cluster_result="$(curl --silent http://localhost:6061/metrics)"
     result="$(echo "$cluster_result" | jq '.namespaced["'"$namespace"'"]' --join-output)"
     assert_result_gt "$startingCount" "$result"
-    echo $cluster_result
+    echo "$cluster_result"
 }
