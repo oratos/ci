@@ -35,7 +35,7 @@ resources:
   type: git
   source:
     uri: https://github.com/pivotal-cf/oratos-ci
-    branch: master
+    branch: control-plane-test
 
 - name: sink-resources
   type: git
@@ -50,6 +50,15 @@ resources:
     role_id: ((vault.role_id))
     secret_id: ((vault.secret_id))
     path: secret/envs/bikepark-bbl-state
+    tarball: true
+
+- name: control-plane-test-bbl-state
+  type: vault
+  source:
+    url: https://vault.oratos.ci.cf-app.com
+    role_id: ((vault.role_id))
+    secret_id: ((vault.secret_id))
+    path: secret/envs/control-plane-test-bbl-state
     tarball: true
 
 jobs:
@@ -155,8 +164,8 @@ jobs:
 - name: control-plane-test
   plan:
   - aggregate:
-    - get: 1h
-      trigger: true
+    # - get: 1h
+    #   trigger: true
     - get: control-plane-test-bbl-state
     - get: sink-resources
     - get: oratos-ci
@@ -184,10 +193,10 @@ jobs:
           source "oratos-ci/scripts/test/common.sh"
 
           function clean_up {
-            bosh -d cfcf start master -n
-            kubectl delete -Rf sink-resources/manifests
+            bosh -d cfcr start master -n
+            kubectl delete --recursive --filename sink-resources/manifests
 
-            kubectl delete -f oratos-ci/tools/logspewer/manifest/deployment.yml
+            kubectl delete --filename oratos-ci/tools/logspewer/manifest/deployment.yml
             kubectl delete pod crosstalk-receiver-oratos
 
             killall -9 kubectl > /dev/null 2>&1
@@ -204,7 +213,7 @@ jobs:
 
           #Test
           # Create sink resources
-          kubectl apply -Rf sink-resources/manifests
+          kubectl apply --recursive --filename sink-resources/manifests
 
           # Create crosstalk-receiver pod
           apply_crosstalk_receiver oratos
@@ -213,7 +222,7 @@ jobs:
           apply_namespace_sink oratos
 
           # Create emitter
-          kubectl apply -f oratos-ci/tools/logspewer/manifests/deployment.yml
+          kubectl apply --filename oratos-ci/tools/logspewer/manifests/deployment.yml
 
           # Set up port forward to receiver
           kubectl --namespace oratos port-forward crosstalk-receiver-oratos 6060:6060 > /dev/null 2>&1 &

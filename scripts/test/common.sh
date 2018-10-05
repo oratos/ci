@@ -263,12 +263,12 @@ function sleep_verify_logs {
     local startingCount=${2?}
     sleep 30
 
-    cluster_result="$(curl -s http://localhost:6060/metrics)"
+    cluster_result="$(curl --silent http://localhost:6060/metrics)"
     result="$(echo "$cluster_result" | jq '.namespaced["oratos"]' --join-output)"
     check_result_gt "$startingCount" "$result"
     echo $cluster_result
 }
 
 function stop_control_plane {
-    bosh -d cfcr stop master -n
+    bosh --deployment cfcr stop master --non-interactive
 }
