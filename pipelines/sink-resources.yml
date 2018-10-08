@@ -855,11 +855,13 @@ jobs:
           source "oratos-ci/scripts/test/common.sh"
 
           function clean_up {
-            bosh -d cfcr start master -n
+            bosh --deployment cfcr start master --non-interactive
 
-            sleep 60
-            kubectl delete --filename oratos-ci/tools/logspewer/manifest/deployment.yml
-            kubectl delete pod crosstalk-receiver-oratos
+            sleep 30
+            kubectl delete \
+              --namespace oratos \
+              --filename oratos-ci/tools/logspewer/manifests/deployment.yml
+            kubectl delete pod crosstalk-receiver-oratos --namespace default
 
             set +e
             killall -9 kubectl > /dev/null 2>&1 # clean up port forwarding
@@ -885,11 +887,16 @@ jobs:
           apply_namespace_sink oratos
 
           # create emitter
-          kubectl apply --filename oratos-ci/tools/logspewer/manifests/deployment.yml
+          kubectl apply \
+            --filename oratos-ci/tools/logspewer/manifests/deployment.yml \
+            --namespace oratos
 
           # set up port forward to receiver
-          kubectl --namespace oratos port-forward crosstalk-receiver-oratos 6060:6060 > /dev/null 2>&1 &
-          sleep 5 # ensure port forwarding is active
+          sleep 15 # ensure receiver pod is running
+          kubectl \
+            --namespace default \
+            port-forward crosstalk-receiver-oratos 6061:6061 &
+          sleep 15 # ensure port forwarding is active
 
           # verify receiver is receiving logs
           assert_log_count_gt 0 oratos

@@ -529,6 +529,10 @@ jobs:
             - type: replace
               path: /releases/name=kubo/version
               value: 0.19.0
+
+            - type: replace
+              path: /instance_groups/name=worker/instances
+              value: 1
             EOF
             bosh interpolate kubo-deployment/manifests/cfcr.yml \
               --ops-file ops.yml \
@@ -544,6 +548,7 @@ jobs:
       SYSTEM_DOMAIN: example.com # this isn't used but is a required input
       MANIFEST_FILE: manifests/cfcr.yml
       OPS_FILES: |
+        manifests/ops-files/misc/single-master.yml
         manifests/ops-files/allow-privileged-containers.yml
         manifests/ops-files/iaas/gcp/cloud-provider.yml
         manifests/ops-files/iaas/gcp/add-service-key-master.yml

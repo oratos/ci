@@ -70,16 +70,16 @@ function login_to_cluster_as_admin {
 }
 
 function apply_crosstalk_receiver {
-    local namespace=${1?}
+    local drain_namespace=${1?}
     echo "
 ---
 apiVersion: v1
 kind: Pod
 metadata:
-  name: crosstalk-receiver-$namespace
+  name: crosstalk-receiver-$drain_namespace
   namespace: default
   labels:
-    app: crosstalk-receiver-$namespace
+    app: crosstalk-receiver-$drain_namespace
 spec:
   containers:
   - name: crosstalk-receiver
@@ -99,11 +99,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: crosstalk-receiver-$namespace
+  name: crosstalk-receiver-$drain_namespace
   namespace: default
 spec:
   selector:
-    app: crosstalk-receiver-$namespace
+    app: crosstalk-receiver-$drain_namespace
   ports:
   - protocol: TCP
     port: 8080
@@ -252,7 +252,7 @@ function assert_result_gt {
        result="0"
     fi
 
-    if [ "$result" -le "$expected" ]; then
+    if [ "$result" -lt "$expected" ]; then
         echo "We did not receive enough logs.  Received $result but wanted greater than $expected"
         exit 1
     fi
