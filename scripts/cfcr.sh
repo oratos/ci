@@ -14,6 +14,15 @@ function cfcr_env_download-bbl-state {
 }
 
 function cfcr_env_print-env {
+    if ! [ -d "$BBL_STATE_DIR" ]; then
+        echo "downloading state from vault..."
+        echo "this may take a while but you only have to do it once"
+
+        trap cleanup_bbl_state ERR
+        cfcr_env_download-bbl-state
+        trap '' ERR
+    fi
+
     pushd "$BBL_STATE_DIR/bbl-state" > /dev/null
         bbl print-env
     popd > /dev/null
@@ -32,14 +41,6 @@ function cleanup_bbl_state {
 }
 
 function cfcr_env_get-credentials {
-    if ! [ -d "$BBL_STATE_DIR" ]; then
-        echo "downloading state from vault..."
-        echo "this may take a while but you only have to do it once"
-
-        trap cleanup_bbl_state ERR
-        cfcr_env_download-bbl-state
-        trap '' ERR
-    fi
     eval "$(cfcr_env_print-env)"
     admin_password_key=$(credhub find --name-like /cfcr/kubo-admin-password --output-json | jq --raw-output ".credentials[0].name")
     admin_password=$(credhub get --name "$admin_password_key" --output-json | jq --raw-output .value)
@@ -56,14 +57,6 @@ function cfcr_env_get-credentials {
 }
 
 function cfcr_env_get-credentials-tunnel {
-    if ! [ -d "$BBL_STATE_DIR" ]; then
-        echo "downloading state from vault..."
-        echo "this may take a while but you only have to do it once"
-
-        trap cleanup_bbl_state ERR
-        cfcr_env_download-bbl-state
-        trap '' ERR
-    fi
     eval "$(cfcr_env_print-env)"
     admin_password_key=$(credhub find --name-like /cfcr/kubo-admin-password --output-json | jq --raw-output ".credentials[0].name")
     admin_password=$(credhub get --name "$admin_password_key" --output-json | jq --raw-output .value)
