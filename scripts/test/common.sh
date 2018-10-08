@@ -244,26 +244,34 @@ spec:
 " | kubectl apply --filename -
 }
 
-function assert_result_gt {
-    local expected=${1?}
-    local result=${2?}
+function assert_gt {
+    local a=${1?}
+    local b=${2?}
 
-    if [ "$result" = "null" ]; then
-       result="0"
+    if [ -z "$a" ] || [ "$a" = "null" ]; then
+       a=0
+    fi
+    if [ -z "$b" ] || [ "$b" = "null" ]; then
+       b=0
     fi
 
-    if [ "$result" -lt "$expected" ]; then
-        echo "We did not receive enough logs.  Received $result but wanted greater than $expected"
+    if [ "$a" -gt "$b" ]; then
+        echo "We did not receive enough logs.  $a !> $b"
         exit 1
     fi
 }
 
 function assert_log_count_gt {
-    local startingCount=${1?}
+    local starting_count=${1?}
     local namespace=${2?}
+    local metrics
+    local result
 
-    cluster_result="$(curl --silent http://localhost:6061/metrics)"
-    result="$(echo "$cluster_result" | jq '.namespaced["'"$namespace"'"]' --join-output)"
-    assert_result_gt "$startingCount" "$result"
-    echo "$cluster_result"
+    metrics="$(curl --silent http://localhost:6061/metrics)"
+    result="$(
+        echo "$metrics" \
+            | jq '.namespaced["'"$namespace"'"]' --join-output
+    )"
+    assert_gt "$result" "$starting_count"
+    echo "$metrics"
 }
