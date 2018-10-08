@@ -872,7 +872,7 @@ jobs:
           pushd bbl-state/bbl-state > /dev/null
             eval "$(bbl print-env)"
           popd > /dev/null
-          set -x
+          [ -n "$DEBUG" ] && set -x
 
           BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh control-plane-test get-credentials
