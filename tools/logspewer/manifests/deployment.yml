@@ -16,5 +16,8 @@ spec:
     spec:
       containers:
       - name: logspewer
-        image: oratos/logspewer:v0.1
+        image: oratos/logspewer:latest
+        env:
+        - name: MESSAGE
+          value: "crosstalk-test"
 
