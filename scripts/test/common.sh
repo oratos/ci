@@ -107,11 +107,6 @@ spec:
   ports:
   - protocol: TCP
     port: 8080
-    name: syslog
-  - protocol: TCP
-    port: 6061
-    name: metrics
-  type: LoadBalancer
 " | kubectl apply --filename -
 }
 
