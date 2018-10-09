@@ -26,7 +26,7 @@ RUN cd /tmp \
   && tar xzvf credhub*.tgz ./credhub \
   && cp ./credhub /usr/local/bin/
 
-RUN curl -Lo ./bosh https://s3.amazonaws.com/bosh-cli-artifacts/bosh-cli-5.1.1-linux-amd64 \
+RUN curl -Lo ./bosh https://s3.amazonaws.com/bosh-cli-artifacts/bosh-cli-5.3.1-linux-amd64 \
   && chmod +x ./bosh \
   && sudo mv ./bosh /usr/local/bin/bosh \
   && bosh -v
