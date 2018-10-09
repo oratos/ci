@@ -53,10 +53,10 @@ resources:
     password: ((docker-hub.password))
     tag: release-elect
 
-- name: events-controller-image
+- name: event-controller-image
   type: docker-image
   source:
-    repository: oratos/events-controller
+    repository: oratos/event-controller
     username: ((docker-hub.username))
     password: ((docker-hub.password))
     tag: release-elect
@@ -370,7 +370,7 @@ jobs:
       trigger: true
       params:
         skip_download: true
-    - get: events-controller-image
+    - get: event-controller-image
       trigger: true
       params:
         skip_download: true
@@ -393,7 +393,7 @@ jobs:
       - name: oratos-ci
       - name: fluent-bit-out-syslog-image
       - name: sink-controller-image
-      - name: events-controller-image
+      - name: event-controller-image
       params:
         DEBUG:
       run:
@@ -421,11 +421,11 @@ jobs:
             > sink-resources-manifests/manifests/60-deployments/sink.json
           rm sink-resources-manifests/manifests/60-deployments/sink.yml
 
-          events_controller_image_digest=$(cat events-controller-image/digest)
-          yq read sink-resources-manifests/manifests/60-deployments/events.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "events-controller")).image = "oratos/events-controller@'"$events_controller_image_digest"'"' \
-            > sink-resources-manifests/manifests/60-deployments/events.json
-          rm sink-resources-manifests/manifests/60-deployments/events.yml
+          event_controller_image_digest=$(cat event-controller-image/digest)
+          yq read sink-resources-manifests/manifests/60-deployments/event.yml --tojson | \
+            jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller@'"$event_controller_image_digest"'"' \
+            > sink-resources-manifests/manifests/60-deployments/event.json
+          rm sink-resources-manifests/manifests/60-deployments/event.yml
 
           kubectl apply -R -f sink-resources-manifests/manifests
           patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'

@@ -9,7 +9,7 @@ sink_resource_release_params:
   #   https://github.com/pivotal-cf/sink-resources/releases
   # This will also be pushed as a tagged docker image to:
   #   https://hub.docker.com/r/oratos/sink-controller/tags/
-  #   https://hub.docker.com/r/oratos/events-controller/tags/
+  #   https://hub.docker.com/r/oratos/event-controller/tags/
   VERSION: v0.6
 
   # This is the version of the fluent-bit-out-syslog image to be included in

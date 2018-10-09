@@ -16,12 +16,12 @@ COPY / /root/
 RUN go build \
     -a \
     -installsuffix nocgo \
-    -o /events-controller \
+    -o /event-controller \
     -mod=readonly \
-    cmd/events-controller/main.go
+    cmd/event-controller/main.go
 
 FROM alpine:latest
 
-COPY --from=builder /events-controller /srv/
+COPY --from=builder /event-controller /srv/
 WORKDIR /srv
-CMD [ "/srv/events-controller" ]
+CMD [ "/srv/event-controller" ]

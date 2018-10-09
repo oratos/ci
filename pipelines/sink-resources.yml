@@ -3,7 +3,7 @@ groups:
   jobs:
   - unit-tests
   - build-sink-controller-image
-  - build-events-controller-image
+  - build-event-controller-image
   - deploy-gke
   - deploy-cfcr
   - deploy-control-plane
@@ -56,13 +56,13 @@ resources:
     paths:
     - docker-images/sink-controller
 
-- name: events-controller-dockerfile
+- name: event-controller-dockerfile
   type: git
   source:
     uri: https://github.com/pivotal-cf/oratos-ci
     branch: master
     paths:
-    - docker-images/events-controller
+    - docker-images/event-controller
 
 - name: sink-controller-image
   type: docker-image
@@ -71,10 +71,10 @@ resources:
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
-- name: events-controller-image
+- name: event-controller-image
   type: docker-image
   source:
-    repository: oratos/events-controller
+    repository: oratos/event-controller
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
@@ -214,7 +214,7 @@ jobs:
     get_params:
       skip_download: true
 
-- name: build-events-controller-image
+- name: build-event-controller-image
   serial: true
   plan:
   - aggregate:
@@ -222,7 +222,7 @@ jobs:
       trigger: true
       passed:
       - unit-tests
-    - get: events-controller-dockerfile
+    - get: event-controller-dockerfile
       trigger: true
     - get: oratos-ci
   - task: prepare-build
@@ -230,8 +230,8 @@ jobs:
     input_mapping:
       source-repo: sink-resources
     params:
-      DOCKERFILE: oratos-ci/docker-images/events-controller/Dockerfile
-  - put: events-controller-image
+      DOCKERFILE: oratos-ci/docker-images/event-controller/Dockerfile
+  - put: event-controller-image
     params:
       build: build-image/build
       tag: build-image/tag
@@ -248,17 +248,17 @@ jobs:
       trigger: true
       passed:
       - build-sink-controller-image
-      - build-events-controller-image
+      - build-event-controller-image
     - get: sink-controller-image
       trigger: true
       passed:
       - build-sink-controller-image
       params:
         skip_download: true
-    - get: events-controller-image
+    - get: event-controller-image
       trigger: true
       passed:
-      - build-events-controller-image
+      - build-event-controller-image
       params:
         skip_download: true
   - task: deploy
@@ -271,7 +271,7 @@ jobs:
       inputs:
       - name: sink-resources
       - name: sink-controller-image
-      - name: events-controller-image
+      - name: event-controller-image
       params:
         SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
         DEBUG:
@@ -295,11 +295,11 @@ jobs:
             > sink-resources/manifests/60-deployments/sink.json
           rm sink-resources/manifests/60-deployments/sink.yml
 
-          events_sha="$(cat events-controller-image/tag)"
-          yq read sink-resources/manifests/60-deployments/events.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "events-controller")).image = "oratos/events-controller:'"$events_sha"'"' \
-            > sink-resources/manifests/60-deployments/events.json
-          rm sink-resources/manifests/60-deployments/events.yml
+          event_sha="$(cat event-controller-image/tag)"
+          yq read sink-resources/manifests/60-deployments/event.yml --tojson | \
+            jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller:'"$event_sha"'"' \
+            > sink-resources/manifests/60-deployments/event.json
+          rm sink-resources/manifests/60-deployments/event.yml
 
           kubectl apply -R -f sink-resources/manifests
           patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
@@ -317,7 +317,7 @@ jobs:
       trigger: true
       passed:
       - deploy-gke
-    - get: events-controller-image
+    - get: event-controller-image
       trigger: true
       passed:
       - deploy-gke
@@ -359,17 +359,17 @@ jobs:
       trigger: true
       passed:
       - build-sink-controller-image
-      - build-events-controller-image
+      - build-event-controller-image
     - get: sink-controller-image
       trigger: true
       passed:
       - build-sink-controller-image
       params:
         skip_download: true
-    - get: events-controller-image
+    - get: event-controller-image
       trigger: true
       passed:
-      - build-events-controller-image
+      - build-event-controller-image
       params:
         skip_download: true
     - get: oratos-ci-testing-cfcr-bbl-state
@@ -386,7 +386,7 @@ jobs:
       inputs:
       - name: sink-resources
       - name: sink-controller-image
-      - name: events-controller-image
+      - name: event-controller-image
       - name: oratos-ci
       - name: bbl-state
       params:
@@ -408,11 +408,11 @@ jobs:
             > sink-resources/manifests/60-deployments/sink.json
           rm sink-resources/manifests/60-deployments/sink.yml
 
-          events_sha="$(cat events-controller-image/tag)"
-          yq read sink-resources/manifests/60-deployments/events.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "events-controller")).image = "oratos/events-controller:'"$events_sha"'"' \
-            > sink-resources/manifests/60-deployments/events.json
-          rm sink-resources/manifests/60-deployments/events.yml
+          event_sha="$(cat event-controller-image/tag)"
+          yq read sink-resources/manifests/60-deployments/event.yml --tojson | \
+            jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller:'"$event_sha"'"' \
+            > sink-resources/manifests/60-deployments/event.json
+          rm sink-resources/manifests/60-deployments/event.yml
 
           kubectl apply -R -f sink-resources/manifests
           patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
@@ -432,7 +432,7 @@ jobs:
       - deploy-cfcr
       params:
         skip_download: true
-    - get: events-controller-image
+    - get: event-controller-image
       trigger: true
       passed:
       - deploy-cfcr
@@ -470,7 +470,7 @@ jobs:
       - control-plane-tests
       params:
         save: true
-    - get: events-controller-image
+    - get: event-controller-image
       passed:
       - cfcr-tests
       - gke-tests
@@ -505,9 +505,9 @@ jobs:
       cache_tag: latest
     get_params:
       skip_download: true
-  - put: events-controller-image
+  - put: event-controller-image
     params:
-      load: events-controller-image
+      load: event-controller-image
       tag: promote/tag
       cache: true
       cache_tag: latest
@@ -518,7 +518,7 @@ jobs:
   serial: true
   plan:
   - get: sink-controller-image
-  - get: events-controller-image
+  - get: event-controller-image
   - task: release
     privileged: true
     config:
@@ -638,12 +638,12 @@ jobs:
             > sink-resources/manifests/60-deployments/sink.yml
           rm sink-resources/manifests/60-deployments/sink.json
 
-          yq read sink-resources/manifests/60-deployments/events.yml --tojson \
-            | jq '(.spec.template.spec.containers[] | select(.name == "events-controller")).image = "oratos/events-controller:'"$VERSION"'"' \
-            > sink-resources/manifests/60-deployments/events.json
-          yq read sink-resources/manifests/60-deployments/events.json \
-            > sink-resources/manifests/60-deployments/events.yml
-          rm sink-resources/manifests/60-deployments/events.json
+          yq read sink-resources/manifests/60-deployments/event.yml --tojson \
+            | jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller:'"$VERSION"'"' \
+            > sink-resources/manifests/60-deployments/event.json
+          yq read sink-resources/manifests/60-deployments/event.json \
+            > sink-resources/manifests/60-deployments/event.yml
+          rm sink-resources/manifests/60-deployments/event.json
 
           yq read sink-resources/manifests/50-daemonsets/fluent-bit.yml --tojson \
             | jq '(.spec.template.spec.containers[] | select(.name == "fluent-bit")).image = "oratos/fluent-bit-out-syslog:'"$FLUENT_BIT_OUT_SYSLOG_VERSION"'"' \
@@ -666,11 +666,11 @@ jobs:
           cat <<EOF > github-release/body
           These are the versions of the docker images used in this release:
           - [oratos/sink-controller][sink-controller]:$VERSION
-          - [oratos/events-controller][events-controller]:$VERSION
+          - [oratos/event-controller][event-controller]:$VERSION
           - [oratos/fluent-bit-out-syslog][fluent-bit-out-syslog]:$FLUENT_BIT_OUT_SYSLOG_VERSION
 
           [sink-controller]: https://hub.docker.com/r/oratos/sink-controller/
-          [events-controller]: https://hub.docker.com/r/oratos/events-controller/
+          [event-controller]: https://hub.docker.com/r/oratos/event-controller/
           [fluent-bit-out-syslog]: https://hub.docker.com/r/oratos/fluent-bit-out-syslog/
           EOF
 
@@ -682,7 +682,7 @@ jobs:
           [ -n "${DEBUG:-}" ] && set -x
 
           sc_docker_name="oratos/sink-controller:$VERSION"
-          ec_docker_name="oratos/events-controller:$VERSION"
+          ec_docker_name="oratos/event-controller:$VERSION"
           fb_docker_name="oratos/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION"
 
           docker pull "oratos/sink-controller:$GIT_REF"
@@ -691,15 +691,15 @@ jobs:
           docker push "$sc_docker_name"
           docker push "oratos/sink-controller:latest"
 
-          docker pull "oratos/events-controller:$GIT_REF"
-          docker tag "oratos/events-controller:$GIT_REF" "$ec_docker_name"
-          docker tag "oratos/events-controller:$GIT_REF" "oratos/events-controller:latest"
+          docker pull "oratos/event-controller:$GIT_REF"
+          docker tag "oratos/event-controller:$GIT_REF" "$ec_docker_name"
+          docker tag "oratos/event-controller:$GIT_REF" "oratos/event-controller:latest"
           docker push "$ec_docker_name"
-          docker push "oratos/events-controller:latest"
+          docker push "oratos/event-controller:latest"
 
           docker pull "$fb_docker_name"
           docker save "$sc_docker_name" | gzip > "github-release/oratos_sink-controller:$VERSION.tgz"
-          docker save "$ec_docker_name" | gzip > "github-release/oratos_events-controller:$VERSION.tgz"
+          docker save "$ec_docker_name" | gzip > "github-release/oratos_event-controller:$VERSION.tgz"
           docker save "$fb_docker_name" | gzip > "github-release/oratos_fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION.tgz"
 
           pushd sink-resources > /dev/null
@@ -751,17 +751,17 @@ jobs:
       trigger: true
       passed:
       - build-sink-controller-image
-      - build-events-controller-image
+      - build-event-controller-image
     - get: sink-controller-image
       trigger: true
       passed:
       - build-sink-controller-image
       params:
         skip_download: true
-    - get: events-controller-image
+    - get: event-controller-image
       trigger: true
       passed:
-      - build-events-controller-image
+      - build-event-controller-image
       params:
         skip_download: true
     - get: control-plane-test-bbl-state
@@ -778,7 +778,7 @@ jobs:
       inputs:
       - name: sink-resources
       - name: sink-controller-image
-      - name: events-controller-image
+      - name: event-controller-image
       - name: oratos-ci
       - name: bbl-state
       params:
@@ -800,11 +800,11 @@ jobs:
             > sink-resources/manifests/60-deployments/sink.json
           rm sink-resources/manifests/60-deployments/sink.yml
 
-          events_sha="$(cat events-controller-image/tag)"
-          yq read sink-resources/manifests/60-deployments/events.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "events-controller")).image = "oratos/events-controller:'"$events_sha"'"' \
-            > sink-resources/manifests/60-deployments/events.json
-          rm sink-resources/manifests/60-deployments/events.yml
+          event_sha="$(cat event-controller-image/tag)"
+          yq read sink-resources/manifests/60-deployments/event.yml --tojson | \
+            jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller:'"$event_sha"'"' \
+            > sink-resources/manifests/60-deployments/event.json
+          rm sink-resources/manifests/60-deployments/event.yml
 
           kubectl apply -R -f sink-resources/manifests
           patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
@@ -821,7 +821,7 @@ jobs:
       trigger: true
       passed:
       - deploy-control-plane
-    - get: events-controller-image
+    - get: event-controller-image
       trigger: true
       passed:
       - deploy-control-plane
