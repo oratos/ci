@@ -260,7 +260,7 @@ function assert_gt {
        b=0
     fi
 
-    if [ "$a" -gt "$b" ]; then
+    if ! [ "$a" -gt "$b" ]; then
         echo "We did not receive enough logs.  $a !> $b"
         exit 1
     fi
