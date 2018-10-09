@@ -264,10 +264,11 @@ function assert_gt {
 function assert_log_count_gt {
     local starting_count=${1?}
     local namespace=${2?}
+    local ip=${3?}
     local metrics
     local result
 
-    metrics="$(curl --silent http://localhost:6061/metrics)"
+    metrics="$(curl --silent "http://$ip:6061/metrics")"
     result="$(
         echo "$metrics" \
             | jq '.namespaced["'"$namespace"'"]' --join-output
