@@ -12,7 +12,7 @@ apt-get install --yes \
         curl \
         gnupg2 \
         software-properties-common \
-        netcat \
+        netcat-openbsd \
         ruby-full
 
 curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
