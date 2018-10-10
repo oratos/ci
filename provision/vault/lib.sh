@@ -14,7 +14,7 @@ function cert {
 
 function key {
     lpass show "$LASTPASS_X509_PATH" | \
-        sed -n "/^-----BEGIN RSA PRIVATE KEY-----$/,/-----END RSA PRIVATE KEY-----/p"
+        sed -n "/^-----BEGIN PRIVATE KEY-----$/,/-----END PRIVATE KEY-----/p"
 }
 
 function install_vault {
@@ -23,6 +23,8 @@ function install_vault {
     echo INSTALLING VAULT
     echo
 
+    kubectl create namespace "$NAMESPACE_NAME"
+
     sa_file="$(mktemp)"
     cert_file="$(mktemp)"
     key_file="$(mktemp)"
@@ -30,7 +32,6 @@ function install_vault {
     cert > "$cert_file"
     key > "$key_file"
 
-    kubectl create namespace "$NAMESPACE_NAME"
     kubectl create secret generic vault-gcs-service-account \
         --from-file=key.json="$sa_file" \
         --namespace "$NAMESPACE_NAME"
@@ -38,16 +39,17 @@ function install_vault {
         --cert "$cert_file" \
         --key "$key_file" \
         --namespace "$NAMESPACE_NAME"
+
+    rm "$sa_file"
+    rm "$cert_file"
+    rm "$key_file"
+
     helm repo add incubator \
         http://storage.googleapis.com/kubernetes-charts-incubator
     helm install incubator/vault \
         --name vault \
         --values <(generate_values) \
         --namespace "$NAMESPACE_NAME"
-
-    rm "$sa_file"
-    rm "$cert_file"
-    rm "$key_file"
 }
 
 function upgrade_vault {
@@ -55,6 +57,31 @@ function upgrade_vault {
     echo
     echo UPGRADING VAULT
     echo
+
+    kubectl delete secret vault-gcs-service-account \
+        --namespace "$NAMESPACE_NAME" || true
+    kubectl delete secret vault-tls \
+        --namespace "$NAMESPACE_NAME" || true
+
+    sa_file="$(mktemp)"
+    cert_file="$(mktemp)"
+    key_file="$(mktemp)"
+    service_account > "$sa_file"
+    cert > "$cert_file"
+    key > "$key_file"
+
+    kubectl create secret generic vault-gcs-service-account \
+        --from-file=key.json="$sa_file" \
+        --namespace "$NAMESPACE_NAME"
+    kubectl create secret tls vault-tls \
+        --cert "$cert_file" \
+        --key "$key_file" \
+        --namespace "$NAMESPACE_NAME"
+
+    rm "$sa_file"
+    rm "$cert_file"
+    rm "$key_file"
+
     helm upgrade vault incubator/vault --values <(generate_values)
 }
 
