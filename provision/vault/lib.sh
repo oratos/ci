@@ -50,6 +50,7 @@ function install_vault {
         --name vault \
         --values <(generate_values) \
         --namespace "$NAMESPACE_NAME"
+    kubectl apply --filename ./nginx.yml
 }
 
 function upgrade_vault {
@@ -83,6 +84,7 @@ function upgrade_vault {
     rm "$key_file"
 
     helm upgrade vault incubator/vault --values <(generate_values)
+    kubectl apply --filename ./nginx.yml
 }
 
 function loadbalancer_ip {

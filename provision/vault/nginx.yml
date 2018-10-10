@@ -1,0 +1,113 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-nginx
+  namespace: oratos-vault
+spec:
+  type: LoadBalancer
+  selector:
+    app: nginx
+  ports:
+  - protocol: TCP
+    port: 443
+  loadBalancerSourceRanges:
+  - "50.232.79.0/30"
+  - "35.192.0.0/12"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx
+  namespace: oratos-vault
+data:
+  nginx.conf: |
+    user  nginx;
+    worker_processes  1;
+
+    error_log  /var/log/nginx/error.log warn;
+    pid        /var/run/nginx.pid;
+
+    events {
+        worker_connections  1024;
+    }
+
+    http {
+        include       /etc/nginx/mime.types;
+        default_type  application/octet-stream;
+
+        log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                          '$status $body_bytes_sent "$http_referer" '
+                          '"$http_user_agent" "$http_x_forwarded_for"';
+
+        access_log  /var/log/nginx/access.log  main;
+
+        sendfile        on;
+
+        keepalive_timeout  65;
+
+        server {
+            listen 443 ssl http2;
+            listen [::]:443 ssl http2;
+
+            ssl_certificate /vault-tls/tls.crt;
+            ssl_certificate_key /vault-tls/tls.key;
+            ssl_session_timeout 1d;
+            ssl_session_cache shared:SSL:50m;
+            ssl_session_tickets off;
+
+            ssl_protocols TLSv1.2;
+            ssl_ciphers 'ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256';
+            ssl_prefer_server_ciphers on;
+
+            add_header Strict-Transport-Security max-age=15768000;
+
+            ssl_stapling on;
+
+            location / {
+                proxy_pass http://vault-vault.oratos-vault.svc.cluster.local:8200;
+            }
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: oratos-vault
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        command:
+        - "nginx"
+        - "-g"
+        - "daemon off;"
+        - "-c"
+        - "/nginx-config/nginx.conf"
+        ports:
+        - containerPort: 443
+        volumeMounts:
+        - name: vault-tls
+          mountPath: /vault-tls
+          readOnly: true
+        - name: nginx
+          mountPath: /nginx-config
+          readOnly: true
+      volumes:
+      - name: vault-tls
+        secret:
+          secretName: vault-tls
+      - name: nginx
+        configMap:
+          name: nginx
