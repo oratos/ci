@@ -47,7 +47,7 @@ resources:
   type: git
   source:
     uri: git@github.com:pivotal-cf/oratos-ci.git
-    branch: control-plane-test
+    branch: master
     private_key: ((github.oratos-bot-private-key))
 
 - name: kubo-deployment
