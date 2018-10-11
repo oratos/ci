@@ -146,12 +146,11 @@ jobs:
         params:
           text: Namespace Drain Linter failed
     - task: run-tests
-      file: oratos-ci/tasks/go-test-with-latest-packages/task.yml
+      file: oratos-ci/tasks/go-test-mod/task.yml
       privileged: true
       input_mapping:
         source-repo: sink-resources
       params:
-        IMPORT_PATH: github.com/pivotal-cf/sink-resources
         PKGS_HOOK: |
           go list ./... | grep -v vendor | grep -v pkg/client
       on_failure:

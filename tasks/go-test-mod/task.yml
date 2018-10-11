@@ -1,0 +1,32 @@
+---
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: oratos/ci-base
+
+inputs:
+- name: oratos-ci   # - This repo
+- name: source-repo # - The Go package to test
+
+run:
+  path: oratos-ci/tasks/go-test-mod/task
+
+params:
+  # - Optional
+  # - Command to run before running tests.
+  PRE_TEST_HOOK:
+
+  # - Optional
+  # - Command to run after running tests.
+  POST_TEST_HOOK:
+
+  # - Optional
+  # - Command that is ran to list packages to test.
+  # - Example: go list ./... | grep -v vendor | grep -v client
+  PKGS_HOOK:
+
+  # - Optional
+  # - Set to true to output all commands that are ran.
+  DEBUG:
