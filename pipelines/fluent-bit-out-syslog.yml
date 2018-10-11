@@ -71,12 +71,11 @@ jobs:
         params:
           text: Syslog Plugin Linter failed
     - task: run-tests
-      file: oratos-ci/tasks/go-test-with-latest-packages/task.yml
+      file: oratos-ci/tasks/go-test-mod/task.yml
       privileged: true
       input_mapping:
         source-repo: out-syslog
       params:
-        IMPORT_PATH: github.com/pivotal-cf/fluent-bit-out-syslog
       on_failure:
         put: slack-alert
         params:
