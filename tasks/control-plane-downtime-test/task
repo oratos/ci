@@ -91,7 +91,7 @@ function main {
       | jq '.namespaced["oratos"]' --join-output)"
 
     # verify receiver is still receiving logs
-    retry_command "assert_log_count_gt $result oratos $ip" 10
+    retry_command "assert_log_count_gt $result oratos $ip" 20
 
     # wait for a while after api is down before doing the tests again
     # this should catch cases where we fail when apiserver is down but just
@@ -104,7 +104,7 @@ function main {
       | jq '.namespaced["oratos"]' --join-output)"
 
     # verify receiver is still receiving logs
-    retry_command "assert_log_count_gt $result oratos $ip" 10
+    retry_command "assert_log_count_gt $result oratos $ip" 20
 }
 
 main
