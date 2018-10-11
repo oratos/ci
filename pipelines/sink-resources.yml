@@ -867,6 +867,7 @@ jobs:
             kubectl delete service crosstalk-receiver-oratos \
               --namespace default
             kubectl delete pod crosstalk-receiver-oratos --namespace default
+            kubectl delete sink crosstalk-sink --namespace oratos
           }
 
           # set bosh env vars
@@ -893,27 +894,36 @@ jobs:
             --filename oratos-ci/tools/logspewer/manifests/deployment.yml \
             --namespace oratos
 
+          # create another lb service to expose /metrics
+          kubectl expose pod crosstalk-receiver-oratos \
+            --type=LoadBalancer \
+            --namespace default \
+            --port 6061 \
+            --name=crosstalk-receiver-metrics || true
+
           # poll for crosstalk-receiver lb ip address
           count=1
           echo -n "polling for lb ip address"
           while true; do
               echo -n .
-              ip="$(kubectl get service crosstalk-receiver-oratos \
+              ip="$(kubectl get service crosstalk-receiver-metrics \
                       --namespace default \
                       --output json \
                       | jq .status.loadBalancer.ingress[0].ip --join-output)"
               if [ "$ip" != "null" ] && [ "$ip" != "" ]; then
                   break
               fi
-              if [ "$count" -gt 30 ]; then
+              if [ "$count" -gt 60 ]; then
                   echo "unable to get service lb ip address"
                   exit 1
               fi
               sleep 5
               ((count++))
           done
+          echo
 
           # verify receiver is receiving logs
+          sleep 30
           assert_log_count_gt 0 oratos "$ip"
 
           # "stop" control plane
@@ -922,8 +932,10 @@ jobs:
             ssh master -c 'sudo iptables-save > /tmp/iptables.orig; sudo iptables -A INPUT -p tcp --dport 8080 -j DROP; sudo iptables -A INPUT -p tcp --dport 8443 -j DROP'
 
           # get base count
-          count="$(assert_log_count_gt 0 oratos "$ip")"
+          metrics="$(assert_log_count_gt 0 oratos "$ip" | jq .)"
+          result="$(echo "$metrics" \
+            | jq '.namespaced["oratos"]' --join-output)"
 
           # verify receiver is still receiving logs
           sleep 10 # wait for logs to build up
-          assert_log_count_gt "$count" oratos "$ip"
+          assert_log_count_gt "$result" oratos "$ip"
