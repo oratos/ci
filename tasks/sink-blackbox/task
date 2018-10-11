@@ -90,7 +90,9 @@ trap report_to_datadog EXIT
 
 MSG_COUNT=0
 
+[ -n "$DEBUG" ] && set +x
 eval "$GET_CREDENTIALS_HOOK"
+[ -n "$DEBUG" ] && set -x
 
 delete_sinks
 

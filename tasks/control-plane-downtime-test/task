@@ -25,17 +25,18 @@ function clean_up {
 }
 
 function main {
-    # TODO: see if passwords are being output in debug mode
 
     # set bosh env vars
     pushd bbl-state/bbl-state > /dev/null
-      set +x # make sure creds are not output
+      [ -n "$DEBUG" ] && set +x # make sure creds are not output
       eval "$(bbl print-env)"
       [ -n "$DEBUG" ] && set -x
     popd > /dev/null
 
     # setup kubectl
+    [ -n "$DEBUG" ] && set +x # make sure creds are not output
     eval "$GET_CREDENTIALS_HOOK"
+    [ -n "$DEBUG" ] && set -x
 
     # cleanup test state
     trap clean_up EXIT
