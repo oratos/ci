@@ -1,5 +1,5 @@
 #!/bin/bash
-set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
 source "oratos-ci/scripts/test/common.sh"
 
@@ -40,15 +40,15 @@ function metrics_lb_ip {
 function main {
     # set bosh env vars
     pushd bbl-state/bbl-state > /dev/null
-      [ -n "$DEBUG" ] && set +x # make sure creds are not output
+      [ -n "${DEBUG:-}" ] && set +x # make sure creds are not output
       eval "$(bbl print-env)"
-      [ -n "$DEBUG" ] && set -x
+      [ -n "${DEBUG:-}" ] && set -x
     popd > /dev/null
 
     # setup kubectl
-    [ -n "$DEBUG" ] && set +x # make sure creds are not output
+    [ -n "${DEBUG:-}" ] && set +x # make sure creds are not output
     eval "$GET_CREDENTIALS_HOOK"
-    [ -n "$DEBUG" ] && set -x
+    [ -n "${DEBUG:-}" ] && set -x
 
     # cleanup test state
     trap clean_up EXIT

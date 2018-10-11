@@ -1,14 +1,14 @@
 #!/bin/bash
-set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
 if [ -z "$GET_CREDENTIALS_HOOK" ]; then
   echo GET_CREDENTIALS_HOOK must be set
   exit 1
 fi
 
-[ -n "$DEBUG" ] && set +x
+[ -n "${DEBUG:-}" ] && set +x
 eval "$GET_CREDENTIALS_HOOK"
-[ -n "$DEBUG" ] && set -x
+[ -n "${DEBUG:-}" ] && set -x
 
 kubectl patch service kubernetes \
     --namespace default \

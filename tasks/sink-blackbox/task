@@ -1,5 +1,5 @@
 #!/bin/bash
-set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
 if [ -z "$GET_CREDENTIALS_HOOK" ]; then
   echo GET_CREDENTIALS_HOOK must be set
@@ -30,9 +30,9 @@ MESSAGE="$MESSAGE-$RANDOM"
 
 # Install and setup papertrail cli
 gem install papertrail
-set +x
+[ -n "${DEBUG:-}" ] && set +x
 echo "token: $PAPERTRAIL_TOKEN" > ~/.papertrail.yml
-[ -n "$DEBUG" ] && set -x
+[ -n "${DEBUG:-}" ] && set -x
 
 function delete_sinks {
     # only one blackbox tests can run at a given time
@@ -90,9 +90,9 @@ trap report_to_datadog EXIT
 
 MSG_COUNT=0
 
-[ -n "$DEBUG" ] && set +x
+[ -n "${DEBUG:-}" ] && set +x
 eval "$GET_CREDENTIALS_HOOK"
-[ -n "$DEBUG" ] && set -x
+[ -n "${DEBUG:-}" ] && set -x
 
 delete_sinks
 

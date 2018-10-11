@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -Eeo pipefail; [ -n "$DEBUG" ] && set -x; set -u
+set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
 function cfcr_env_download-bbl-state {
     mkdir -p "$BBL_STATE_DIR"
@@ -24,9 +24,9 @@ function cfcr_env_print-env {
     fi
 
     pushd "$BBL_STATE_DIR/bbl-state" > /dev/null
-        [ -n "$DEBUG" ] && set +x # make sure creds are not output
+        [ -n "${DEBUG:-}" ] && set +x # make sure creds are not output
         bbl print-env
-        [ -n "$DEBUG" ] && set -x
+        [ -n "${DEBUG:-}" ] && set -x
     popd > /dev/null
 }
 
@@ -43,18 +43,18 @@ function cleanup_bbl_state {
 }
 
 function cfcr_env_get-credentials {
-    [ -n "$DEBUG" ] && set +x # make sure creds are not output
+    [ -n "${DEBUG:-}" ] && set +x # make sure creds are not output
     eval "$(cfcr_env_print-env)"
     admin_password_key=$(credhub find --name-like /cfcr/kubo-admin-password --output-json | jq --raw-output ".credentials[0].name")
     admin_password=$(credhub get --name "$admin_password_key" --output-json | jq --raw-output .value)
-    [ -n "$DEBUG" ] && set -x
+    [ -n "${DEBUG:-}" ] && set -x
 
     kubectl config set-cluster "$env" \
       --server="https://$domain" \
       --insecure-skip-tls-verify=true
-    [ -n "$DEBUG" ] && set +x # make sure creds are not output
+    [ -n "${DEBUG:-}" ] && set +x # make sure creds are not output
     kubectl config set-credentials "$env-admin" --token="$admin_password"
-    [ -n "$DEBUG" ] && set -x
+    [ -n "${DEBUG:-}" ] && set -x
     kubectl config set-context "$env" \
       --cluster="$env" \
       --user="$env-admin" \
@@ -63,18 +63,18 @@ function cfcr_env_get-credentials {
 }
 
 function cfcr_env_get-credentials-tunnel {
-    [ -n "$DEBUG" ] && set +x # make sure creds are not output
+    [ -n "${DEBUG:-}" ] && set +x # make sure creds are not output
     eval "$(cfcr_env_print-env)"
     admin_password_key=$(credhub find --name-like /cfcr/kubo-admin-password --output-json | jq --raw-output ".credentials[0].name")
     admin_password=$(credhub get --name "$admin_password_key" --output-json | jq --raw-output .value)
-    [ -n "$DEBUG" ] && set -x
+    [ -n "${DEBUG:-}" ] && set -x
 
     kubectl config set-cluster "$env" \
       --server="https://localhost:8443" \
       --insecure-skip-tls-verify=true
-    [ -n "$DEBUG" ] && set +x # make sure creds are not output
+    [ -n "${DEBUG:-}" ] && set +x # make sure creds are not output
     kubectl config set-credentials "$env-admin" --token="$admin_password"
-    [ -n "$DEBUG" ] && set -x
+    [ -n "${DEBUG:-}" ] && set -x
     kubectl config set-context "$env" \
       --cluster="$env" \
       --user="$env-admin" \
@@ -89,17 +89,17 @@ function cfcr_env_get-credentials-tunnel {
     )
     pushd "$BBL_STATE_DIR/bbl-state" > /dev/null
         jumpbox_host="$(bbl jumpbox-address)"
-        [ -n "$DEBUG" ] && set +x # make sure creds are not output
+        [ -n "${DEBUG:-}" ] && set +x # make sure creds are not output
         jumpbox_key="$(bbl ssh-key)"
-        [ -n "$DEBUG" ] && set -x
+        [ -n "${DEBUG:-}" ] && set -x
     popd > /dev/null
 
     agent_out="$(ssh-agent)"
     eval "$agent_out"
 
-    [ -n "$DEBUG" ] && set +x # make sure creds are not output
+    [ -n "${DEBUG:-}" ] && set +x # make sure creds are not output
     echo "$jumpbox_key" | ssh-add -
-    [ -n "$DEBUG" ] && set -x
+    [ -n "${DEBUG:-}" ] && set -x
     ps aux | grep ssh | grep jumpbox | awk '{print $2}' | while read pid; do
         kill "$pid" || true
     done || true

@@ -1,5 +1,5 @@
 #!/bin/bash
-set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
 source "oratos-ci/scripts/test/common.sh"
 
@@ -44,12 +44,12 @@ function cleanup {
 }
 
 function setup_contexts {
-    set +x
+    [ -n "${DEBUG:-}" ] && set +x
     echo "$NAOMI_A_CERT" > /tmp/naomi-a.crt
     echo "$NAOMI_A_KEY" > /tmp/naomi-a.key
     echo "$NAOMI_B_CERT" > /tmp/naomi-b.crt
     echo "$NAOMI_B_KEY" > /tmp/naomi-b.key
-    [ -n "$DEBUG" ] && set -x
+    [ -n "${DEBUG:-}" ] && set -x
 
     context="$(kubectl config current-context)"
     cluster="$(

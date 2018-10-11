@@ -170,7 +170,7 @@ jobs:
           - "-c"
           - |
             #!/bin/bash
-            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
             # set bosh env vars
             set +x
@@ -198,7 +198,7 @@ jobs:
           - "-c"
           - |
             #!/bin/bash
-            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
             # get stemcell version
             pushd kubo-deployment > /dev/null
@@ -240,7 +240,7 @@ jobs:
           - "-c"
           - |
             #!/bin/bash
-            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
             pushd bikepark-bbl-state/bbl-state > /dev/null
               eval "$(bbl print-env)"
@@ -266,7 +266,7 @@ jobs:
           - "-c"
           - |
             #!/bin/bash
-            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
             cp -r kubo-deployment/. modified-kubo-deployment/
             cat <<EOF > ops.yml
@@ -402,7 +402,7 @@ jobs:
         - "-c"
         - |
           #!/bin/bash
-          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
           # TODO: deploy with the triggered images, not :latest
 

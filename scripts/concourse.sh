@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -Eeo pipefail; [ -n "$DEBUG" ] && set -x; set -u
+set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
 function concourse_download-bbl-state {
     mkdir -p "$BBL_STATE_DIR"

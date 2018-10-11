@@ -1,5 +1,5 @@
 #!/bin/bash
-set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
 mkdir -p "workspace/src/$IMPORT_PATH"
 cp -r source-repo/. "workspace/src/$IMPORT_PATH/"

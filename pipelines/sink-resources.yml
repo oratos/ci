@@ -175,7 +175,7 @@ jobs:
           - "-c"
           - |
             #!/bin/bash
-            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
             export GOPATH="$PWD/workspace"
             path=workspace/src/github.com/pivotal-cf/sink-resources
@@ -282,7 +282,7 @@ jobs:
         - "-c"
         - |
           #!/bin/bash
-          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
           echo "$SERVICE_ACCOUNT" > sa.json
           gcloud auth activate-service-account --key-file sa.json
@@ -342,7 +342,7 @@ jobs:
         - "-c"
         - |
           #!/bin/bash
-          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
           echo "$SERVICE_ACCOUNT" > sa.json
           gcloud auth activate-service-account --key-file sa.json
@@ -398,7 +398,7 @@ jobs:
         - "-c"
         - |
           #!/bin/bash
-          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
           BBL_STATE_DIR=bbl-state \
               oratos-ci/scripts/cfcr.sh testing get-credentials
@@ -495,7 +495,7 @@ jobs:
           - "-c"
           - |
             #!/bin/bash
-            set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
             echo "release-elect" > promote/tag
   - put: sink-controller-image
@@ -544,7 +544,7 @@ jobs:
         - "-c"
         - |
           #!/bin/bash
-          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
           if [ -z "$GIT_REF" ]; then
             echo GIT_REF param required
@@ -620,9 +620,9 @@ jobs:
           mkdir -p ~/.ssh/
           ssh-keyscan github.com >> ~/.ssh/known_hosts 2> /dev/null
           eval "$(ssh-agent)"
-          set +x
+          [ -n "${DEBUG:-}" ] && set +x
           echo "$GITHUB_PRIVATE_KEY" > key
-          [ -n "$DEBUG" ] && set -x
+          [ -n "${DEBUG:-}" ] && set -x
           chmod 0600 key
           ssh-add key
           rm key
@@ -675,12 +675,12 @@ jobs:
           [fluent-bit-out-syslog]: https://hub.docker.com/r/oratos/fluent-bit-out-syslog/
           EOF
 
-          set +x
+          [ -n "${DEBUG:-}" ] && set +x
           echo "$DOCKERHUB_PASSWORD" \
             | docker login \
               --username "$DOCKERHUB_USERNAME" \
               --password-stdin
-          [ -n "$DEBUG" ] && set -x
+          [ -n "${DEBUG:-}" ] && set -x
 
           sc_docker_name="oratos/sink-controller:$VERSION"
           ec_docker_name="oratos/events-controller:$VERSION"
@@ -790,7 +790,7 @@ jobs:
         - "-c"
         - |
           #!/bin/bash
-          set -Eeuo pipefail; [ -n "$DEBUG" ] && set -x
+          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
           BBL_STATE_DIR=bbl-state \
               oratos-ci/scripts/cfcr.sh control-plane-test get-credentials

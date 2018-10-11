@@ -1,5 +1,5 @@
 #!/bin/bash
-set -Eeo pipefail; [ -n "$DEBUG" ] && set -x; set -u
+set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
 function set_globals {
     pipeline="${1:-}"

@@ -73,9 +73,9 @@ function retry_command {
 
 ################################################################################
 function login_to_cluster_as_admin {
-    [ -n "$DEBUG" ] && set +x
+    [ -n "${DEBUG:-}" ] && set +x
     eval "$GET_CREDENTIALS_HOOK"
-    [ -n "$DEBUG" ] && set -x
+    [ -n "${DEBUG:-}" ] && set -x
 }
 
 function apply_crosstalk_receiver {
