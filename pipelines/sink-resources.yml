@@ -462,19 +462,19 @@ jobs:
       passed:
       - cfcr-tests
       - gke-tests
-      - control-plane-tests
+      # - control-plane-tests
     - get: sink-controller-image
       passed:
       - cfcr-tests
       - gke-tests
-      - control-plane-tests
+      # - control-plane-tests
       params:
         save: true
     - get: event-controller-image
       passed:
       - cfcr-tests
       - gke-tests
-      - control-plane-tests
+      # - control-plane-tests
       params:
         save: true
     - task: write-promote-tag
