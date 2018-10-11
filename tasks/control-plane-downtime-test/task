@@ -69,7 +69,7 @@ function main {
       --type=LoadBalancer \
       --namespace default \
       --port 6061 \
-      --name=crosstalk-receiver-metrics || true
+      --name=crosstalk-receiver-metrics > /dev/null 2>&1 || true
 
     # poll for crosstalk-receiver lb ip address
     ip="$(retry_command metrics_lb_ip 120 3 true)"
