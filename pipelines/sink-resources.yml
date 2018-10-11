@@ -39,7 +39,7 @@ resources:
   type: git
   source:
     uri: https://github.com/pivotal-cf/oratos-ci
-    branch: control-plane-test
+    branch: master
 
 - name: sink-resources
   type: git
