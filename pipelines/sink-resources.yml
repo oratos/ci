@@ -45,7 +45,7 @@ resources:
   type: git
   source:
     uri: git@github.com:pivotal-cf/sink-resources
-    branch: event-rename
+    branch: master
     private_key: ((github.oratos-bot-private-key))
 
 - name: sink-controller-dockerfile
