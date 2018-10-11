@@ -49,18 +49,25 @@ function ensure_variable_isset {
 function retry_command {
     local command=${1?}
     local timeout_seconds=${2?}
-    local check_interval=${3:-"3"}
-    n=0
-    until [ "$n" -ge "$timeout_seconds" ]
-    do
-        if eval "$command" >/dev/null 2>&1; then
+    local sleep_duration=${3:-3}
+    local report_stdout=${4:-false}
+    local stdout
+    local n=0
+
+    until [ "$n" -ge "$timeout_seconds" ]; do
+        if stdout="$(eval "$command" 2>/dev/null)"; then
+            if [ "$report_stdout" = "true" ]; then
+                echo "$stdout"
+            fi
             return
         fi
-        n=$((n+check_interval))
-        echo "Sleep $check_interval seconds: $command"
-        sleep "$check_interval"
+        n=$((n+sleep_duration))
+
+        echo "Sleep $sleep_duration seconds: $command" >&2
+        sleep "$sleep_duration"
     done
-    echo "After waiting for $timeout_seconds seconds, it still fails"
+
+    echo "After waiting for $timeout_seconds seconds, it still fails" >&2
     exit 1
 }
 

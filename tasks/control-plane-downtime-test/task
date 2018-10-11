@@ -24,8 +24,20 @@ function clean_up {
     kubectl delete sink crosstalk-sink --namespace oratos
 }
 
-function main {
+function metrics_lb_ip {
+    local ip
+    ip="$(kubectl get service crosstalk-receiver-metrics \
+                --namespace default \
+                --output json \
+            | jq .status.loadBalancer.ingress[0].ip --join-output)"
+    if [ "$ip" != "null" ] && [ "$ip" != "" ]; then
+        echo "$ip"
+        return 0
+    fi
+    return 1
+}
 
+function main {
     # set bosh env vars
     pushd bbl-state/bbl-state > /dev/null
       [ -n "$DEBUG" ] && set +x # make sure creds are not output
@@ -59,27 +71,8 @@ function main {
       --port 6061 \
       --name=crosstalk-receiver-metrics || true
 
-    # TODO: factor out polling logic to be generic and re-usable
     # poll for crosstalk-receiver lb ip address
-    count=1
-    echo -n "polling for lb ip address"
-    while true; do
-        echo -n .
-        ip="$(kubectl get service crosstalk-receiver-metrics \
-                --namespace default \
-                --output json \
-                | jq .status.loadBalancer.ingress[0].ip --join-output)"
-        if [ "$ip" != "null" ] && [ "$ip" != "" ]; then
-            break
-        fi
-        if [ "$count" -gt 60 ]; then
-            echo "unable to get service lb ip address"
-            exit 1
-        fi
-        sleep 5
-        ((count++))
-    done
-    echo
+    ip="$(retry_command metrics_lb_ip 120 3 true)"
 
     # TODO: poll here instead of sleeping and asserting
     # verify receiver is receiving logs
