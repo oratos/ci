@@ -4,15 +4,14 @@ set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 mkdir -p ~/.ssh/
 ssh-keyscan github.com >> ~/.ssh/known_hosts 2> /dev/null
 
-echo $GOPATH
+echo "$GOPATH"
 pushd source-repo > /dev/null
   go mod download
-  go get -t -d ./...
   eval "$PRE_TEST_HOOK"
   if [ "$PKGS_HOOK" != "" ]; then
-    go test "$(eval "$PKGS_HOOK")" -race
+    eval "$PKGS_HOOK" | xargs go test -race
   else
-    go test "$(go list ./... | grep -v vendor)" -race
+    go list ./... | grep -v vendor | xargs go test -race
   fi
   eval "$POST_TEST_HOOK"
 popd > /dev/null
