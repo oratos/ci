@@ -78,6 +78,9 @@ function main {
     retry_command "assert_log_count_gt 0 oratos $ip" 30
 
     # add iptables rule to prevent communication with the apiserver
+    echo "About to pull the plug on kubernetes apiserver..."
+    sleep 5
+    echo "...ok that is enough waiting pulling the plug!"
     bosh \
       --deployment cfcr \
       ssh master -c 'sudo iptables-save > /tmp/iptables.orig; sudo iptables -A INPUT -p tcp --dport 8080 -j DROP; sudo iptables -A INPUT -p tcp --dport 8443 -j DROP'
