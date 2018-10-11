@@ -74,30 +74,37 @@ function main {
     # poll for crosstalk-receiver lb ip address
     ip="$(retry_command metrics_lb_ip 120 3 true)"
 
-    # TODO: poll here instead of sleeping and asserting
     # verify receiver is receiving logs
-    sleep 30
-    assert_log_count_gt 0 oratos "$ip"
+    retry_command "assert_log_count_gt 0 oratos $ip" 30
 
     # add iptables rule to prevent communication with the apiserver
     bosh \
       --deployment cfcr \
       ssh master -c 'sudo iptables-save > /tmp/iptables.orig; sudo iptables -A INPUT -p tcp --dport 8080 -j DROP; sudo iptables -A INPUT -p tcp --dport 8443 -j DROP'
 
-    # TODO: assert api is indeed down
+    # assert that the apiserver is down
+    assert_fail "kubectl cluster-info > /dev/null 2>&1"
 
-    # TODO: change this to not be "assert" but a "read"
     # get base count
     metrics="$(assert_log_count_gt 0 oratos "$ip" | jq .)"
     result="$(echo "$metrics" \
       | jq '.namespaced["oratos"]' --join-output)"
 
-    # TODO: poll here instead of sleeping and asserting
     # verify receiver is still receiving logs
-    sleep 10 # wait for logs to build up
-    assert_log_count_gt "$result" oratos "$ip"
+    retry_command "assert_log_count_gt $result oratos $ip" 10
 
-    # TODO: add test to wait for a while and test things still work
+    # wait for a while after api is down before doing the tests again
+    # this should catch cases where we fail when apiserver is down but just
+    # not immediately
+    sleep 120
+
+    # get base count
+    metrics="$(assert_log_count_gt 0 oratos "$ip" | jq .)"
+    result="$(echo "$metrics" \
+      | jq '.namespaced["oratos"]' --join-output)"
+
+    # verify receiver is still receiving logs
+    retry_command "assert_log_count_gt $result oratos $ip" 10
 }
 
 main

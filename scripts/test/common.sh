@@ -285,3 +285,13 @@ function assert_log_count_gt {
     assert_gt "$result" "$starting_count"
     echo "$metrics"
 }
+
+function assert_fail {
+    local command=${1?}
+
+    if eval "$command"; then
+        echo "expected command to fail"
+        echo "$command"
+        exit 1
+    fi
+}
