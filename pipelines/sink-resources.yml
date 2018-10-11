@@ -39,20 +39,20 @@ resources:
   type: git
   source:
     uri: https://github.com/pivotal-cf/oratos-ci
-    branch: master
+    branch: event-rename
 
 - name: sink-resources
   type: git
   source:
     uri: git@github.com:pivotal-cf/sink-resources
-    branch: master
+    branch: event-rename
     private_key: ((github.oratos-bot-private-key))
 
 - name: sink-controller-dockerfile
   type: git
   source:
     uri: https://github.com/pivotal-cf/oratos-ci
-    branch: master
+    branch: event-rename
     paths:
     - docker-images/sink-controller
 
@@ -60,7 +60,7 @@ resources:
   type: git
   source:
     uri: https://github.com/pivotal-cf/oratos-ci
-    branch: master
+    branch: event-rename
     paths:
     - docker-images/event-controller
 
