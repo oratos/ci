@@ -29,15 +29,13 @@ function init_helm {
     echo INITIALIZING HELM
     echo
 
-    helm init --wait
     kubectl create serviceaccount tiller \
         --namespace kube-system
     kubectl create clusterrolebinding tiller-cluster-rule \
         --clusterrole cluster-admin \
         --serviceaccount kube-system:tiller
-    kubectl patch deploy tiller-deploy \
-        --patch '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}' \
-        --namespace kube-system
+    helm init --service-account tiller
+
     helm repo update
 
     echo waiting for tiller to be ready
