@@ -77,7 +77,7 @@ function main {
     ip="$(retry_command metrics_lb_ip 120 3 true)"
 
     # verify receiver is receiving logs
-    retry_command "assert_log_count_gt 0 oratos $ip" 30
+    retry_command "assert_log_count_gt 0 oratos $ip" 120
 
     # add iptables rule to prevent communication with the apiserver
     bosh \
