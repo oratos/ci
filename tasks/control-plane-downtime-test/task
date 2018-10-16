@@ -51,7 +51,9 @@ function main {
     [ -n "${DEBUG:-}" ] && set -x
 
     # cleanup test state
-    trap clean_up EXIT
+    if [ "$SKIP_CLEANUP" != "true" ]; then
+        trap clean_up EXIT
+    fi
 
     # create crosstalk-receiver pod
     apply_crosstalk_receiver oratos
