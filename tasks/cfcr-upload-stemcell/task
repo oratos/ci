@@ -1,0 +1,16 @@
+#!/bin/bash
+set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+
+function main {
+  # set bosh env vars
+  [ -n "${DEBUG:-}" ] && set +x
+  pushd bbl-state/bbl-state > /dev/null
+    eval "$(bbl print-env)"
+  popd > /dev/null
+  [ -n "${DEBUG:-}" ] && set -x
+
+  bosh upload-stemcell \
+    https://bosh.io/d/stemcells/bosh-google-kvm-ubuntu-xenial-go_agent
+}
+
+main
