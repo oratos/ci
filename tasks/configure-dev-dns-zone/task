@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
 if [ -z "$AWS_ACCESS_KEY_ID" ]; then
