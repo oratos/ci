@@ -1,5 +1,5 @@
-#!/bin/bash
-set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+#!/bin/sh
+set -euo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
 if [ -z "$AWS_ACCESS_KEY_ID" ]; then
     echo ENV_DNS_NAME is required.
