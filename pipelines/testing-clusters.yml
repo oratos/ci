@@ -54,13 +54,13 @@ resources:
   type: git
   source:
     uri: https://github.com/cloudfoundry-incubator/kubo-deployment
-    branch: v0.19.0
+    branch: v0.23.0
 
 - name: kubo-release-bosh-io
   type: bosh-io-release
   source:
     repository: cloudfoundry-incubator/kubo-release
-    regexp: "0.19.*"
+    regexp: "0.23.*"
 
 - name: control-plane-test-bbl-state
   type: vault
@@ -166,42 +166,9 @@ jobs:
 
             bosh upload-release kubo-release-bosh-io/release.tgz
     - task: upload-stemcell
-      config:
-        platform: linux
-        image_resource:
-          type: docker-image
-          source:
-            repository: relintdockerhubpushbot/cf-deployment-concourse-tasks
-        inputs:
-        - name: kubo-deployment
-        - name: oratos-ci-testing-cfcr-bbl-state
-        params:
-          DEBUG:
-        run:
-          path: /bin/bash
-          args:
-          - "-c"
-          - |
-            #!/bin/bash
-            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-
-            # get stemcell version
-            pushd kubo-deployment > /dev/null
-              version="$(
-                bosh int manifests/cfcr.yml \
-                  --path /stemcells/alias=trusty/version
-              )"
-            popd > /dev/null
-
-            # set bosh env vars
-            set +x
-            pushd oratos-ci-testing-cfcr-bbl-state/bbl-state > /dev/null
-              eval "$(bbl print-env)"
-            popd > /dev/null
-            set -x
-
-            bosh upload-stemcell \
-              "https://bosh.io/d/stemcells/bosh-google-kvm-ubuntu-trusty-go_agent?v=$version"
+      file: oratos-ci/tasks/cfcr-upload-stemcell/task.yml
+      input_mapping:
+        bbl-state: oratos-ci-testing-cfcr-bbl-state
     - task: upload-vars-to-credhub
       config:
         platform: linux
@@ -266,9 +233,6 @@ jobs:
               path: /variables/name=~1dns_api_server_tls
             - type: remove
               path: /variables/name=~1dns_api_client_tls
-            - type: replace
-              path: /releases/name=kubo/version
-              value: 0.19.0
             EOF
             bosh interpolate kubo-deployment/manifests/cfcr.yml \
               --ops-file ops.yml \
@@ -426,42 +390,9 @@ jobs:
 
             bosh upload-release kubo-release-bosh-io/release.tgz
     - task: upload-stemcell
-      config:
-        platform: linux
-        image_resource:
-          type: docker-image
-          source:
-            repository: relintdockerhubpushbot/cf-deployment-concourse-tasks
-        inputs:
-        - name: kubo-deployment
-        - name: control-plane-test-bbl-state
-        params:
-          DEBUG:
-        run:
-          path: /bin/bash
-          args:
-          - "-c"
-          - |
-            #!/bin/bash
-            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-
-            # get stemcell version
-            pushd kubo-deployment > /dev/null
-              version="$(
-                bosh int manifests/cfcr.yml \
-                  --path /stemcells/alias=trusty/version
-              )"
-            popd > /dev/null
-
-            # set bosh env vars
-            set +x
-            pushd control-plane-test-bbl-state/bbl-state > /dev/null
-              eval "$(bbl print-env)"
-            popd > /dev/null
-            set -x
-
-            bosh upload-stemcell \
-              "https://bosh.io/d/stemcells/bosh-google-kvm-ubuntu-trusty-go_agent?v=$version"
+      file: oratos-ci/tasks/cfcr-upload-stemcell/task.yml
+      input_mapping:
+        bbl-state: control-plane-test-bbl-state
     - task: upload-vars-to-credhub
       config:
         platform: linux
@@ -526,9 +457,6 @@ jobs:
               path: /variables/name=~1dns_api_server_tls
             - type: remove
               path: /variables/name=~1dns_api_client_tls
-            - type: replace
-              path: /releases/name=kubo/version
-              value: 0.19.0
 
             - type: replace
               path: /instance_groups/name=worker/instances

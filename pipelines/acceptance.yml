@@ -73,13 +73,13 @@ resources:
   type: git
   source:
     uri: https://github.com/cloudfoundry-incubator/kubo-deployment
-    branch: v0.21.0
+    branch: v0.23.0
 
 - name: kubo-release-bosh-io
   type: bosh-io-release
   source:
     repository: cloudfoundry-incubator/kubo-release
-    regexp: "0.21.*"
+    regexp: "0.23.*"
 
 - name: cf-deployment-concourse-tasks
   type: git
@@ -181,47 +181,9 @@ jobs:
 
             bosh upload-release kubo-release-bosh-io/release.tgz
     - task: upload-stemcell
-      config:
-        platform: linux
-        image_resource:
-          type: docker-image
-          source:
-            repository: relintdockerhubpushbot/cf-deployment-concourse-tasks
-        inputs:
-        - name: kubo-deployment
-        - name: bikepark-bbl-state
-        params:
-          DEBUG:
-        run:
-          path: /bin/bash
-          args:
-          - "-c"
-          - |
-            #!/bin/bash
-            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-
-            # get stemcell version
-            pushd kubo-deployment > /dev/null
-              version="$(
-                bosh int manifests/cfcr.yml \
-                  --path /stemcells/alias=default/version
-              )"
-            popd > /dev/null
-
-            # set bosh env vars
-            set +x
-            pushd bikepark-bbl-state/bbl-state > /dev/null
-              eval "$(bbl print-env)"
-            popd > /dev/null
-            set -x
-
-            # TODO: We need to remove this as soon as bosh.io can download the
-            # "latest" version again. That is, if version=latest bosh.io will
-            # return a 404.
-            version="97.18"
-
-            bosh upload-stemcell \
-              "https://bosh.io/d/stemcells/bosh-google-kvm-ubuntu-xenial-go_agent?v=$version"
+      file: oratos-ci/tasks/cfcr-upload-stemcell/task.yml
+      input_mapping:
+        bbl-state: bikepark-bbl-state
     - task: upload-vars-to-credhub
       config:
         platform: linux
@@ -286,9 +248,6 @@ jobs:
               path: /variables/name=~1dns_api_server_tls
             - type: remove
               path: /variables/name=~1dns_api_client_tls
-            - type: replace
-              path: /releases/name=kubo/version
-              value: 0.21.0
             EOF
             bosh interpolate kubo-deployment/manifests/cfcr.yml \
               --ops-file ops.yml \
