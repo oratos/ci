@@ -176,13 +176,10 @@ jobs:
             #!/bin/bash
             set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
-            export GOPATH="$PWD/workspace"
-            path=workspace/src/github.com/pivotal-cf/sink-resources
-            mkdir -p "$path"
-            cp -r sink-resources/. "$path/"
-            cd "$path"
-            GO111MODULE=off go get ./...
-            hack/verify-codegen.sh
+            pushd sink-resources/ > /dev/null
+              go mod download
+              hack/verify-codegen.sh
+            popd > /dev/null
       on_failure:
         put: slack-alert
         params:
