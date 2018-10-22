@@ -144,7 +144,7 @@ jobs:
       on_failure:
         put: slack-alert
         params:
-          text: Namespace Drain Linter failed
+          text: Sink Resources Linter failed
     - task: run-tests
       file: oratos-ci/tasks/go-test-mod/task.yml
       privileged: true
@@ -156,7 +156,7 @@ jobs:
       on_failure:
         put: slack-alert
         params:
-          text: Namespace Drain Unit tests failed
+          text: Sink Resources Unit tests failed
     - task: run-verify-codegen
       config:
         platform: linux
@@ -183,7 +183,7 @@ jobs:
       on_failure:
         put: slack-alert
         params:
-          text: Namespace Drain Verify Codegen failed
+          text: Sink Resources Verify Codegen failed
 
 - name: build-sink-controller-image
   serial: true
