@@ -829,6 +829,7 @@ jobs:
   - task: run-test
     file: oratos-ci/tasks/control-plane-downtime-test/task.yml
     params:
+      SKIP_CLEANUP: false
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
           oratos-ci/scripts/cfcr.sh control-plane-test get-credentials
