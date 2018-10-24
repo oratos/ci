@@ -449,6 +449,48 @@ jobs:
       NAOMI_A_KEY: ((crosstalk.naomi_a_key))
       NAOMI_B_CERT: ((crosstalk.naomi_b_cert))
       NAOMI_B_KEY: ((crosstalk.naomi_b_key))
+  - task: event-controller-test
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+    inputs:
+    - name: oratos-ci
+    - name: bbl-state
+    - name: sink-resources
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      params:
+        GET_CREDENTIALS_HOOK: |
+          BBL_STATE_DIR=bbl-state \
+              oratos-ci/scripts/cfcr.sh testing get-credentials
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+
+          source oratos-ci/test/common.sh
+
+          login_to_cluster_as_admin
+
+          kubectl apply --filename sink-resources/manifests/00-crds/sink.yml
+          kubectl apply --filename sink-resources/manifests/00-crds/cluster-sink.yml
+
+          kubectl apply --filename sink-resources/manifests/10-namespaces/oratos.yml
+          kubectl apply --filename sink-resources/manifests/60-deployments/event.yml
+
+          echo "
+            ---
+            apiVersion: apps.pivotal.io/sinks
+
+          " | kubectl apply --filename -
+
+
 
 - name: promote
   serial: true
