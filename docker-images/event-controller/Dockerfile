@@ -1,4 +1,4 @@
-FROM golang:1.11 as builder
+FROM oratos/golang-base:1.11 as builder
 
 WORKDIR /root
 
@@ -20,7 +20,7 @@ RUN go build \
     -mod=readonly \
     cmd/event-controller/main.go
 
-FROM alpine:latest
+FROM ubuntu:bionic
 
 COPY --from=builder /event-controller /srv/
 WORKDIR /srv
