@@ -1,4 +1,4 @@
-FROM golang:1.11 as builder
+FROM oratos/golang-base:1.11 as builder
 
 WORKDIR /root
 
@@ -20,7 +20,7 @@ RUN go build \
     -mod=readonly \
     cmd/main.go
 
-FROM fluent/fluent-bit:latest
+FROM fluent/fluent-bit:0.14.4
 
 COPY --from=builder /out_syslog.so /fluent-bit/bin/
 WORKDIR "/fluent-bit/etc"
