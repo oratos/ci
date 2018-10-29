@@ -6,6 +6,9 @@ groups:
   jobs:
   - crosstalk-receiver
   - latency-receiver
+- name: builder-images
+  jobs:
+  - golang-base
 
 resources:
 - name: base-image-docker-build-context
@@ -15,6 +18,22 @@ resources:
     branch: master
     paths:
     - docker-images/ci-base
+
+- name: golang-base-image-docker-build-context
+  type: git
+  source:
+    uri: https://github.com/pivotal-cf/oratos-ci
+    branch: master
+    paths:
+    - docker-images/golang-base
+
+- name: golang-base-image
+  type: docker-image
+  source:
+    repository: oratos/golang-base
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+    tag: 1.11
 
 - name: ci-base-image
   type: docker-image
@@ -44,6 +63,18 @@ resources:
     branch: master
 
 jobs:
+- name: golang-base
+  plan:
+  - get: golang-base-image-docker-build-context
+    trigger: true
+  - put: golang-base-image
+    params:
+      build: golang-base-image-docker-build-context/docker-images/golang-base
+      tag_as_latest: true
+      cache_tag: 1.11
+    get_params:
+      skip_download: true
+
 - name: ci-base
   plan:
   - get: base-image-docker-build-context
