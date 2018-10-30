@@ -51,16 +51,18 @@ resources:
 - name: sink-controller-dockerfile
   type: git
   source:
-    uri: https://github.com/pivotal-cf/sink-resources
+    uri: git@github.com:pivotal-cf/sink-resources
     branch: master
+    private_key: ((github.oratos-bot-private-key))
     paths:
     - cmd/sink-controller/Dockerfile
 
 - name: event-controller-dockerfile
   type: git
   source:
-    uri: https://github.com/pivotal-cf/sink-resources
+    uri: git@github.com:pivotal-cf/sink-resources
     branch: master
+    private_key: ((github.oratos-bot-private-key))
     paths:
     - cmd/event-controller/Dockerfile
 
