@@ -51,18 +51,18 @@ resources:
 - name: sink-controller-dockerfile
   type: git
   source:
-    uri: https://github.com/pivotal-cf/oratos-ci
+    uri: https://github.com/pivotal-cf/sink-resources
     branch: master
     paths:
-    - docker-images/sink-controller
+    - cmd/sink-controller/Dockerfile
 
 - name: event-controller-dockerfile
   type: git
   source:
-    uri: https://github.com/pivotal-cf/oratos-ci
+    uri: https://github.com/pivotal-cf/sink-resources
     branch: master
     paths:
-    - docker-images/event-controller
+    - cmd/event-controller/Dockerfile
 
 - name: sink-controller-image
   type: docker-image
@@ -201,7 +201,7 @@ jobs:
     input_mapping:
       source-repo: sink-resources
     params:
-      DOCKERFILE: oratos-ci/docker-images/sink-controller/Dockerfile
+      DOCKERFILE: sink-controller-dockerfile/cmd/sink-controller/Dockerfile
   - put: sink-controller-image
     params:
       build: build-image/build
@@ -227,7 +227,7 @@ jobs:
     input_mapping:
       source-repo: sink-resources
     params:
-      DOCKERFILE: oratos-ci/docker-images/event-controller/Dockerfile
+      DOCKERFILE: event-controller-dockerfile/cmd/event-controller/Dockerfile
   - put: event-controller-image
     params:
       build: build-image/build
