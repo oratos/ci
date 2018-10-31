@@ -48,24 +48,6 @@ resources:
     branch: master
     private_key: ((github.oratos-bot-private-key))
 
-- name: sink-controller-dockerfile
-  type: git
-  source:
-    uri: git@github.com:pivotal-cf/sink-resources
-    branch: master
-    private_key: ((github.oratos-bot-private-key))
-    paths:
-    - cmd/sink-controller/Dockerfile
-
-- name: event-controller-dockerfile
-  type: git
-  source:
-    uri: git@github.com:pivotal-cf/sink-resources
-    branch: master
-    private_key: ((github.oratos-bot-private-key))
-    paths:
-    - cmd/event-controller/Dockerfile
-
 - name: sink-controller-image
   type: docker-image
   source:
@@ -195,15 +177,11 @@ jobs:
       trigger: true
       passed:
       - unit-tests
-    - get: sink-controller-dockerfile
-      trigger: true
     - get: oratos-ci
   - task: prepare-build
     file: oratos-ci/tasks/build-go-modules-docker-image/task.yml
     input_mapping:
       source-repo: sink-resources
-    params:
-      DOCKERFILE: source-repo/cmd/sink-controller/Dockerfile
   - put: sink-controller-image
     params:
       build: build-image/build
@@ -221,15 +199,11 @@ jobs:
       trigger: true
       passed:
       - unit-tests
-    - get: event-controller-dockerfile
-      trigger: true
     - get: oratos-ci
   - task: prepare-build
     file: oratos-ci/tasks/build-go-modules-docker-image/task.yml
     input_mapping:
       source-repo: sink-resources
-    params:
-      DOCKERFILE: source-repo/cmd/event-controller/Dockerfile
   - put: event-controller-image
     params:
       build: build-image/build

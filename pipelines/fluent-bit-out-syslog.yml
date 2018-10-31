@@ -27,14 +27,6 @@ resources:
     uri: https://github.com/pivotal-cf/fluent-bit-out-syslog
     branch: master
 
-- name: out-syslog-dockerfile
-  type: git
-  source:
-    uri: https://github.com/pivotal-cf/oratos-ci
-    branch: master
-    paths:
-    - docker-images/fluent-bit-out-syslog
-
 - name: fluent-bit-out-syslog-image
   type: docker-image
   source:
@@ -93,16 +85,12 @@ jobs:
       trigger: true
       params:
         skip_download: true
-    - get: out-syslog-dockerfile
-      trigger: true
     - get: oratos-ci
   - aggregate:
     - task: prepare-build
       file: oratos-ci/tasks/build-go-modules-docker-image/task.yml
       input_mapping:
         source-repo: out-syslog
-      params:
-        DOCKERFILE: oratos-ci/docker-images/fluent-bit-out-syslog/Dockerfile
     - task: write-promote-tag
       config:
         platform: linux
