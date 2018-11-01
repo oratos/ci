@@ -247,6 +247,8 @@ jobs:
           repository: oratos/ci-base
       inputs:
       - name: sink-resources
+      - name: sink-controller-image
+      - name: event-controller-image
       params:
         SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
         DEBUG:
@@ -264,17 +266,16 @@ jobs:
           gcloud container clusters get-credentials oratos-ci-testing \
             --zone us-central1-a
 
-          pushd sink-resources > /dev/null 2>&1
-            sha="$(git rev-parse @)"
-          popd > /dev/null 2>&1
+          sink_digest="$(cat sink-controller-image/digest)"
+          event_digest="$(cat event-controller-image/digest)"
 
           yq read sink-resources/manifests/60-deployments/sink.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller:'"$sha"'"' \
+            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller@'"$sink_digest"'"' \
             > sink-resources/manifests/60-deployments/sink.json
           rm sink-resources/manifests/60-deployments/sink.yml
 
           yq read sink-resources/manifests/60-deployments/event.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller:'"$sha"'"' \
+            jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller@'"$event_digest"'"' \
             > sink-resources/manifests/60-deployments/event.json
           rm sink-resources/manifests/60-deployments/event.yml
 
@@ -362,6 +363,8 @@ jobs:
           repository: oratos/ci-base
       inputs:
       - name: sink-resources
+      - name: sink-controller-image
+      - name: event-controller-image
       - name: oratos-ci
       - name: bbl-state
       params:
@@ -377,17 +380,16 @@ jobs:
           BBL_STATE_DIR=bbl-state \
               oratos-ci/scripts/cfcr.sh testing get-credentials
 
-          pushd sink-resources > /dev/null 2>&1
-            sha="$(git rev-parse @)"
-          popd > /dev/null 2>&1
+          sink_digest="$(cat sink-controller-image/digest)"
+          event_digest="$(cat event-controller-image/digest)"
 
           yq read sink-resources/manifests/60-deployments/sink.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller:'"$sha"'"' \
+            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller@'"$sink_digest"'"' \
             > sink-resources/manifests/60-deployments/sink.json
           rm sink-resources/manifests/60-deployments/sink.yml
 
           yq read sink-resources/manifests/60-deployments/event.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller:'"$sha"'"' \
+            jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller@'"$event_digest"'"' \
             > sink-resources/manifests/60-deployments/event.json
           rm sink-resources/manifests/60-deployments/event.yml
 
@@ -754,6 +756,8 @@ jobs:
           repository: oratos/ci-base
       inputs:
       - name: sink-resources
+      - name: sink-controller-image
+      - name: event-controller-image
       - name: oratos-ci
       - name: bbl-state
       params:
@@ -769,17 +773,16 @@ jobs:
           BBL_STATE_DIR=bbl-state \
               oratos-ci/scripts/cfcr.sh control-plane-test get-credentials
 
-          pushd sink-resources > /dev/null 2>&1
-            sha="$(git rev-parse @)"
-          popd > /dev/null 2>&1
+          sink_digest="$(cat sink-controller-image/digest)"
+          event_digest="$(cat event-controller-image/digest)"
 
           yq read sink-resources/manifests/60-deployments/sink.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller:'"$sha"'"' \
+            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller@'"$sink_digest"'"' \
             > sink-resources/manifests/60-deployments/sink.json
           rm sink-resources/manifests/60-deployments/sink.yml
 
           yq read sink-resources/manifests/60-deployments/event.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller:'"$sha"'"' \
+            jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller@'"$event_digest"'"' \
             > sink-resources/manifests/60-deployments/event.json
           rm sink-resources/manifests/60-deployments/event.yml
 
