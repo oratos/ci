@@ -29,7 +29,10 @@ pushd put-sink-resources-release
        --force \
        --tarball="${release_file}"
 
-  version=$(yq r releases/sink-resources-release/index.yml --tojson | jq -r ".builds[].version" | sort | tail -n1)
+  version=$(yq r releases/sink-resources-release/index.yml --tojson \
+                | jq -r ".builds[].version" \
+                | sort -V \
+                | tail -n1)
 
   echo "Move build ${release_file} - ${version} to bosh-release/binaries"
   mkdir -p ../bosh-release/binaries
