@@ -289,7 +289,7 @@ function assert_log_count_gt {
     echo "$metrics"
 }
 
-function assert_fail {
+function assert_cmd_fail {
     local command=${1?}
 
     if eval "$command"; then
