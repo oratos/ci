@@ -182,6 +182,8 @@ jobs:
     file: oratos-ci/tasks/build-go-modules-docker-image/task.yml
     input_mapping:
       source-repo: sink-resources
+    params:
+      DOCKERFILE: source-repo/cmd/sink-controller/Dockerfile
   - put: sink-controller-image
     params:
       build: build-image/build
@@ -204,6 +206,8 @@ jobs:
     file: oratos-ci/tasks/build-go-modules-docker-image/task.yml
     input_mapping:
       source-repo: sink-resources
+    params:
+      DOCKERFILE: source-repo/cmd/event-controller/Dockerfile
   - put: event-controller-image
     params:
       build: build-image/build
