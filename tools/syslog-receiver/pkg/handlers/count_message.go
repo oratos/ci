@@ -8,9 +8,13 @@ import (
 	"github.com/pivotal-cf/oratos-ci/tools/syslog-receiver/pkg/tcpserver"
 )
 
-func NewCountMessageHandler(namespacedCount *expvar.Map, clusterCount *expvar.Int) tcpserver.MessageHandler {
+func NewCountMessageHandler(
+	message string,
+	namespacedCount *expvar.Map,
+	clusterCount *expvar.Int,
+) tcpserver.MessageHandler {
 	return func(msg rfc5424.Message) {
-		if !strings.Contains(string(msg.Message), "crosstalk-test") {
+		if !strings.Contains(string(msg.Message), message) {
 			return
 		}
 

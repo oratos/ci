@@ -24,15 +24,20 @@ func init() {
 func main() {
 	syslogPort := os.Getenv("SYSLOG_PORT")
 	metricsPort := os.Getenv("METRICS_PORT")
+	message := os.Getenv("MESSAGE")
 
 	if len(syslogPort) == 0 || len(metricsPort) == 0 {
 		log.Fatal("SYSLOG_PORT and METRICS_PORT are required")
 	}
 
+	if len(message) == 0 {
+		message = "crosstalk-test"
+	}
+
 	server := tcpserver.New(
 		net.JoinHostPort("", syslogPort),
 		net.JoinHostPort("", metricsPort),
-		handlers.NewCountMessageHandler(namespacedCount, clusterCount),
+		handlers.NewCountMessageHandler(message, namespacedCount, clusterCount),
 		tcpserver.Handler{
 			Path:    "/metrics",
 			Handler: expvar.Handler(),
