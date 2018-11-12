@@ -18,17 +18,25 @@ func NewCountMessageHandler(
 			return
 		}
 
-		for _, sd := range msg.StructuredData {
-			if sd.ID == "kubernetes@47450" {
-				for _, param := range sd.Parameters {
-					if param.Name == "namespace_name" {
-						namespacedCount.Add(param.Value, 1)
-						return
-					}
+		clusterCount.Add(1)
+
+		ns := namespace(msg)
+		if ns != "" {
+			namespacedCount.Add(ns, 1)
+		}
+	}
+}
+
+func namespace(msg rfc5424.Message) string {
+	for _, sd := range msg.StructuredData {
+		if sd.ID == "kubernetes@47450" {
+			for _, param := range sd.Parameters {
+				if param.Name == "namespace_name" {
+					return param.Value
 				}
 			}
 		}
-
-		clusterCount.Add(1)
 	}
+
+	return ""
 }
