@@ -10,6 +10,10 @@ outputs:
 - name: build-image # the place to store the build context and tag
 params:
   # - Optional
+  # - Provide a path to inside the source repo where the docker context lives.
+  SOURCE_PATH:
+
+  # - Optional
   # - Provide a path to the Dockerfile if it is not in the source repo.
   DOCKERFILE:
 
@@ -17,4 +21,4 @@ params:
   # - Set to true to output all commands that are ran.
   DEBUG:
 run:
-  path: oratos-ci/tasks/build-go-modules-docker-image/task
+  path: oratos-ci/tasks/build-docker-image/task

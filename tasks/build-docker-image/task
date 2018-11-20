@@ -9,7 +9,7 @@ sha="$(cd source-repo && git rev-parse @)"
 
 # copy over build context and tag
 mkdir -p "$ciroot/build-image/build"
-cp -r source-repo/. "$ciroot/build-image/build/"
+cp -r "source-repo/$SOURCE_PATH/." "$ciroot/build-image/build/"
 if [ -n "$DOCKERFILE" ]; then
     cp "$DOCKERFILE" "$ciroot/build-image/build/"
 fi
