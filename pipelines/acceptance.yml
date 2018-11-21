@@ -355,6 +355,7 @@ jobs:
     file: oratos-ci/tasks/deploy-sink-resources/task.yml
     input_mapping:
       bbl-state: bikepark-bbl-state
+      sink-resources: sink-resources-manifests
     params:
       GET_CREDENTIALS_HOOK: |
           BBL_STATE_DIR=bikepark-bbl-state \
