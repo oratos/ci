@@ -5,6 +5,7 @@ groups:
   - build-sink-controller-image
   - build-event-controller-image
   - build-cert-generator-image
+  - build-ghostunnel-image
   - deploy-gke
   - deploy-cfcr
   - deploy-control-plane
@@ -75,6 +76,13 @@ resources:
   type: docker-image
   source:
     repository: oratos/cert-generator
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
+- name: ghostunnel-image
+  type: docker-image
+  source:
+    repository: oratos/ghostunnel
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
@@ -257,6 +265,30 @@ jobs:
     get_params:
       skip_download: true
 
+- name: build-ghostunnel-image
+  serial: true
+  plan:
+  - aggregate:
+    - get: sink-resources
+      trigger: true
+      passed:
+      - unit-tests
+    - get: oratos-ci
+  - task: prepare-build
+    file: oratos-ci/tasks/build-docker-image/task.yml
+    input_mapping:
+      source-repo: sink-resources
+    params:
+      SOURCE_PATH: cmd/ghostunnel
+  - put: ghostunnel-image
+    params:
+      build: build-image/build
+      tag: build-image/tag
+      cache: true
+      cache_tag: latest
+    get_params:
+      skip_download: true
+
 - name: deploy-gke
   serial: true
   plan:
@@ -267,6 +299,7 @@ jobs:
       - build-sink-controller-image
       - build-event-controller-image
       - build-cert-generator-image
+      - build-ghostunnel-image
     - get: sink-controller-image
       trigger: true
       passed:
@@ -277,6 +310,12 @@ jobs:
       trigger: true
       passed:
       - build-event-controller-image
+      params:
+        skip_download: true
+    - get: ghostunnel-image
+      trigger: true
+      passed:
+      - build-ghostunnel-image
       params:
         skip_download: true
     - get: cert-generator-image
@@ -327,6 +366,12 @@ jobs:
       - deploy-gke
       params:
         skip_download: true
+    - get: ghostunnel-image
+      trigger: true
+      passed:
+      - deploy-gke
+      params:
+        skip_download: true
   - task: run-crd-tests
     config:
       platform: linux
@@ -365,6 +410,7 @@ jobs:
       - build-sink-controller-image
       - build-event-controller-image
       - build-cert-generator-image
+      - build-ghostunnel-image
     - get: sink-controller-image
       trigger: true
       passed:
@@ -381,6 +427,12 @@ jobs:
       trigger: true
       passed:
       - build-cert-generator-image
+      params:
+        skip_download: true
+    - get: ghostunnel-image
+      trigger: true
+      passed:
+      - build-ghostunnel-image
       params:
         skip_download: true
     - get: fluent-bit-out-syslog-image
@@ -418,6 +470,12 @@ jobs:
       params:
         skip_download: true
     - get: cert-generator-image
+      trigger: true
+      passed:
+      - deploy-cfcr
+      params:
+        skip_download: true
+    - get: ghostunnel-image
       trigger: true
       passed:
       - deploy-cfcr
@@ -469,6 +527,13 @@ jobs:
       # - control-plane-tests
       params:
         save: true
+    - get: ghostunnel-image
+      passed:
+      - cfcr-tests
+      - gke-tests
+      # - control-plane-tests
+      params:
+        save: true
     - task: write-promote-tag
       config:
         platform: linux
@@ -513,6 +578,14 @@ jobs:
       cache_tag: latest
     get_params:
       skip_download: true
+  - put: ghostunnel-image
+    params:
+      load: ghostunnel-image
+      tag: promote/tag
+      cache: true
+      cache_tag: latest
+    get_params:
+      skip_download: true
 
 - name: release
   serial: true
@@ -520,6 +593,7 @@ jobs:
   - get: sink-controller-image
   - get: event-controller-image
   - get: cert-generator-image
+  - get: ghostunnel-image
   - task: release
     privileged: true
     config:
@@ -641,6 +715,7 @@ jobs:
 
           yq read sink-resources/manifests/60-deployments/event.yml --tojson \
             | jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller:'"$VERSION"'"' \
+            | jq '(.spec.template.spec.containers[] | select(.name == "ghostunnel")).image = "oratos/ghostunnel:'"$VERSION"'"' \
             > sink-resources/manifests/60-deployments/event.json
           yq read sink-resources/manifests/60-deployments/event.json \
             > sink-resources/manifests/60-deployments/event.yml
@@ -655,6 +730,7 @@ jobs:
 
           yq read sink-resources/manifests/50-daemonsets/fluent-bit.yml --tojson \
             | jq '(.spec.template.spec.containers[] | select(.name == "fluent-bit")).image = "oratos/fluent-bit-out-syslog:'"$FLUENT_BIT_OUT_SYSLOG_VERSION"'"' \
+            | jq '(.spec.template.spec.containers[] | select(.name == "ghostunnel")).image = "oratos/ghostunnel:'"$VERSION"'"' \
             > sink-resources/manifests/50-daemonsets/fluent-bit.json
           yq read sink-resources/manifests/50-daemonsets/fluent-bit.json \
             > sink-resources/manifests/50-daemonsets/fluent-bit.yml
@@ -676,11 +752,13 @@ jobs:
           - [oratos/sink-controller][sink-controller]:$VERSION
           - [oratos/event-controller][event-controller]:$VERSION
           - [oratos/cert-generator][cert-generator]:$VERSION
+          - [oratos/ghostunnel][ghostunnel]:$VERSION
           - [oratos/fluent-bit-out-syslog][fluent-bit-out-syslog]:$FLUENT_BIT_OUT_SYSLOG_VERSION
 
           [sink-controller]: https://hub.docker.com/r/oratos/sink-controller/
           [event-controller]: https://hub.docker.com/r/oratos/event-controller/
           [cert-generator]: https://hub.docker.com/r/oratos/cert-generator/
+          [ghostunnel]: https://hub.docker.com/r/oratos/ghostunnel/
           [fluent-bit-out-syslog]: https://hub.docker.com/r/oratos/fluent-bit-out-syslog/
           EOF
 
@@ -694,6 +772,7 @@ jobs:
           sc_docker_name="oratos/sink-controller:$VERSION"
           ec_docker_name="oratos/event-controller:$VERSION"
           cg_docker_name="oratos/cert-generator:$VERSION"
+          gt_docker_name="oratos/ghostunnel:$VERSION"
           fb_docker_name="oratos/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION"
 
           docker pull "oratos/sink-controller:$GIT_REF"
@@ -714,10 +793,17 @@ jobs:
           docker push "$cg_docker_name"
           docker push "oratos/cert-generator:latest"
 
+          docker pull "oratos/ghostunnel:$GIT_REF"
+          docker tag "oratos/ghostunnel:$GIT_REF" "$gt_docker_name"
+          docker tag "oratos/ghostunnel:$GIT_REF" "oratos/ghostunnel:latest"
+          docker push "$gt_docker_name"
+          docker push "oratos/ghostunnel:latest"
+
           docker pull "$fb_docker_name"
           docker save "$sc_docker_name" | gzip > "github-release/oratos_sink-controller:$VERSION.tgz"
           docker save "$ec_docker_name" | gzip > "github-release/oratos_event-controller:$VERSION.tgz"
           docker save "$cg_docker_name" | gzip > "github-release/oratos_cert-generator:$VERSION.tgz"
+          docker save "$gt_docker_name" | gzip > "github-release/oratos_ghostunnel:$VERSION.tgz"
           docker save "$fb_docker_name" | gzip > "github-release/oratos_fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION.tgz"
 
           pushd sink-resources > /dev/null
@@ -771,6 +857,7 @@ jobs:
       - build-sink-controller-image
       - build-event-controller-image
       - build-cert-generator-image
+      - build-ghostunnel-image
     - get: sink-controller-image
       trigger: true
       passed:
@@ -787,6 +874,12 @@ jobs:
       trigger: true
       passed:
       - build-cert-generator-image
+      params:
+        skip_download: true
+    - get: ghostunnel-image
+      trigger: true
+      passed:
+      - build-ghostunnel-image
       params:
         skip_download: true
     - get: fluent-bit-out-syslog-image
@@ -821,6 +914,12 @@ jobs:
       params:
         skip_download: true
     - get: cert-generator-image
+      trigger: true
+      passed:
+      - deploy-control-plane
+      params:
+        skip_download: true
+    - get: ghostunnel-image
       trigger: true
       passed:
       - deploy-control-plane

@@ -8,6 +8,7 @@ inputs:
 - name: sink-controller-image
 - name: event-controller-image
 - name: cert-generator-image
+- name: ghostunnel-image
 - name: fluent-bit-out-syslog-image
 - name: oratos-ci
 - name: bbl-state # only needed for cfcr clusters

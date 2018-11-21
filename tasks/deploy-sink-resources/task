@@ -13,27 +13,30 @@ function delete_old_jobs {
 
 function apply_manifests {
     cert_digest="$(cat cert-generator-image/digest)"
+    ghost_digest="$(cat ghostunnel-image/digest)"
     fluent_digest=$(cat fluent-bit-out-syslog-image/digest)
     sink_digest="$(cat sink-controller-image/digest)"
     event_digest="$(cat event-controller-image/digest)"
 
-    yq read sink-resources/manifests/45-jobs/cert-generator.yml --tojson | \
-      jq '(.spec.template.spec.containers[] | select(.name == "cert-generator")).image = "oratos/cert-generator@'"$cert_digest"'"' \
+    yq read sink-resources/manifests/45-jobs/cert-generator.yml --tojson \
+      | jq '(.spec.template.spec.containers[] | select(.name == "cert-generator")).image = "oratos/cert-generator@'"$cert_digest"'"' \
       > sink-resources/manifests/45-jobs/cert-generator.json
     rm sink-resources/manifests/45-jobs/cert-generator.yml
 
-    yq read sink-resources/manifests/50-daemonsets/fluent-bit.yml --tojson | \
-      jq '(.spec.template.spec.containers[] | select(.name == "fluent-bit")).image = "oratos/fluent-bit-out-syslog@'"$fluent_digest"'"' \
+    yq read sink-resources/manifests/50-daemonsets/fluent-bit.yml --tojson \
+      | jq '(.spec.template.spec.containers[] | select(.name == "fluent-bit")).image = "oratos/fluent-bit-out-syslog@'"$fluent_digest"'"' \
+      | jq '(.spec.template.spec.containers[] | select(.name == "ghostunnel")).image = "oratos/ghostunnel@'"$ghost_digest"'"' \
       > sink-resources/manifests/50-daemonsets/fluent-bit.json
     rm sink-resources/manifests/50-daemonsets/fluent-bit.yml
 
-    yq read sink-resources/manifests/60-deployments/sink.yml --tojson | \
-      jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller@'"$sink_digest"'"' \
+    yq read sink-resources/manifests/60-deployments/sink.yml --tojson \
+      | jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller@'"$sink_digest"'"' \
       > sink-resources/manifests/60-deployments/sink.json
     rm sink-resources/manifests/60-deployments/sink.yml
 
-    yq read sink-resources/manifests/60-deployments/event.yml --tojson | \
-      jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller@'"$event_digest"'"' \
+    yq read sink-resources/manifests/60-deployments/event.yml --tojson \
+      | jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller@'"$event_digest"'"' \
+      | jq '(.spec.template.spec.containers[] | select(.name == "ghostunnel")).image = "oratos/ghostunnel@'"$ghost_digest"'"' \
       > sink-resources/manifests/60-deployments/event.json
     rm sink-resources/manifests/60-deployments/event.yml
 
