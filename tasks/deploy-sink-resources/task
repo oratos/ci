@@ -7,10 +7,11 @@ function validate {
     ensure_variable_isset "$GET_CREDENTIALS_HOOK" "GET_CREDENTIALS_HOOK"
 }
 
-function main {
-    validate
-    login_to_cluster_as_admin
+function delete_old_jobs {
+    kubectl delete job -f sink-resources/manifests/45-jobs > /dev/null 2>&1 || true
+}
 
+function apply_manifests {
     cert_digest="$(cat cert-generator-image/digest)"
     fluent_digest=$(cat fluent-bit-out-syslog-image/digest)
     sink_digest="$(cat sink-controller-image/digest)"
@@ -37,11 +38,21 @@ function main {
     rm sink-resources/manifests/60-deployments/event.yml
 
     kubectl apply -R -f sink-resources/manifests
+}
 
+function roll {
     # patch objects to make sure they are rolled
     patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
     kubectl patch -R -f sink-resources/manifests/50-daemonsets --patch "$patch"
     kubectl patch -R -f sink-resources/manifests/60-deployments --patch "$patch"
+}
+
+function main {
+    validate
+    login_to_cluster_as_admin
+    delete_old_jobs
+    apply_manifests
+    roll
 }
 
 main
