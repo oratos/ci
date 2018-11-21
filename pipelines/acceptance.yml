@@ -69,6 +69,14 @@ resources:
     password: ((docker-hub.password))
     tag: release-elect
 
+- name: cert-generator-image
+  type: docker-image
+  source:
+    repository: oratos/cert-generator
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+    tag: release-elect
+
 - name: kubo-deployment
   type: git
   source:
@@ -337,55 +345,17 @@ jobs:
       trigger: true
       params:
         skip_download: true
+    - get: cert-generator-image
+      trigger: true
+      params:
+        skip_download: true
     - get: bikepark-bbl-state
     - get: oratos-ci
   - task: deploy-sink-resources
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: oratos/ci-base
-      inputs:
-      - name: bikepark-bbl-state
-      - name: sink-resources-manifests
-      - name: oratos-ci
-      - name: fluent-bit-out-syslog-image
-      - name: sink-controller-image
-      - name: event-controller-image
-      params:
-        DEBUG:
-      run:
-        path: /bin/bash
-        args:
-        - "-c"
-        - |
-          #!/bin/bash
-          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-
-          # TODO: deploy with the triggered images, not :latest
-
+    file: oratos-ci/tasks/deploy-sink-resources/task.yml
+    input_mapping:
+      bbl-state: bikepark-bbl-state
+    params:
+      GET_CREDENTIALS_HOOK: |
           BBL_STATE_DIR=bikepark-bbl-state \
               oratos-ci/scripts/cfcr.sh bikepark get-credentials
-
-          fluent_image_digest=$(cat fluent-bit-out-syslog-image/digest)
-          yq read sink-resources-manifests/manifests/50-daemonsets/fluent-bit.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "fluent-bit")).image = "oratos/fluent-bit-out-syslog@'"$fluent_image_digest"'"' \
-            > sink-resources-manifests/manifests/50-daemonsets/fluent-bit.json
-          rm sink-resources-manifests/manifests/50-daemonsets/fluent-bit.yml
-
-          sink_controller_image_digest=$(cat sink-controller-image/digest)
-          yq read sink-resources-manifests/manifests/60-deployments/sink.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller@'"$sink_controller_image_digest"'"' \
-            > sink-resources-manifests/manifests/60-deployments/sink.json
-          rm sink-resources-manifests/manifests/60-deployments/sink.yml
-
-          event_controller_image_digest=$(cat event-controller-image/digest)
-          yq read sink-resources-manifests/manifests/60-deployments/event.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller@'"$event_controller_image_digest"'"' \
-            > sink-resources-manifests/manifests/60-deployments/event.json
-          rm sink-resources-manifests/manifests/60-deployments/event.yml
-
-          kubectl apply -R -f sink-resources-manifests/manifests
-          patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
-          kubectl patch -R -f sink-resources-manifests/manifests --patch "$patch"

@@ -63,6 +63,14 @@ resources:
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
+- name: fluent-bit-out-syslog-image
+  type: docker-image
+  source:
+    repository: oratos/fluent-bit-out-syslog
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+    tag: release-elect
+
 - name: cert-generator-image
   type: docker-image
   source:
@@ -277,57 +285,23 @@ jobs:
       - build-cert-generator-image
       params:
         skip_download: true
-  - task: deploy
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: oratos/ci-base
-      inputs:
-      - name: sink-resources
-      - name: sink-controller-image
-      - name: event-controller-image
-      - name: cert-generator-image
+    - get: fluent-bit-out-syslog-image
       params:
-        SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
-        DEBUG:
-      run:
-        path: /bin/bash
-        args:
-        - "-c"
-        - |
-          #!/bin/bash
-          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-
-          echo "$SERVICE_ACCOUNT" > sa.json
-          gcloud auth activate-service-account --key-file sa.json
-          rm sa.json
-          gcloud container clusters get-credentials oratos-ci-testing \
-            --zone us-central1-a
-
-          sink_digest="$(cat sink-controller-image/digest)"
-          event_digest="$(cat event-controller-image/digest)"
-          cert_digest="$(cat cert-generator-image/digest)"
-
-          yq read sink-resources/manifests/60-deployments/sink.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller@'"$sink_digest"'"' \
-            > sink-resources/manifests/60-deployments/sink.json
-          rm sink-resources/manifests/60-deployments/sink.yml
-
-          yq read sink-resources/manifests/60-deployments/event.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller@'"$event_digest"'"' \
-            > sink-resources/manifests/60-deployments/event.json
-          rm sink-resources/manifests/60-deployments/event.yml
-
-          yq read sink-resources/manifests/45-jobs/cert-generator.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "cert-generator")).image = "oratos/cert-generator@'"$cert_digest"'"' \
-            > sink-resources/manifests/45-jobs/cert-generator.json
-          rm sink-resources/manifests/45-jobs/cert-generator.yml
-
-          kubectl apply -R -f sink-resources/manifests
-          patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
-          kubectl patch -R -f sink-resources/manifests --patch "$patch"
+        skip_download: true
+    - get: oratos-ci
+  - task: deploy
+    file: oratos-ci/tasks/deploy-sink-resources/task.yml
+    input_mapping:
+      # bbl-state is not needed for GKE, pass in oratos-ci as a NOP
+      bbl-state: oratos-ci
+    params:
+      SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
+      GET_CREDENTIALS_HOOK: |
+        echo "$SERVICE_ACCOUNT" > sa.json
+        gcloud auth activate-service-account --key-file sa.json
+        rm sa.json
+        gcloud container clusters get-credentials oratos-ci-testing \
+          --zone us-central1-a
 
 - name: gke-tests
   serial: true
@@ -409,59 +383,19 @@ jobs:
       - build-cert-generator-image
       params:
         skip_download: true
+    - get: fluent-bit-out-syslog-image
+      params:
+        skip_download: true
     - get: oratos-ci-testing-cfcr-bbl-state
     - get: oratos-ci
   - task: deploy
+    file: oratos-ci/tasks/deploy-sink-resources/task.yml
     input_mapping:
       bbl-state: oratos-ci-testing-cfcr-bbl-state
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: oratos/ci-base
-      inputs:
-      - name: sink-resources
-      - name: sink-controller-image
-      - name: event-controller-image
-      - name: cert-generator-image
-      - name: oratos-ci
-      - name: bbl-state
-      params:
-        DEBUG:
-      run:
-        path: /bin/bash
-        args:
-        - "-c"
-        - |
-          #!/bin/bash
-          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-
+    params:
+      GET_CREDENTIALS_HOOK: |
           BBL_STATE_DIR=bbl-state \
               oratos-ci/scripts/cfcr.sh testing get-credentials
-
-          sink_digest="$(cat sink-controller-image/digest)"
-          event_digest="$(cat event-controller-image/digest)"
-          cert_digest="$(cat cert-generator-image/digest)"
-
-          yq read sink-resources/manifests/60-deployments/sink.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller@'"$sink_digest"'"' \
-            > sink-resources/manifests/60-deployments/sink.json
-          rm sink-resources/manifests/60-deployments/sink.yml
-
-          yq read sink-resources/manifests/60-deployments/event.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller@'"$event_digest"'"' \
-            > sink-resources/manifests/60-deployments/event.json
-          rm sink-resources/manifests/60-deployments/event.yml
-
-          yq read sink-resources/manifests/45-jobs/cert-generator.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "cert-generator")).image = "oratos/cert-generator@'"$cert_digest"'"' \
-            > sink-resources/manifests/45-jobs/cert-generator.json
-          rm sink-resources/manifests/45-jobs/cert-generator.yml
-
-          kubectl apply -R -f sink-resources/manifests
-          patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
-          kubectl patch -R -f sink-resources/manifests --patch "$patch"
 
 - name: cfcr-tests
   serial: true
@@ -855,59 +789,19 @@ jobs:
       - build-cert-generator-image
       params:
         skip_download: true
+    - get: fluent-bit-out-syslog-image
+      params:
+        skip_download: true
     - get: control-plane-test-bbl-state
     - get: oratos-ci
   - task: deploy
+    file: oratos-ci/tasks/deploy-sink-resources/task.yml
     input_mapping:
       bbl-state: control-plane-test-bbl-state
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: oratos/ci-base
-      inputs:
-      - name: sink-resources
-      - name: sink-controller-image
-      - name: event-controller-image
-      - name: cert-generator-image
-      - name: oratos-ci
-      - name: bbl-state
-      params:
-        DEBUG:
-      run:
-        path: /bin/bash
-        args:
-        - "-c"
-        - |
-          #!/bin/bash
-          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-
+    params:
+      GET_CREDENTIALS_HOOK: |
           BBL_STATE_DIR=bbl-state \
               oratos-ci/scripts/cfcr.sh control-plane-test get-credentials
-
-          sink_digest="$(cat sink-controller-image/digest)"
-          event_digest="$(cat event-controller-image/digest)"
-          cert_digest="$(cat cert-generator-image/digest)"
-
-          yq read sink-resources/manifests/60-deployments/sink.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller@'"$sink_digest"'"' \
-            > sink-resources/manifests/60-deployments/sink.json
-          rm sink-resources/manifests/60-deployments/sink.yml
-
-          yq read sink-resources/manifests/60-deployments/event.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller@'"$event_digest"'"' \
-            > sink-resources/manifests/60-deployments/event.json
-          rm sink-resources/manifests/60-deployments/event.yml
-
-          yq read sink-resources/manifests/45-jobs/cert-generator.yml --tojson | \
-            jq '(.spec.template.spec.containers[] | select(.name == "cert-generator")).image = "oratos/cert-generator@'"$cert_digest"'"' \
-            > sink-resources/manifests/45-jobs/cert-generator.json
-          rm sink-resources/manifests/45-jobs/cert-generator.yml
-
-          kubectl apply -R -f sink-resources/manifests
-          patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
-          kubectl patch -R -f sink-resources/manifests --patch "$patch"
 
 - name: control-plane-tests
   plan:
