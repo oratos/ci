@@ -358,5 +358,5 @@ jobs:
       sink-resources: sink-resources-manifests
     params:
       GET_CREDENTIALS_HOOK: |
-          BBL_STATE_DIR=bikepark-bbl-state \
+          BBL_STATE_DIR=bbl-state \
               oratos-ci/scripts/cfcr.sh bikepark get-credentials
