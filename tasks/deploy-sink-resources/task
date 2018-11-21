@@ -8,7 +8,7 @@ function validate {
 }
 
 function delete_old_jobs {
-    kubectl delete job -Rf sink-resources/manifests/45-jobs > /dev/null 2>&1 || true
+    kubectl delete -Rf sink-resources/manifests/45-jobs || true
 }
 
 function apply_manifests {
