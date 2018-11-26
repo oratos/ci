@@ -26,6 +26,7 @@ function apply_manifests {
     yq read sink-resources/manifests/50-daemonsets/fluent-bit.yml --tojson \
       | jq '(.spec.template.spec.containers[] | select(.name == "fluent-bit")).image = "oratos/fluent-bit-out-syslog@'"$fluent_digest"'"' \
       | jq '(.spec.template.spec.containers[] | select(.name == "ghostunnel")).image = "oratos/ghostunnel@'"$ghost_digest"'"' \
+      | jq '(.spec.template.spec.initContainers[] | select(.name == "concat-keystore")).image = "oratos/fluent-bit-out-syslog@'"$fluent_digest"'"' \
       > sink-resources/manifests/50-daemonsets/fluent-bit.json
     rm sink-resources/manifests/50-daemonsets/fluent-bit.yml
 
