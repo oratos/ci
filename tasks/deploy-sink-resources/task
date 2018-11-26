@@ -37,6 +37,7 @@ function apply_manifests {
     yq read sink-resources/manifests/60-deployments/event.yml --tojson \
       | jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller@'"$event_digest"'"' \
       | jq '(.spec.template.spec.containers[] | select(.name == "ghostunnel")).image = "oratos/ghostunnel@'"$ghost_digest"'"' \
+      | jq '(.spec.template.spec.initContainers[] | select(.name == "concat-keystore")).image = "oratos/fluent-bit-out-syslog@'"$fluent_digest"'"' \
       > sink-resources/manifests/60-deployments/event.json
     rm sink-resources/manifests/60-deployments/event.yml
 
