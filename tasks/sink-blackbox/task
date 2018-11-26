@@ -173,7 +173,9 @@ while true; do
             --selector k8s-app=logging-agent \
             --namespace oratos \
             --output json \
-            | jq '[.items[].status.phase == "Running"] | length'
+            | jq '.items[].status.phase == "Running"' \
+            | grep true \
+            | wc -l
     )"
 
     if [ "$fluent_running_count" -eq "$nodes" ]; then
