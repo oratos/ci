@@ -163,6 +163,8 @@ while true; do
     sleep 10
 done
 
+sleep 10
+
 echo waiting for fluent-bit to be up
 nodes="$(kubectl get nodes --output json | jq '.items | length')"
 while true; do
