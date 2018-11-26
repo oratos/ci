@@ -81,7 +81,7 @@ function report_to_datadog {
   }" \
   'https://app.datadoghq.com/api/v1/series?api_key='"$DATADOG_API_KEY"
 
-  delete_sinks
+  #delete_sinks
 
   set +e
   killall kubectl
@@ -176,8 +176,7 @@ while true; do
             --namespace oratos \
             --output json \
             | jq '.items[].status.phase == "Running"' \
-            | grep true \
-            | wc -l
+            | grep -c true
     )"
 
     if [ "$fluent_running_count" -eq "$nodes" ]; then
