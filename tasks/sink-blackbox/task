@@ -148,6 +148,7 @@ logspinner_pod_name="$(
         | jq --join-output .items[0].metadata.name
 )"
 
+echo waiting for logspinner to be up
 while true; do
     echo -n .
     logspinner_status="$(
@@ -157,6 +158,25 @@ while true; do
             | jq --join-output .status.phase
     )"
     if [ "$logspinner_status" = "Running" ]; then
+        break
+    fi
+    sleep 10
+done
+
+echo waiting for fluent-bit to be up
+nodes="$(kubectl get nodes --output json | jq '.items | length')"
+while true; do
+    echo -n .
+
+    fluent_running_count="$(
+        kubectl get pods \
+            --selector k8s-app=logging-agent \
+            --namespace oratos \
+            --output json \
+            | jq '[.items[].status.phase == "Running"] | length'
+    )"
+
+    if [ "$fluent_running_count" -eq "$nodes" ]; then
         break
     fi
     sleep 10
