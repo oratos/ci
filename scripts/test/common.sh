@@ -59,14 +59,15 @@ function verify_deployment_running {
                 --selector="$label" \
                 --output=json \
                 --namespace="$namespace" \
-                | jq --join-output .status.phase
+                | jq --join-output .items[].status.phase
         )"
         if [ "$status" = "Running" ]; then
-            break
+            return 0
         fi
         sleep 10
         n=$((n+1))
     done
+    return 1
 }
 
 function verify_daemonset_running {
@@ -89,11 +90,12 @@ function verify_daemonset_running {
         )"
 
         if [ "$ds_running_count" -eq "$nodes" ]; then
-            break
+           return 0
         fi
         sleep 10
         n=$((n+1))
     done
+    return 1
 }
 
 function retry_command {
