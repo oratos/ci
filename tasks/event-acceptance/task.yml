@@ -1,0 +1,19 @@
+platform: linux
+image_resource:
+  type: docker-image
+  source:
+    repository: oratos/ci-base
+inputs:
+- name: oratos-ci
+- name: sink-resources
+- name: bbl-state
+params:
+  # - Required
+  # - Code to run to setup kubectl to point to the cluster.
+  GET_CREDENTIALS_HOOK:
+
+  # - Optional
+  # - Set to true to output all commands that are ran.
+  DEBUG:
+run:
+  path: oratos-ci/tasks/event-acceptance/task

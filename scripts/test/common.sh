@@ -46,6 +46,56 @@ function ensure_variable_isset {
     fi
 }
 
+function verify_deployment_running {
+    local label=${1?}
+    local namespace=${2?}
+    local n=0
+    local maxN=5
+
+    until [ "$n" -ge "$maxN" ]; do
+        echo -n .
+        status="$(
+            kubectl get pods \
+                --selector="$label" \
+                --output=json \
+                --namespace="$namespace" \
+                | jq --join-output .status.phase
+        )"
+        if [ "$status" = "Running" ]; then
+            break
+        fi
+        sleep 10
+        n=$((n+1))
+    done
+}
+
+function verify_daemonset_running {
+    local label=${1?}
+    local namespace=${2?}
+    local n=0
+    local maxN=5
+
+    nodes="$(kubectl get nodes --output json | jq '.items | length')"
+    until [ "$n" -ge "$maxN" ]; do
+        echo -n .
+
+        ds_running_count="$(
+            kubectl get pods \
+                --selector="$label" \
+                --namespace="$namespace" \
+                --output=json \
+                | jq '.items[].status.phase == "Running"' \
+                | grep -c true
+        )"
+
+        if [ "$ds_running_count" -eq "$nodes" ]; then
+            break
+        fi
+        sleep 10
+        n=$((n+1))
+    done
+}
+
 function retry_command {
     local command=${1?}
     local timeout_seconds=${2?}
@@ -79,6 +129,50 @@ function login_to_cluster_as_admin {
     ret=$?
     [ -n "${DEBUG:-}" ] && set -x
     return "$ret"
+}
+
+function apply_crosstalk_receiver_v2 {
+    local drain_namespace=${1?}
+    local message=${2:-"crosstalk-test"}
+    echo "
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: crosstalk-receiver-$drain_namespace
+  namespace: default
+  labels:
+    app: crosstalk-receiver-$drain_namespace
+spec:
+  containers:
+  - name: crosstalk-receiver
+    image: oratos/crosstalk-receiver:v0.3
+    imagePullPolicy: Always
+    env:
+    - name: SYSLOG_PORT
+      value: \"8080\"
+    - name: METRICS_PORT
+      value: \"6061\"
+    - name: MESSAGE
+      value: \"$message\"
+    ports:
+    - name: syslog
+      containerPort: 8080
+    - name: metrics
+      containerPort: 6061
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: crosstalk-receiver-$drain_namespace
+  namespace: default
+spec:
+  selector:
+    app: crosstalk-receiver-$drain_namespace
+  ports:
+  - protocol: TCP
+    port: 8080
+" | kubectl apply --filename -
 }
 
 function apply_crosstalk_receiver {

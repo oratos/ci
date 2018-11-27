@@ -1,0 +1,70 @@
+#!/bin/bash
+set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+
+source "oratos-ci/scripts/test/common.sh"
+
+function validate {
+    ensure_variable_isset "$GET_CREDENTIALS_HOOK" "GET_CREDENTIALS_HOOK"
+}
+
+function show_status {
+    echo "outputs.conf in config map"
+    kubectl get cm fluent-bit -n oratos -o json | grep \"outputs.conf\"
+}
+
+function cleanup {
+    set +e
+    show_status
+
+    print_section_msg  "STARTING CLEANUP ENV"
+    kubectl --namespace default delete pod crosstalk-receiver-oratos > /dev/null 2>&1
+    kubectl --namespace default delete service crosstalk-receiver-oratos > /dev/null 2>&1
+
+    kubectl --namespace oratos delete sink crosstalk-sink > /dev/null 2>&1
+
+    kubectl --namespace oratos delete deployment test
+
+    # Clean up port forwarding with retry
+    killall -9 kubectl > /dev/null 2>&1
+}
+
+function main {
+    validate
+    trap cleanup EXIT
+    login_to_cluster_as_admin
+
+    echo "verifying event-controller is Running"
+    verify_deployment_running "app=event-controller" "oratos"
+    echo "verifying fluent-bit is Running"
+    verify_daemonset_running "k8s-app=logging-agent" "oratos"
+
+    echo "deploy crosstalk receiver"
+    apply_crosstalk_receiver_v2 "oratos" 'Back-off pulling image "oratos/donotexist"'
+
+    echo "apply sink to 'oratos' namespace"
+    apply_namespace_sink "oratos"
+
+    # Giving some time for the daemonset to re-deploy
+    sleep 10
+    echo "verifying fluent-bit is Running after the sink is applied"
+    verify_daemonset_running "k8s-app=logging-agent" "oratos"
+
+    echo "run test deployment with unavailable image"
+    kubectl run test --image=oratos/donotexist --replicas=1 --namespace=oratos
+
+    # Giving some time for the message to make it through
+    sleep 10
+
+    echo "setting up tunnel to crosstalk receiver"
+    kubectl --namespace default port-forward crosstalk-receiver-oratos 6061:6061 > /dev/null 2>&1 &
+
+    echo "asserting on metrics received from the crosstalk receiver"
+    receiver_metrics="$(curl -s http://localhost:6061/metrics)"
+    expected="1"
+    result="$(echo "$receiver_metrics" | jq '.namespaced["oratos"]' --join-output)"
+    check_result_cnt "$expected" "$result" \
+        "Expected crosstalk-receiver-oratos to receive $expected matched event"
+
+}
+
+main
