@@ -49,8 +49,8 @@ function main {
     echo "verifying fluent-bit is Running after the sink is applied"
     verify_daemonset_running "k8s-app=logging-agent" "oratos"
 
-    echo "run test deployment with unavailable image"
-    kubectl run test --image=oratos/donotexist --replicas=1 --namespace=oratos
+    echo "create test deployment with unavailable image"
+    kubectl create deployment test --image=oratos/donotexist --namespace=oratos
 
     # Giving some time for the message to make it through
     sleep 10
