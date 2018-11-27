@@ -483,6 +483,14 @@ jobs:
         skip_download: true
     - get: oratos-ci
     - get: oratos-ci-testing-cfcr-bbl-state
+  - task: event-acceptance
+    file: oratos-ci/tasks/event-acceptance/task.yml
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+    params:
+      GET_CREDENTIALS_HOOK: |
+        BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/cfcr.sh testing get-credentials
   - task: crosstalk-test
     file: oratos-ci/tasks/sink-crosstalk/task.yml
     input_mapping:
