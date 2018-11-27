@@ -154,7 +154,7 @@ spec:
     - name: METRICS_PORT
       value: \"6061\"
     - name: MESSAGE
-      value: \"$message\"
+      value: $message
     ports:
     - name: syslog
       containerPort: 8080

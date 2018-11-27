@@ -22,7 +22,7 @@ function cleanup {
 
     kubectl --namespace oratos delete sink crosstalk-sink > /dev/null 2>&1
 
-    kubectl --namespace oratos delete deployment test
+    kubectl --namespace oratos delete deployment test > /dev/null 2>&1
 
     # Clean up port forwarding with retry
     killall -9 kubectl > /dev/null 2>&1
