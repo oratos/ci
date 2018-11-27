@@ -80,6 +80,8 @@ function verify_daemonset_running {
     until [ "$n" -ge "$maxN" ]; do
         echo -n .
 
+        # Dont quit the script if fails to grep
+        set +e
         ds_running_count="$(
             kubectl get pods \
                 --selector="$label" \
@@ -88,6 +90,7 @@ function verify_daemonset_running {
                 | jq '.items[].status.phase == "Running"' \
                 | grep -c true
         )"
+        set -e
 
         if [ "$ds_running_count" -eq "$nodes" ]; then
            return 0
