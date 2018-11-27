@@ -58,6 +58,7 @@ function main {
     echo "setting up tunnel to crosstalk receiver"
     kubectl --namespace default port-forward crosstalk-receiver-oratos 6061:6061 > /dev/null 2>&1 &
 
+    sleep 5
     echo "asserting on metrics received from the crosstalk receiver"
     receiver_metrics="$(curl -s http://localhost:6061/metrics)"
     expected="1"
