@@ -11,11 +11,6 @@ function validate {
     ensure_variable_isset "$NAOMI_B_KEY" "NAOMI_B_KEY"
 }
 
-function apply_crd {
-    kubectl apply --filename sink-resources/manifests/00-crds/sink.yml
-    kubectl apply --filename sink-resources/manifests/00-crds/cluster-sink.yml
-}
-
 function show_status {
     echo "outputs.conf in config map"
     kubectl get cm fluent-bit -n oratos -o json | grep \"outputs.conf\"
@@ -243,7 +238,6 @@ function main {
     login_to_cluster_as_admin
 
     apply_roles
-    apply_crd
     setup_contexts
 
     test_sink_authorization
