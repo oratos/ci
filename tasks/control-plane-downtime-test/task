@@ -56,7 +56,7 @@ function main {
     fi
 
     # create crosstalk-receiver pod
-    apply_crosstalk_receiver oratos
+    apply_crosstalk_receiver oratos "Log Message"
 
     # create sink connected to crosstalk-receiver
     apply_namespace_sink oratos

@@ -160,7 +160,7 @@ function login_to_cluster_as_admin {
     return "$ret"
 }
 
-function apply_crosstalk_receiver_v2 {
+function apply_crosstalk_receiver {
     local drain_namespace=${1?}
     local message=${2:-"crosstalk-test"}
     echo "
@@ -184,47 +184,6 @@ spec:
       value: \"6061\"
     - name: MESSAGE
       value: $message
-    ports:
-    - name: syslog
-      containerPort: 8080
-    - name: metrics
-      containerPort: 6061
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: crosstalk-receiver-$drain_namespace
-  namespace: default
-spec:
-  selector:
-    app: crosstalk-receiver-$drain_namespace
-  ports:
-  - protocol: TCP
-    port: 8080
-" | kubectl apply --filename -
-}
-
-function apply_crosstalk_receiver {
-    local drain_namespace=${1?}
-    echo "
----
-apiVersion: v1
-kind: Pod
-metadata:
-  name: crosstalk-receiver-$drain_namespace
-  namespace: default
-  labels:
-    app: crosstalk-receiver-$drain_namespace
-spec:
-  containers:
-  - name: crosstalk-receiver
-    image: oratos/crosstalk-receiver:v0.1
-    imagePullPolicy: Always
-    env:
-    - name: SYSLOG_PORT
-      value: \"8080\"
-    - name: METRICS_PORT
-      value: \"6061\"
     ports:
     - name: syslog
       containerPort: 8080
