@@ -1,6 +1,8 @@
 #!/bin/bash
 set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
+source "oratos-ci/scripts/test/common.sh"
+
 if [ -z "$GET_CREDENTIALS_HOOK" ]; then
   echo GET_CREDENTIALS_HOOK must be set
   exit 1
@@ -149,41 +151,12 @@ logspinner_pod_name="$(
 )"
 
 echo waiting for logspinner to be up
-while true; do
-    echo -n .
-    logspinner_status="$(
-        kubectl get pod "$logspinner_pod_name" \
-            --output=json \
-            --namespace blackbox-tests \
-            | jq --join-output .status.phase
-    )"
-    if [ "$logspinner_status" = "Running" ]; then
-        break
-    fi
-    sleep 10
-done
+verify_pod_running "$logspinner_pod_name" "blackbox-tests"
 
 sleep 10
 
 echo waiting for fluent-bit to be up
-nodes="$(kubectl get nodes --output json | jq '.items | length')"
-while true; do
-    echo -n .
-
-    fluent_running_count="$(
-        kubectl get pods \
-            --selector k8s-app=logging-agent \
-            --namespace oratos \
-            --output json \
-            | jq '.items[].status.phase == "Running"' \
-            | grep -c true
-    )"
-
-    if [ "$fluent_running_count" -eq "$nodes" ]; then
-        break
-    fi
-    sleep 10
-done
+verify_daemonset_running "k8s-app=logging-agent" "oratos"
 
 kubectl port-forward "$logspinner_pod_name" 8080:8080 \
     --namespace blackbox-tests > /dev/null &
