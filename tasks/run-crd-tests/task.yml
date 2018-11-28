@@ -6,6 +6,7 @@ image_resource:
 inputs:
 - name: sink-resources
 - name: oratos-ci
+- name: bbl-state
 params:
   # - Required
   # - Code to run to setup kubectl to point to the cluster.
