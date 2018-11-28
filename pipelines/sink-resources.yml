@@ -331,7 +331,7 @@ jobs:
   - task: deploy
     file: oratos-ci/tasks/deploy-sink-resources/task.yml
     input_mapping:
-      # bbl-state is not needed for GKE, pass in oratos-ci as a NOP
+      # bbl-state is not needed for GKE, pass in oratos-ci as a NOOP
       bbl-state: oratos-ci
     params:
       SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
@@ -375,6 +375,9 @@ jobs:
     - get: oratos-ci
   - task: run-crd-tests
     file: oratos-ci/tasks/run-crd-tests/task.yml
+    input_mapping:
+      # bbl-state is not needed for GKE, pass in oratos-ci as a NOOP
+      bbl-state: oratos-ci
     params:
       GET_CREDENTIALS_HOOK: |
           echo "$SERVICE_ACCOUNT" > sa.json
