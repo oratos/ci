@@ -229,7 +229,7 @@ function assert_metrics {
     check_result_cnt "$expected" "$result" \
         "Expected crosstalk-receiver-cluster to have value $expected for crosstalk-ns-b"
 
-    expected="0"
+    expected="19"
     result="$(echo "$cluster_result" | jq '.cluster' --join-output)"
     check_result_cnt "$expected" "$result" \
         "Expected crosstalk-receiver-cluster to have value $expected for cluster"
