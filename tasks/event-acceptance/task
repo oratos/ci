@@ -62,7 +62,11 @@ function main {
 
     sleep 5
     echo "asserting on metrics received from the crosstalk receiver"
+    # Dont quit the script if fails to grep
+    set +e
     receiver_metrics="$(curl -s http://localhost:6061/metrics)"
+    set -e
+    echo $receiver_metrics | jq 'del(.memstats, .cmdline)'
     expected="1"
     result="$(echo "$receiver_metrics" | jq '.namespaced["oratos"]' --join-output)"
     check_result_cnt "$expected" "$result" \
