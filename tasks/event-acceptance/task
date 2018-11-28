@@ -40,6 +40,8 @@ function main {
 
     echo "deploy crosstalk receiver"
     apply_crosstalk_receiver_v2 "oratos" 'Back-off pulling image "oratos/donotexist"'
+    echo "verifying crosstalk receiver is running"
+    verify_pod_running "crosstalk-receiver-oratos" "default"
 
     echo "apply sink to 'oratos' namespace"
     apply_namespace_sink "oratos"

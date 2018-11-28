@@ -46,6 +46,30 @@ function ensure_variable_isset {
     fi
 }
 
+function verify_pod_running {
+    local podName=${1?}
+    local namespace=${2?}
+    local n=0
+    local maxN=5
+
+    until [ "$n" -ge "$maxN" ]; do
+        echo -n .
+        status="$(
+            kubectl get pod \
+                "$podName" \
+                --output=json \
+                --namespace="$namespace" \
+                | jq --join-output .status.phase
+        )"
+        if [ "$status" = "Running" ]; then
+            return 0
+        fi
+        sleep 10
+        n=$((n+1))
+    done
+    return 1
+}
+
 function verify_deployment_running {
     local label=${1?}
     local namespace=${2?}
