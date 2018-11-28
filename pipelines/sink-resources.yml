@@ -373,32 +373,17 @@ jobs:
       params:
         skip_download: true
   - task: run-crd-tests
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: oratos/ci-base
-      inputs:
-      - name: sink-resources
-      params:
-        SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
-        DEBUG:
-      run:
-        path: /bin/bash
-        args:
-        - "-c"
-        - |
-          #!/bin/bash
-          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-
+    file: oratos-ci/tasks/run-crd-tests/task.yml
+    params:
+      GET_CREDENTIALS_HOOK: |
           echo "$SERVICE_ACCOUNT" > sa.json
           gcloud auth activate-service-account --key-file sa.json
           rm sa.json
           gcloud container clusters get-credentials oratos-ci-testing \
             --zone us-central1-a
+      SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
+      DEBUG:
 
-          sink-resources/tests/test.sh
 
 - name: deploy-cfcr
   serial: true
@@ -483,6 +468,13 @@ jobs:
         skip_download: true
     - get: oratos-ci
     - get: oratos-ci-testing-cfcr-bbl-state
+  - task: run-crd-tests
+    file: oratos-ci/tasks/run-crd-tests/task.yml
+    params:
+      GET_CREDENTIALS_HOOK: |
+        BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/cfcr.sh testing get-credentials
+      DEBUG:
   - task: event-acceptance
     file: oratos-ci/tasks/event-acceptance/task.yml
     input_mapping:
