@@ -89,13 +89,13 @@ resources:
   type: git
   source:
     uri: https://github.com/cloudfoundry-incubator/kubo-deployment
-    branch: v0.23.0
+    branch: v0.24.0
 
 - name: kubo-release-bosh-io
   type: bosh-io-release
   source:
     repository: cloudfoundry-incubator/kubo-release
-    regexp: "0.23.*"
+    regexp: "0.24.*"
 
 - name: cf-deployment-concourse-tasks
   type: git
