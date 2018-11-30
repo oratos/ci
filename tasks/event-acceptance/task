@@ -3,6 +3,82 @@ set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
 source "oratos-ci/scripts/test/common.sh"
 
+manifest="
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: event-test
+spec:
+  volumes:
+  - secret
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  fsGroup:
+    rule: RunAsAny
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: event-test
+  namespace: oratos
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: event-test
+  namespace: oratos
+rules:
+- apiGroups:
+  - policy
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - use
+  resourceNames:
+  - event-test
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: event-test
+  namespace: oratos
+subjects:
+- kind: ServiceAccount
+  name: event-test
+  namespace: oratos
+roleRef:
+  kind: Role
+  name: event-test
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: event-test
+  name: event-test
+  namespace: oratos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: event-test
+  template:
+    metadata:
+      labels:
+        app: event-test
+    spec:
+      serviceAccountName: event-test
+      containers:
+      - image: oratos/doesnotexist
+        imagePullPolicy: Always
+        name: doesnotexist
+"
+
 function validate {
     ensure_variable_isset "$GET_CREDENTIALS_HOOK" "GET_CREDENTIALS_HOOK"
 }
@@ -22,7 +98,7 @@ function cleanup {
 
     kubectl --namespace oratos delete sink crosstalk-sink > /dev/null 2>&1
 
-    kubectl --namespace oratos delete deployment test > /dev/null 2>&1
+    echo "$manifest" | kubectl delete --filename - > /dev/null 2>&1
 
     # Clean up port forwarding with retry
     killall -9 kubectl > /dev/null 2>&1
@@ -52,7 +128,7 @@ function main {
     verify_daemonset_running "k8s-app=logging-agent" "oratos"
 
     echo "create test deployment with unavailable image"
-    kubectl create deployment test --image=oratos/donotexist --namespace=oratos
+    echo "$manifest" | kubectl apply --filename -
 
     # Giving some time for the message to make it through
     sleep 10
