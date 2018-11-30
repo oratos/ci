@@ -16,11 +16,6 @@ resource_types:
     tag: latest
 
 resources:
-- name: 5m
-  type: time
-  source:
-    interval: 5m
-
 - name: 15m
   type: time
   source:
@@ -137,7 +132,7 @@ jobs:
 - name: latency-test
   plan:
   - aggregate:
-    - get: 5m
+    - get: 15m
       trigger: true
     - get: bikepark-bbl-state
     - get: oratos-ci
