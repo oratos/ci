@@ -252,6 +252,7 @@ jobs:
         manifests/ops-files/iaas/gcp/cloud-provider.yml
         manifests/ops-files/iaas/gcp/add-service-key-master.yml
         manifests/ops-files/iaas/gcp/add-service-key-worker.yml
+        manifests/ops-files/enable-podsecuritypolicy.yml
   - task: run-apply-addons-errand
     file: cf-deployment-concourse-tasks/run-errand/task.yml
     input_mapping:
@@ -481,6 +482,7 @@ jobs:
         manifests/ops-files/iaas/gcp/cloud-provider.yml
         manifests/ops-files/iaas/gcp/add-service-key-master.yml
         manifests/ops-files/iaas/gcp/add-service-key-worker.yml
+        manifests/ops-files/enable-podsecuritypolicy.yml
   - task: run-apply-addons-errand
     file: cf-deployment-concourse-tasks/run-errand/task.yml
     input_mapping:
