@@ -115,7 +115,7 @@ function main {
     verify_daemonset_running "k8s-app=logging-agent" "oratos"
 
     echo "deploy crosstalk receiver"
-    apply_crosstalk_receiver "oratos" 'Back-off pulling image "oratos/donotexist"'
+    apply_crosstalk_receiver "oratos" 'Back-off pulling image "oratos/doesnotexist"'
     echo "verifying crosstalk receiver is running"
     verify_pod_running "crosstalk-receiver-oratos" "default"
 
