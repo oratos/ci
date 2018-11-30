@@ -29,6 +29,101 @@ if [ -z "$DATADOG_API_KEY" ]; then
 fi
 
 MESSAGE="$MESSAGE-$RANDOM"
+papertrail_host="$(echo "$PAPERTRAIL_DESTINATION" | awk -F ':' '{print $1}')"
+papertrail_port="$(echo "$PAPERTRAIL_DESTINATION" | awk -F ':' '{print $2}')"
+
+manifest="
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: blackbox-tests
+---
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: blackbox-tests
+spec:
+  volumes:
+  - secret
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  fsGroup:
+    rule: RunAsAny
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: blackbox-tests
+  namespace: blackbox-tests
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: blackbox-tests
+  namespace: blackbox-tests
+rules:
+- apiGroups:
+  - policy
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - use
+  resourceNames:
+  - blackbox-tests
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: blackbox-tests
+  namespace: blackbox-tests
+subjects:
+- kind: ServiceAccount
+  name: blackbox-tests
+  namespace: blackbox-tests
+roleRef:
+  kind: Role
+  name: blackbox-tests
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: logspinner
+  namespace: blackbox-tests
+  labels:
+    run: logspinner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: logspinner
+  template:
+    metadata:
+      labels:
+        run: logspinner
+    spec:
+      serviceAccountName: blackbox-tests
+      containers:
+      - name: logspinner
+        image: loggregator/logspinner
+        env:
+        - name: PORT
+          value: \"8080\"
+---
+apiVersion: apps.pivotal.io/v1beta1
+kind: Sink
+metadata:
+  name: blackbox-test-sink
+  namespace: blackbox-tests
+spec:
+  type: syslog
+  host: $papertrail_host
+  port: $papertrail_port
+"
 
 # Install and setup papertrail cli
 gem install papertrail
@@ -83,7 +178,7 @@ function report_to_datadog {
   }" \
   'https://app.datadoghq.com/api/v1/series?api_key='"$DATADOG_API_KEY"
 
-  #delete_sinks
+  delete_sinks
 
   set +e
   killall kubectl
@@ -98,49 +193,7 @@ eval "$GET_CREDENTIALS_HOOK"
 
 delete_sinks
 
-papertrail_host="$(echo "$PAPERTRAIL_DESTINATION" | awk -F ':' '{print $1}')"
-papertrail_port="$(echo "$PAPERTRAIL_DESTINATION" | awk -F ':' '{print $2}')"
-echo "
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: blackbox-tests
----
-apiVersion: extensions/v1beta1
-kind: Deployment
-metadata:
-  name: logspinner
-  namespace: blackbox-tests
-  labels:
-    run: logspinner
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      run: logspinner
-  template:
-    metadata:
-      labels:
-        run: logspinner
-    spec:
-      containers:
-      - name: logspinner
-        image: loggregator/logspinner
-        env:
-        - name: PORT
-          value: \"8080\"
----
-apiVersion: apps.pivotal.io/v1beta1
-kind: Sink
-metadata:
-  name: blackbox-test-sink
-spec:
-  type: syslog
-  host: $papertrail_host
-  port: $papertrail_port
-" | kubectl apply \
-        --namespace blackbox-tests \
-        -f -
+echo "$manifest" | kubectl apply -f -
 
 logspinner_pod_name="$(
     kubectl get pod \

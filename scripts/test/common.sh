@@ -165,6 +165,57 @@ function apply_crosstalk_receiver {
     local message=${2:-"crosstalk-test"}
     echo "
 ---
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: crosstalk-receiver
+spec:
+  volumes:
+  - secret
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  fsGroup:
+    rule: RunAsAny
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: crosstalk-receiver
+  namespace: default
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: crosstalk-receiver
+  namespace: default
+rules:
+- apiGroups:
+  - policy
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - use
+  resourceNames:
+  - crosstalk-receiver
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: crosstalk-receiver
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: crosstalk-receiver
+  namespace: default
+roleRef:
+  kind: Role
+  name: crosstalk-receiver
+  apiGroup: rbac.authorization.k8s.io
+---
 apiVersion: v1
 kind: Pod
 metadata:
@@ -173,6 +224,7 @@ metadata:
   labels:
     app: crosstalk-receiver-$drain_namespace
 spec:
+  serviceAccountName: crosstalk-receiver
   containers:
   - name: crosstalk-receiver
     image: oratos/crosstalk-receiver:v0.3
@@ -208,6 +260,57 @@ function apply_emitter {
     local namespace=${1?}
     local count=${2?}
     echo "
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: emitter
+spec:
+  volumes:
+  - secret
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  fsGroup:
+    rule: RunAsAny
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: emitter
+  namespace: $namespace
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: emitter
+  namespace: $namespace
+rules:
+- apiGroups:
+  - policy
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - use
+  resourceNames:
+  - emitter
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: emitter
+  namespace: $namespace
+subjects:
+- kind: ServiceAccount
+  name: emitter
+  namespace: $namespace
+roleRef:
+  kind: Role
+  name: emitter
+  apiGroup: rbac.authorization.k8s.io
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -216,6 +319,7 @@ metadata:
 spec:
   template:
     spec:
+      serviceAccountName: emitter
       containers:
       - name: crosstalk-receiver
         image: ubuntu:latest

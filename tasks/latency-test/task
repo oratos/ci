@@ -4,21 +4,62 @@ set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 BBL_STATE_DIR=bikepark-bbl-state \
   oratos-ci/scripts/cfcr.sh bikepark get-credentials
 
-function cleanup {
-     kubectl -n latency-test delete sink latency-sink || true
-     kubectl -n latency-test delete pod latency-receiver || true
-     kubectl -n latency-test delete service latency-receiver || true
-     kubectl delete namespace latency-test || true
-     killall -9 kubectl > /dev/null 2>&1
-}
-trap cleanup EXIT
-
-# create namespace
-echo "
+manifest="
 apiVersion: v1
 kind: Namespace
 metadata:
   name: latency-test
+---
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: latency-test
+spec:
+  volumes:
+  - secret
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  fsGroup:
+    rule: RunAsAny
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: latency-test
+  namespace: latency-test
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: latency-test
+  namespace: latency-test
+rules:
+- apiGroups:
+  - policy
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - use
+  resourceNames:
+  - latency-test
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: latency-test
+  namespace: latency-test
+subjects:
+- kind: ServiceAccount
+  name: latency-test
+  namespace: latency-test
+roleRef:
+  kind: Role
+  name: latency-test
+  apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: v1
 kind: Pod
@@ -28,6 +69,7 @@ metadata:
   labels:
     app: latency-receiver
 spec:
+  serviceAccountName: latency-test
   containers:
   - name: latency-receiver
     image: oratos/latency-receiver:v0.1
@@ -60,7 +102,16 @@ spec:
   type: syslog
   host: latency-receiver.latency-test.svc.cluster.local
   port: 8080
-" | kubectl apply --filename -
+"
+
+function cleanup {
+    echo "$manifest" | kubectl delete --filename - || true
+    killall -9 kubectl > /dev/null 2>&1
+}
+trap cleanup EXIT
+
+# create namespace
+echo "$manifest" | kubectl apply --filename -
 
 sleep 30
 # create port forward for latency-receiver

@@ -8,6 +8,84 @@ if [ -z "$GET_CREDENTIALS_HOOK" ]; then
   exit 1
 fi
 
+manifest="
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: control-plane-downtime-test
+spec:
+  volumes:
+  - secret
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  fsGroup:
+    rule: RunAsAny
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: control-plane-downtime-test
+  namespace: oratos
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: control-plane-downtime-test
+  namespace: oratos
+rules:
+- apiGroups:
+  - policy
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - use
+  resourceNames:
+  - control-plane-downtime-test
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: control-plane-downtime-test
+  namespace: oratos
+subjects:
+- kind: ServiceAccount
+  name: control-plane-downtime-test
+  namespace: oratos
+roleRef:
+  kind: Role
+  name: control-plane-downtime-test
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logspewer
+  namespace: oratos
+  labels:
+    app: logspewer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logspewer
+  template:
+    metadata:
+      labels:
+        app: logspewer
+    spec:
+      serviceAccountName: control-plane-downtime-test
+      containers:
+      - name: logspewer
+        image: oratos/logspewer:latest
+        env:
+        - name: MESSAGE
+          value: crosstalk-test
+"
+
 function clean_up {
     # restore iptables rules if needed
     bosh \
@@ -15,11 +93,8 @@ function clean_up {
       ssh master -c 'if [ -e /tmp/iptables.orig ]; then sudo iptables-restore /tmp/iptables.orig; sudo rm /tmp/iptables.orig; fi'
 
     set +e
-    kubectl delete \
-      --filename oratos-ci/tools/logspewer/manifests/deployment.yml \
-      --namespace oratos
-    kubectl delete service crosstalk-receiver-oratos \
-      --namespace default
+    echo "$manifest" | kubectl delete --filename -
+    kubectl delete service crosstalk-receiver-oratos --namespace default
     kubectl delete pod crosstalk-receiver-oratos --namespace default
     kubectl delete sink crosstalk-sink --namespace oratos
 }
@@ -62,9 +137,7 @@ function main {
     apply_namespace_sink oratos
 
     # create emitter
-    kubectl apply \
-      --filename oratos-ci/tools/logspewer/manifests/deployment.yml \
-      --namespace oratos
+    echo "$manifest" | kubectl apply --filename -
 
     # create another lb service to expose /metrics
     kubectl expose pod crosstalk-receiver-oratos \
