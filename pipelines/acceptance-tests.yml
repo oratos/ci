@@ -63,7 +63,7 @@ jobs:
       PAPERTRAIL_TOKEN: ((papertrail.token))
       PAPERTRAIL_GROUP: oratos-blackbox-tests
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
-      WAIT: 60
+      WAIT: 300
       CYCLES: 10000
       DATADOG_API_KEY: ((datadog.oratos-ci-api-key))
       DELAY: "2"
