@@ -3,7 +3,7 @@ sink_resource_release_params:
   # This SHA needs to be a tag on the docker image on dockerhub here:
   #   https://hub.docker.com/r/oratos/sink-controller/tags/
   #   https://hub.docker.com/r/oratos/event-controller/tags/
-  GIT_REF: 8bf0004096e51100990d0aa6456c881a12fb91ea
+  GIT_REF: 030966fab5481799b2e4b406ccea26d3da88f412
 
   # This is the version that you intend to release. This will be pushed as a
   # git tag to:
