@@ -203,9 +203,10 @@ jobs:
             fi
           }
           sanitize_cgroups
-          service docker start
+          /usr/bin/dockerd &
+          docker_pid=$!
           function cleanup {
-            service docker stop
+            kill -9 $docker_pid
           }
           trap cleanup EXIT
 

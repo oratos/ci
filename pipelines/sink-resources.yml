@@ -684,10 +684,11 @@ jobs:
             fi
           }
           sanitize_cgroups
-          service docker start
+          /usr/bin/dockerd &
+          docker_pid=$!
           function cleanup {
             set +e
-            service docker stop
+            kill -9 $docker_pid
             killall ssh-agent
           }
           trap cleanup EXIT
