@@ -15,11 +15,11 @@ function cfcr_env_download-bbl-state {
 
 function cfcr_env_print-env {
     if ! [ -d "$BBL_STATE_DIR" ]; then
-        echo "downloading state from vault..."
-        echo "this may take a while but you only have to do it once"
+        echo "downloading state from vault..." >&2
+        echo "this may take a while but you only have to do it once" >&2
 
         trap cleanup_bbl_state ERR
-        cfcr_env_download-bbl-state
+        cfcr_env_download-bbl-state >&2
         trap '' ERR
     fi
 
