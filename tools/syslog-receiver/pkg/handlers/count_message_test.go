@@ -34,7 +34,7 @@ var _ = Describe("Crosstalk Receiver", func() {
 	})
 
 	It("counts messages by the namespace in structured data", func() {
-		s := tcpserver.New(":0", ":0", handlers.NewCountMessageHandler(testNamespacedCount, testClusterCount),
+		s := tcpserver.New(":0", ":0", handlers.NewCountMessageHandler("crosstalk-test", testNamespacedCount, testClusterCount),
 			tcpserver.Handler{
 				"/metrics",
 				expvar.Handler(),
@@ -74,11 +74,11 @@ var _ = Describe("Crosstalk Receiver", func() {
 		c := readCounters(s.ApiAddr())
 
 		Expect(c.Namespaced["foo"]).To(Equal(2))
-		Expect(c.Cluster).To(Equal(0))
+		Expect(c.Cluster).To(Equal(2))
 	})
 
 	It("only counts messages intended for test", func() {
-		s := tcpserver.New(":0", ":0", handlers.NewCountMessageHandler(testNamespacedCount, testClusterCount),
+		s := tcpserver.New(":0", ":0", handlers.NewCountMessageHandler("crosstalk-test", testNamespacedCount, testClusterCount),
 			tcpserver.Handler{
 				"/metrics",
 				expvar.Handler(),
@@ -140,11 +140,11 @@ var _ = Describe("Crosstalk Receiver", func() {
 		c := readCounters(s.ApiAddr())
 
 		Expect(c.Namespaced["foo"]).To(Equal(2))
-		Expect(c.Cluster).To(Equal(0))
+		Expect(c.Cluster).To(Equal(2))
 	})
 
 	It("counts messages with non-matching namespace in unexpected count", func() {
-		s := tcpserver.New(":0", ":0", handlers.NewCountMessageHandler(testNamespacedCount, testClusterCount),
+		s := tcpserver.New(":0", ":0", handlers.NewCountMessageHandler("crosstalk-test", testNamespacedCount, testClusterCount),
 			tcpserver.Handler{"/metrics", expvar.Handler()})
 
 		defer s.Close()
@@ -183,7 +183,7 @@ var _ = Describe("Crosstalk Receiver", func() {
 	})
 
 	It("shuts down the servers on Close()", func() {
-		s := tcpserver.New(":0", ":0", handlers.NewCountMessageHandler(testNamespacedCount, testClusterCount),
+		s := tcpserver.New(":0", ":0", handlers.NewCountMessageHandler("crosstalk-test", testNamespacedCount, testClusterCount),
 			tcpserver.Handler{"/metrics", expvar.Handler()})
 
 		_, err := net.Dial("tcp", s.SyslogAddr())
