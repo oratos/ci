@@ -17,4 +17,4 @@ sink_resource_release_params:
   # this release. This version needs to be a tag on the docker image on
   # dockerhhub here:
   #   https://hub.docker.com/r/oratos/fluent-bit-out-syslog/tags/
-  FLUENT_BIT_OUT_SYSLOG_VERSION: v0.10 # version of the fluent-bit image to use
+  FLUENT_BIT_OUT_SYSLOG_VERSION: v0.11 # version of the fluent-bit image to use
