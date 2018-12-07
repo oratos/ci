@@ -3,7 +3,7 @@ sink_resource_release_params:
   # This SHA needs to be a tag on the docker image on dockerhub here:
   #   https://hub.docker.com/r/oratos/sink-controller/tags/
   #   https://hub.docker.com/r/oratos/event-controller/tags/
-  GIT_REF: 030966fab5481799b2e4b406ccea26d3da88f412
+  GIT_REF: 36a2459dde575aeb9a8e829d6e09adbfb55f06bb
 
   # This is the version that you intend to release. This will be pushed as a
   # git tag to:
@@ -11,7 +11,7 @@ sink_resource_release_params:
   # This will also be pushed as a tagged docker image to:
   #   https://hub.docker.com/r/oratos/sink-controller/tags/
   #   https://hub.docker.com/r/oratos/event-controller/tags/
-  VERSION: v0.11
+  VERSION: v0.12
 
   # This is the version of the fluent-bit-out-syslog image to be included in
   # this release. This version needs to be a tag on the docker image on
