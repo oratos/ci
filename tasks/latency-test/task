@@ -1,6 +1,8 @@
 #!/bin/bash
 set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
+source "oratos-ci/scripts/test/common.sh"
+
 BBL_STATE_DIR=bikepark-bbl-state \
   oratos-ci/scripts/cfcr.sh bikepark get-credentials
 
@@ -124,7 +126,7 @@ kubectl --namespace latency-test port-forward latency-receiver 6060:6060 > /dev/
 sleep 10
 
 # curl latency receiver to emit
-latency="$(curl --silent --fail http://localhost:6060/latency)"
+latency="$(retry_command 'curl --silent --fail http://localhost:6060/latency' 10 1 true)"
 
 # send response to datadog
 echo posting to datadog
