@@ -79,6 +79,11 @@ spec:
       value: \"8080\"
     - name: API_PORT
       value: \"6060\"
+    ports:
+    - name: syslog
+      containerPort: 8080
+    - name: metrics
+      containerPort: 6060
 ---
 apiVersion: v1
 kind: Service
