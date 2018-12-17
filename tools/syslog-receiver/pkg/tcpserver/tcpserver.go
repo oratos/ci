@@ -47,13 +47,13 @@ func (t *tcpServer) start(handlers ...Handler) {
 	var err error
 	t.syslogListener, err = net.Listen("tcp", t.syslogAddr)
 	if err != nil {
-		log.Fatal("failed to start up tcp server")
+		log.Fatalf("failed to start up tcp server: %s", err)
 	}
 
 	log.Printf("Starting metrics server on: %s", t.apiAddr)
 	t.apiListener, err = net.Listen("tcp", t.apiAddr)
 	if err != nil {
-		log.Fatal("failed to start up tcp server")
+		log.Fatalf("failed to start up metrics server: %s", err)
 	}
 
 	mux := http.NewServeMux()
