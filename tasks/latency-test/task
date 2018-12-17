@@ -72,7 +72,7 @@ spec:
   serviceAccountName: latency-test
   containers:
   - name: latency-receiver
-    image: oratos/latency-receiver:v0.2
+    image: oratos/latency-receiver:v0.3
     imagePullPolicy: Always
     env:
     - name: SYSLOG_PORT
