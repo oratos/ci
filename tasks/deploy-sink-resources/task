@@ -7,10 +7,6 @@ function validate {
     ensure_variable_isset "$GET_CREDENTIALS_HOOK" "GET_CREDENTIALS_HOOK"
 }
 
-function delete_old_jobs {
-    kubectl delete -Rf sink-resources/manifests/45-jobs || true
-}
-
 function apply_manifests {
     cert_digest="$(cat cert-generator-image/digest)"
     ghost_digest="$(cat ghostunnel-image/digest)"
@@ -55,7 +51,6 @@ function roll {
 function main {
     validate
     login_to_cluster_as_admin
-    delete_old_jobs
     apply_manifests
     roll
 }
