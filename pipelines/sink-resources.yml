@@ -711,39 +711,39 @@ jobs:
             git tag "$VERSION"
           popd > /dev/null
 
-          yq read sink-resources/manifests/60-deployments/sink.yml --tojson \
+          yq read sink-resources/manifests/500-sink-controller-deployment.yaml --tojson \
             | jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller:'"$VERSION"'"' \
-            > sink-resources/manifests/60-deployments/sink.json
-          yq read sink-resources/manifests/60-deployments/sink.json \
-            > sink-resources/manifests/60-deployments/sink.yml
-          rm sink-resources/manifests/60-deployments/sink.json
+            > sink-resources/manifests/500-sink-controller-deployment.json
+          yq read sink-resources/manifests/500-sink-controller-deployment.json \
+            > sink-resources/manifests/500-sink-controller-deployment.yaml
+          rm sink-resources/manifests/500-sink-controller-deployment.json
 
-          yq read sink-resources/manifests/60-deployments/event.yml --tojson \
+          yq read sink-resources/manifests/500-event-controller-deployment.yaml --tojson \
             | jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller:'"$VERSION"'"' \
             | jq '(.spec.template.spec.containers[] | select(.name == "ghostunnel")).image = "oratos/ghostunnel:'"$VERSION"'"' \
             | jq '(.spec.template.spec.initContainers[] | select(.name == "concat-keystore")).image = "oratos/fluent-bit-out-syslog:'"$FLUENT_BIT_OUT_SYSLOG_VERSION"'"' \
-            > sink-resources/manifests/60-deployments/event.json
-          yq read sink-resources/manifests/60-deployments/event.json \
-            > sink-resources/manifests/60-deployments/event.yml
-          rm sink-resources/manifests/60-deployments/event.json
+            > sink-resources/manifests/500-event-controller-deployment.json
+          yq read sink-resources/manifests/500-event-controller-deployment.json \
+            > sink-resources/manifests/500-event-controller-deployment.yaml
+          rm sink-resources/manifests/500-event-controller-deployment.json
 
-          yq read sink-resources/manifests/45-jobs/cert-generator.yml --tojson \
+          yq read sink-resources/manifests/500-cert-generator-job.yaml --tojson \
             | jq '(.spec.template.spec.containers[] | select(.name == "cert-generator")).image = "oratos/cert-generator:'"$VERSION"'"' \
-            > sink-resources/manifests/45-jobs/cert-generator.json
-          yq read sink-resources/manifests/45-jobs/cert-generator.json \
-            > sink-resources/manifests/45-jobs/cert-generator.yml
-          rm sink-resources/manifests/45-jobs/cert-generator.json
+            > sink-resources/manifests/500-cert-generator-job.json
+          yq read sink-resources/manifests/500-cert-generator-job.json \
+            > sink-resources/manifests/500-cert-generator-job.yaml
+          rm sink-resources/manifests/500-cert-generator-job.json
 
-          yq read sink-resources/manifests/50-daemonsets/fluent-bit.yml --tojson \
+          yq read sink-resources/manifests/500-fluent-bit-daemon.yaml --tojson \
             | jq '(.spec.template.spec.containers[] | select(.name == "fluent-bit")).image = "oratos/fluent-bit-out-syslog:'"$FLUENT_BIT_OUT_SYSLOG_VERSION"'"' \
             | jq '(.spec.template.spec.containers[] | select(.name == "ghostunnel")).image = "oratos/ghostunnel:'"$VERSION"'"' \
             | jq '(.spec.template.spec.initContainers[] | select(.name == "concat-keystore")).image = "oratos/fluent-bit-out-syslog:'"$FLUENT_BIT_OUT_SYSLOG_VERSION"'"' \
-            > sink-resources/manifests/50-daemonsets/fluent-bit.json
-          yq read sink-resources/manifests/50-daemonsets/fluent-bit.json \
-            > sink-resources/manifests/50-daemonsets/fluent-bit.yml
-          rm sink-resources/manifests/50-daemonsets/fluent-bit.json
+            > sink-resources/manifests/500-fluent-bit-daemon.json
+          yq read sink-resources/manifests/500-fluent-bit-daemon.json \
+            > sink-resources/manifests/500-fluent-bit-daemon.yaml
+          rm sink-resources/manifests/500-fluent-bit-daemon.json
 
-          for f in sink-resources/manifests/**/*; do
+          for f in sink-resources/manifests/*; do
             echo ---
             cat "$f";
           done > github-release/manifest.yml
