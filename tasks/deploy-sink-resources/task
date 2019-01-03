@@ -48,7 +48,7 @@ function apply_manifests {
 function roll {
     # patch objects to make sure they are rolled
     patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
-    for f in sink-resources/manifests/500-*{daemon,deployment}.yaml; do
+    for f in sink-resources/manifests/500-*{daemon,deployment}.json; do
         kubectl patch -f "$f" --patch "$patch"
     done
 }
