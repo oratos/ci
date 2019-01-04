@@ -23,18 +23,18 @@ function cleanup {
 
     show_status
 
-    # kubectl --namespace default delete pod crosstalk-receiver-crosstalk-ns-a > /dev/null 2>&1
-    # kubectl --namespace default delete pod crosstalk-receiver-crosstalk-ns-b > /dev/null 2>&1
-    # kubectl --namespace default delete pod crosstalk-receiver-cluster > /dev/null 2>&1
+    kubectl --namespace default delete pod crosstalk-receiver-crosstalk-ns-a > /dev/null 2>&1
+    kubectl --namespace default delete pod crosstalk-receiver-crosstalk-ns-b > /dev/null 2>&1
+    kubectl --namespace default delete pod crosstalk-receiver-cluster > /dev/null 2>&1
 
-    # kubectl delete namespace crosstalk-ns-a --cascade > /dev/null 2>&1
-    # kubectl delete namespace crosstalk-ns-b --cascade > /dev/null 2>&1
+    kubectl delete namespace crosstalk-ns-a --cascade > /dev/null 2>&1
+    kubectl delete namespace crosstalk-ns-b --cascade > /dev/null 2>&1
 
-    # kubectl --namespace default delete service crosstalk-receiver-crosstalk-ns-a > /dev/null 2>&1
-    # kubectl --namespace default delete service crosstalk-receiver-crosstalk-ns-b > /dev/null 2>&1
-    # kubectl --namespace default delete service crosstalk-receiver-cluster > /dev/null 2>&1
+    kubectl --namespace default delete service crosstalk-receiver-crosstalk-ns-a > /dev/null 2>&1
+    kubectl --namespace default delete service crosstalk-receiver-crosstalk-ns-b > /dev/null 2>&1
+    kubectl --namespace default delete service crosstalk-receiver-cluster > /dev/null 2>&1
 
-    # kubectl delete clustersink crosstalk-cluster-sink > /dev/null 2>&1
+    kubectl delete clustersink crosstalk-cluster-sink > /dev/null 2>&1
 
     # Clean up port forwarding with retry
     killall -9 kubectl > /dev/null 2>&1
