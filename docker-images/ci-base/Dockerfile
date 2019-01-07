@@ -35,3 +35,7 @@ RUN cd /tmp \
   && wget https://releases.hashicorp.com/terraform/0.11.8/terraform_0.11.8_linux_amd64.zip \
   && unzip terraform*.zip \
   && cp terraform /usr/local/bin/
+
+RUN cd /tmp \
+  && wget https://github.com/kubernetes-sigs/kustomize/releases/download/v1.0.11/kustomize_1.0.11_linux_amd64 -O /usr/local/bin/kustomize \
+  && chmod +x /usr/local/bin/kustomize
