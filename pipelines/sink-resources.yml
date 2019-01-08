@@ -784,42 +784,16 @@ jobs:
             git tag "$VERSION"
           popd > /dev/null
 
-          yq read sink-resources/manifests/500-sink-controller-deployment.yaml --tojson \
-            | jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller:'"$VERSION"'"' \
-            > sink-resources/manifests/500-sink-controller-deployment.json
-          yq read sink-resources/manifests/500-sink-controller-deployment.json \
-            > sink-resources/manifests/500-sink-controller-deployment.yaml
-          rm sink-resources/manifests/500-sink-controller-deployment.json
+          pushd sink-resources/manifests/overlays/oratos
+            kustomize edit set imagetag "oratos/cert-generator@$VERSION"
+            kustomize edit set imagetag "oratos/ghostunnel@$VERSION"
+            kustomize edit set imagetag "oratos/fluent-bit-out-syslog@$FLUENT_BIT_OUT_SYSLOG_VERSION"
+            kustomize edit set imagetag "oratos/sink-controller@$VERSION"
+            kustomize edit set imagetag "oratos/event-controller@$VERSION"
+            kustomize edit set imagetag "oratos/metric-controller@$VERSION"
+          popd
 
-          yq read sink-resources/manifests/500-event-controller-deployment.yaml --tojson \
-            | jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller:'"$VERSION"'"' \
-            | jq '(.spec.template.spec.containers[] | select(.name == "ghostunnel")).image = "oratos/ghostunnel:'"$VERSION"'"' \
-            | jq '(.spec.template.spec.initContainers[] | select(.name == "concat-keystore")).image = "oratos/fluent-bit-out-syslog:'"$FLUENT_BIT_OUT_SYSLOG_VERSION"'"' \
-            > sink-resources/manifests/500-event-controller-deployment.json
-          yq read sink-resources/manifests/500-event-controller-deployment.json \
-            > sink-resources/manifests/500-event-controller-deployment.yaml
-          rm sink-resources/manifests/500-event-controller-deployment.json
-
-          yq read sink-resources/manifests/500-cert-generator-job.yaml --tojson \
-            | jq '(.spec.template.spec.containers[] | select(.name == "cert-generator")).image = "oratos/cert-generator:'"$VERSION"'"' \
-            > sink-resources/manifests/500-cert-generator-job.json
-          yq read sink-resources/manifests/500-cert-generator-job.json \
-            > sink-resources/manifests/500-cert-generator-job.yaml
-          rm sink-resources/manifests/500-cert-generator-job.json
-
-          yq read sink-resources/manifests/500-fluent-bit-daemon.yaml --tojson \
-            | jq '(.spec.template.spec.containers[] | select(.name == "fluent-bit")).image = "oratos/fluent-bit-out-syslog:'"$FLUENT_BIT_OUT_SYSLOG_VERSION"'"' \
-            | jq '(.spec.template.spec.containers[] | select(.name == "ghostunnel")).image = "oratos/ghostunnel:'"$VERSION"'"' \
-            | jq '(.spec.template.spec.initContainers[] | select(.name == "concat-keystore")).image = "oratos/fluent-bit-out-syslog:'"$FLUENT_BIT_OUT_SYSLOG_VERSION"'"' \
-            > sink-resources/manifests/500-fluent-bit-daemon.json
-          yq read sink-resources/manifests/500-fluent-bit-daemon.json \
-            > sink-resources/manifests/500-fluent-bit-daemon.yaml
-          rm sink-resources/manifests/500-fluent-bit-daemon.json
-
-          for f in sink-resources/manifests/*; do
-            echo ---
-            cat "$f";
-          done > github-release/manifest.yml
+          kustomize build sink-resources/manifests/overlays/oratos > github-release/manifest.yml
           echo "$VERSION" > github-release/name
           echo "$VERSION" > github-release/tag
 
@@ -831,12 +805,14 @@ jobs:
           These are the versions of the docker images used in this release:
           - [oratos/sink-controller][sink-controller]:$VERSION
           - [oratos/event-controller][event-controller]:$VERSION
+          - [oratos/metric-controller][metric-controller]:$VERSION
           - [oratos/cert-generator][cert-generator]:$VERSION
           - [oratos/ghostunnel][ghostunnel]:$VERSION
           - [oratos/fluent-bit-out-syslog][fluent-bit-out-syslog]:$FLUENT_BIT_OUT_SYSLOG_VERSION
 
           [sink-controller]: https://hub.docker.com/r/oratos/sink-controller/
           [event-controller]: https://hub.docker.com/r/oratos/event-controller/
+          [metric-controller]: https://hub.docker.com/r/oratos/metric-controller/
           [cert-generator]: https://hub.docker.com/r/oratos/cert-generator/
           [ghostunnel]: https://hub.docker.com/r/oratos/ghostunnel/
           [fluent-bit-out-syslog]: https://hub.docker.com/r/oratos/fluent-bit-out-syslog/
@@ -851,6 +827,7 @@ jobs:
 
           sc_docker_name="oratos/sink-controller:$VERSION"
           ec_docker_name="oratos/event-controller:$VERSION"
+          mc_docker_name="oratos/metric-controller:$VERSION"
           cg_docker_name="oratos/cert-generator:$VERSION"
           gt_docker_name="oratos/ghostunnel:$VERSION"
           fb_docker_name="oratos/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION"
@@ -867,6 +844,12 @@ jobs:
           docker push "$ec_docker_name"
           docker push "oratos/event-controller:latest"
 
+          docker pull "oratos/metric-controller:$GIT_REF"
+          docker tag "oratos/metric-controller:$GIT_REF" "$mc_docker_name"
+          docker tag "oratos/metric-controller:$GIT_REF" "oratos/metric-controller:latest"
+          docker push "$mc_docker_name"
+          docker push "oratos/metric-controller:latest"
+
           docker pull "oratos/cert-generator:$GIT_REF"
           docker tag "oratos/cert-generator:$GIT_REF" "$cg_docker_name"
           docker tag "oratos/cert-generator:$GIT_REF" "oratos/cert-generator:latest"
@@ -882,6 +865,7 @@ jobs:
           docker pull "$fb_docker_name"
           docker save "$sc_docker_name" | gzip > "github-release/oratos_sink-controller:$VERSION.tgz"
           docker save "$ec_docker_name" | gzip > "github-release/oratos_event-controller:$VERSION.tgz"
+          docker save "$mc_docker_name" | gzip > "github-release/oratos_metric-controller:$VERSION.tgz"
           docker save "$cg_docker_name" | gzip > "github-release/oratos_cert-generator:$VERSION.tgz"
           docker save "$gt_docker_name" | gzip > "github-release/oratos_ghostunnel:$VERSION.tgz"
           docker save "$fb_docker_name" | gzip > "github-release/oratos_fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION.tgz"
