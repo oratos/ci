@@ -622,46 +622,47 @@ jobs:
             set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
             echo "release-elect" > promote/tag
-  - put: sink-controller-image
-    params:
-      load: sink-controller-image
-      tag: promote/tag
-      cache: true
-      cache_tag: latest
-    get_params:
-      skip_download: true
-  - put: event-controller-image
-    params:
-      load: event-controller-image
-      tag: promote/tag
-      cache: true
-      cache_tag: latest
-    get_params:
-      skip_download: true
-  - put: metric-controller-image
-    params:
-      load: metric-controller-image
-      tag: promote/tag
-      cache: true
-      cache_tag: latest
-    get_params:
-      skip_download: true
-  - put: cert-generator-image
-    params:
-      load: cert-generator-image
-      tag: promote/tag
-      cache: true
-      cache_tag: latest
-    get_params:
-      skip_download: true
-  - put: ghostunnel-image
-    params:
-      load: ghostunnel-image
-      tag: promote/tag
-      cache: true
-      cache_tag: latest
-    get_params:
-      skip_download: true
+  - aggregate:
+    - put: sink-controller-image
+      params:
+        load: sink-controller-image
+        tag: promote/tag
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
+    - put: event-controller-image
+      params:
+        load: event-controller-image
+        tag: promote/tag
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
+    - put: metric-controller-image
+      params:
+        load: metric-controller-image
+        tag: promote/tag
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
+    - put: cert-generator-image
+      params:
+        load: cert-generator-image
+        tag: promote/tag
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
+    - put: ghostunnel-image
+      params:
+        load: ghostunnel-image
+        tag: promote/tag
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
 
 - name: release
   serial: true
