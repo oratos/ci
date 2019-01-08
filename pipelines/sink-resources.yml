@@ -399,6 +399,12 @@ jobs:
       - deploy-gke
       params:
         skip_download: true
+    - get: metric-controller-image
+      trigger: true
+      passed:
+      - deploy-gke
+      params:
+        skip_download: true
     - get: cert-generator-image
       trigger: true
       passed:
@@ -425,7 +431,6 @@ jobs:
           gcloud container clusters get-credentials oratos-ci-testing \
             --zone us-central1-a
       SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
-
 
 - name: deploy-cfcr
   serial: true
@@ -503,6 +508,12 @@ jobs:
       - deploy-cfcr
       params:
         skip_download: true
+    - get: metric-controller-image
+      trigger: true
+      passed:
+      - deploy-cfcr
+      params:
+        skip_download: true
     - get: cert-generator-image
       trigger: true
       passed:
@@ -570,6 +581,13 @@ jobs:
       # - control-plane-tests
       params:
         save: true
+    - get: metric-controller-image
+      passed:
+      - cfcr-tests
+      - gke-tests
+      # - control-plane-tests
+      params:
+        save: true
     - get: cert-generator-image
       passed:
       - cfcr-tests
@@ -620,6 +638,14 @@ jobs:
       cache_tag: latest
     get_params:
       skip_download: true
+  - put: metric-controller-image
+    params:
+      load: metric-controller-image
+      tag: promote/tag
+      cache: true
+      cache_tag: latest
+    get_params:
+      skip_download: true
   - put: cert-generator-image
     params:
       load: cert-generator-image
@@ -642,6 +668,7 @@ jobs:
   plan:
   - get: sink-controller-image
   - get: event-controller-image
+  - get: metric-controller-image
   - get: cert-generator-image
   - get: ghostunnel-image
   - task: release
@@ -924,7 +951,7 @@ jobs:
       - build-event-controller-image
       params:
         skip_download: true
-    - get: event-controller-image
+    - get: metric-controller-image
       trigger: true
       passed:
       - build-metric-controller-image
@@ -968,6 +995,12 @@ jobs:
       passed:
       - deploy-control-plane
     - get: event-controller-image
+      trigger: true
+      passed:
+      - deploy-control-plane
+      params:
+        skip_download: true
+    - get: metric-controller-image
       trigger: true
       passed:
       - deploy-control-plane
