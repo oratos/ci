@@ -21,12 +21,14 @@ function apply_manifests {
     fluent_digest=$(cat fluent-bit-out-syslog-image/digest)
     sink_digest="$(cat sink-controller-image/digest)"
     event_digest="$(cat event-controller-image/digest)"
+    metric_digest="$(cat metric-controller-image/digest)"
     pushd sink-resources/manifests/overlays/oratos
         kustomize edit set imagetag "oratos/cert-generator@$cert_digest"
-        kustomize edit set imagetag "oratos/ghosttunnel@$ghost_digest"
-        kustomize edit set imagetag "oratos/fleunt-bit-out-syslog@$fluent_digest"
+        kustomize edit set imagetag "oratos/ghostunnel@$ghost_digest"
+        kustomize edit set imagetag "oratos/fluent-bit-out-syslog@$fluent_digest"
         kustomize edit set imagetag "oratos/sink-controller@$sink_digest"
         kustomize edit set imagetag "oratos/event-controller@$event_digest"
+        kustomize edit set imagetag "oratos/metric-controller@$metric_digest"
     popd
     kustomize build sink-resources/manifests/overlays/oratos \
         | kubectl apply -f -

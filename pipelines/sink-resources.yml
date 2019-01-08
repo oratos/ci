@@ -4,6 +4,7 @@ groups:
   - unit-tests
   - build-sink-controller-image
   - build-event-controller-image
+  - build-metric-controller-image
   - build-cert-generator-image
   - build-ghostunnel-image
   - deploy-gke
@@ -61,6 +62,13 @@ resources:
   type: docker-image
   source:
     repository: oratos/event-controller
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
+- name: metric-controller-image
+  type: docker-image
+  source:
+    repository: oratos/metric-controller
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
@@ -241,6 +249,30 @@ jobs:
     get_params:
       skip_download: true
 
+- name: build-metric-controller-image
+  serial: true
+  plan:
+  - aggregate:
+    - get: sink-resources
+      trigger: true
+      passed:
+      - unit-tests
+    - get: oratos-ci
+  - task: prepare-build
+    file: oratos-ci/tasks/build-docker-image/task.yml
+    input_mapping:
+      source-repo: sink-resources
+    params:
+      DOCKERFILE: source-repo/cmd/metric-controller/Dockerfile
+  - put: metric-controller-image
+    params:
+      build: build-image/build
+      tag: build-image/tag
+      cache: true
+      cache_tag: latest
+    get_params:
+      skip_download: true
+
 - name: build-cert-generator-image
   serial: true
   plan:
@@ -298,6 +330,7 @@ jobs:
       passed:
       - build-sink-controller-image
       - build-event-controller-image
+      - build-metric-controller-image
       - build-cert-generator-image
       - build-ghostunnel-image
     - get: sink-controller-image
@@ -310,6 +343,12 @@ jobs:
       trigger: true
       passed:
       - build-event-controller-image
+      params:
+        skip_download: true
+    - get: metric-controller-image
+      trigger: true
+      passed:
+      - build-metric-controller-image
       params:
         skip_download: true
     - get: ghostunnel-image
@@ -397,6 +436,7 @@ jobs:
       passed:
       - build-sink-controller-image
       - build-event-controller-image
+      - build-metric-controller-image
       - build-cert-generator-image
       - build-ghostunnel-image
     - get: sink-controller-image
@@ -409,6 +449,12 @@ jobs:
       trigger: true
       passed:
       - build-event-controller-image
+      params:
+        skip_download: true
+    - get: metric-controller-image
+      trigger: true
+      passed:
+      - build-metric-controller-image
       params:
         skip_download: true
     - get: cert-generator-image
@@ -863,6 +909,7 @@ jobs:
       passed:
       - build-sink-controller-image
       - build-event-controller-image
+      - build-metric-controller-image
       - build-cert-generator-image
       - build-ghostunnel-image
     - get: sink-controller-image
@@ -875,6 +922,12 @@ jobs:
       trigger: true
       passed:
       - build-event-controller-image
+      params:
+        skip_download: true
+    - get: event-controller-image
+      trigger: true
+      passed:
+      - build-metric-controller-image
       params:
         skip_download: true
     - get: cert-generator-image

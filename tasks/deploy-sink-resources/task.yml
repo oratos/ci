@@ -7,6 +7,7 @@ inputs:
 - name: sink-resources
 - name: sink-controller-image
 - name: event-controller-image
+- name: metric-controller-image
 - name: cert-generator-image
 - name: ghostunnel-image
 - name: fluent-bit-out-syslog-image
