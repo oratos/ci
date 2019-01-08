@@ -61,6 +61,14 @@ resources:
     password: ((docker-hub.password))
     tag: release-elect
 
+- name: metric-controller-image
+  type: docker-image
+  source:
+    repository: oratos/metric-controller
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+    tag: release-elect
+
 - name: fluent-bit-out-syslog-image
   type: docker-image
   source:
@@ -346,6 +354,10 @@ jobs:
       params:
         skip_download: true
     - get: event-controller-image
+      trigger: true
+      params:
+        skip_download: true
+    - get: metric-controller-image
       trigger: true
       params:
         skip_download: true
