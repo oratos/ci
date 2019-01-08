@@ -8,7 +8,11 @@ function validate {
 }
 
 function delete_old_jobs {
-    kubectl delete -Rf sink-resources/manifests/500-cert-generator-job.yaml || true
+    kubectl delete jobs --all --namespace oratos
+}
+
+function roll {
+    kubectl delete pods --all --namespace oratos
 }
 
 function apply_manifests {
@@ -17,40 +21,15 @@ function apply_manifests {
     fluent_digest=$(cat fluent-bit-out-syslog-image/digest)
     sink_digest="$(cat sink-controller-image/digest)"
     event_digest="$(cat event-controller-image/digest)"
-
-    yq read sink-resources/manifests/500-cert-generator-job.yaml --tojson \
-      | jq '(.spec.template.spec.containers[] | select(.name == "cert-generator")).image = "oratos/cert-generator@'"$cert_digest"'"' \
-      > sink-resources/manifests/500-cert-generator-job.json
-    rm sink-resources/manifests/500-cert-generator-job.yaml
-
-    yq read sink-resources/manifests/500-fluent-bit-daemon.yaml --tojson \
-      | jq '(.spec.template.spec.containers[] | select(.name == "fluent-bit")).image = "oratos/fluent-bit-out-syslog@'"$fluent_digest"'"' \
-      | jq '(.spec.template.spec.containers[] | select(.name == "ghostunnel")).image = "oratos/ghostunnel@'"$ghost_digest"'"' \
-      | jq '(.spec.template.spec.initContainers[] | select(.name == "concat-keystore")).image = "oratos/fluent-bit-out-syslog@'"$fluent_digest"'"' \
-      > sink-resources/manifests/500-fluent-bit-daemon.json
-    rm sink-resources/manifests/500-fluent-bit-daemon.yaml
-
-    yq read sink-resources/manifests/500-sink-controller-deployment.yaml --tojson \
-      | jq '(.spec.template.spec.containers[] | select(.name == "sink-controller")).image = "oratos/sink-controller@'"$sink_digest"'"' \
-      > sink-resources/manifests/500-sink-controller-deployment.json
-    rm sink-resources/manifests/500-sink-controller-deployment.yaml
-
-    yq read sink-resources/manifests/500-event-controller-deployment.yaml --tojson \
-      | jq '(.spec.template.spec.containers[] | select(.name == "event-controller")).image = "oratos/event-controller@'"$event_digest"'"' \
-      | jq '(.spec.template.spec.containers[] | select(.name == "ghostunnel")).image = "oratos/ghostunnel@'"$ghost_digest"'"' \
-      | jq '(.spec.template.spec.initContainers[] | select(.name == "concat-keystore")).image = "oratos/fluent-bit-out-syslog@'"$fluent_digest"'"' \
-      > sink-resources/manifests/500-event-controller-deployment.json
-    rm sink-resources/manifests/500-event-controller-deployment.yaml
-
-    kubectl apply -R -f sink-resources/manifests
-}
-
-function roll {
-    # patch objects to make sure they are rolled
-    patch='{"spec": {"template": {"metadata": {"labels": {"randomversion": "'$RANDOM'"}}}}}'
-    for f in sink-resources/manifests/500-*{daemon,deployment}.json; do
-        kubectl patch -f "$f" --patch "$patch"
-    done
+    pushd sink-resources/manifests/overlays/oratos-digests
+        kustomize edit set imagetag "oratos/cert-generator@$cert_digest"
+        kustomize edit set imagetag "oratos/ghosttunnel@$ghost_digest"
+        kustomize edit set imagetag "oratos/fleunt-bit-out-syslog@$fluent_digest"
+        kustomize edit set imagetag "oratos/sink-controller@$sink_digest"
+        kustomize edit set imagetag "oratos/event-controller@$event_digest"
+    popd
+    kustomize build sink-resources/manifests/overlays/oratos-digests \
+        | kubectl apply -f -
 }
 
 function main {
