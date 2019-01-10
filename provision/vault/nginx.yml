@@ -13,6 +13,7 @@ spec:
   loadBalancerSourceRanges:
   # denver office
   - "50.232.79.0/30"
+  - "205.168.109.120/29"
 
   # google cloud ip ranges, see: https://gist.github.com/n0531m/f3714f6ad6ef738a3b0a#gistcomment-2703576
   - "8.34.208.0/20"
