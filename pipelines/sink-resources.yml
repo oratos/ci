@@ -786,12 +786,12 @@ jobs:
           popd > /dev/null
 
           pushd sink-resources/manifests/overlays/oratos
-            kustomize edit set imagetag "oratos/cert-generator@$VERSION"
-            kustomize edit set imagetag "oratos/ghostunnel@$VERSION"
-            kustomize edit set imagetag "oratos/fluent-bit-out-syslog@$FLUENT_BIT_OUT_SYSLOG_VERSION"
-            kustomize edit set imagetag "oratos/sink-controller@$VERSION"
-            kustomize edit set imagetag "oratos/event-controller@$VERSION"
-            kustomize edit set imagetag "oratos/metric-controller@$VERSION"
+            kustomize edit set imagetag "oratos/cert-generator:$VERSION"
+            kustomize edit set imagetag "oratos/ghostunnel:$VERSION"
+            kustomize edit set imagetag "oratos/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION"
+            kustomize edit set imagetag "oratos/sink-controller:$VERSION"
+            kustomize edit set imagetag "oratos/event-controller:$VERSION"
+            kustomize edit set imagetag "oratos/metric-controller:$VERSION"
           popd
 
           kustomize build sink-resources/manifests/overlays/oratos > github-release/manifest.yml
