@@ -83,7 +83,7 @@ jobs:
             sort -Vr | \
             head -1)
 
-          go get github.com/oratos/semver-cli
+          go get github.com/davidrjonas/semver-cli
 
           pushd out-syslog > /dev/null
             current_version=$(grep 'ENV FLB_VERSION' < Dockerfile | awk '{print $3}')
