@@ -91,32 +91,29 @@ jobs:
           if [ "$prerelease" != "" ] || [ "$metadata" != "" ]; then
             echo "New version contains Prerelease or Metadata: $new_version"
             echo "Skipping build..."
-            exit 1
+          else
+            pushd out-syslog > /dev/null
+              current_version=$(grep 'ENV FLB_VERSION' < Dockerfile | awk '{print $3}')
+
+              if semver-cli greater "$new_version" "$current_version"; then
+                major=$(semver-cli get major "$new_version")
+                minor=$(semver-cli get minor "$new_version")
+                patch=$(semver-cli get patch "$new_version")
+                sed -i.bak "s/ENV FLB_VERSION .*$/ENV FLB_VERSION $major.$minor.$patch/g" Dockerfile
+                sed -i.bak "s/ENV FLB_MAJOR .*$/ENV FLB_MAJOR $major/g" Dockerfile
+                sed -i.bak "s/ENV FLB_MINOR .*$/ENV FLB_MINOR $minor/g" Dockerfile
+                sed -i.bak "s/ENV FLB_PATCH .*$/ENV FLB_PATCH $patch/g" Dockerfile
+
+                rm Dockerfile.bak
+
+                git add Dockerfile
+                git commit -m "Update fluent bit to version $new_version"
+              else
+                echo "New Version: $new_version; Current Version: $current_version"
+                echo "Skipping build..."
+              fi
+            popd
           fi
-
-          pushd out-syslog > /dev/null
-            current_version=$(grep 'ENV FLB_VERSION' < Dockerfile | awk '{print $3}')
-
-            if semver-cli greater "$new_version" "$current_version"; then
-              major=$(semver-cli get major "$new_version")
-              minor=$(semver-cli get minor "$new_version")
-              patch=$(semver-cli get patch "$new_version")
-              sed -i.bak "s/ENV FLB_VERSION .*$/ENV FLB_VERSION $major.$minor.$patch/g" Dockerfile
-              sed -i.bak "s/ENV FLB_MAJOR .*$/ENV FLB_MAJOR $major/g" Dockerfile
-              sed -i.bak "s/ENV FLB_MINOR .*$/ENV FLB_MINOR $minor/g" Dockerfile
-              sed -i.bak "s/ENV FLB_PATCH .*$/ENV FLB_PATCH $patch/g" Dockerfile
-
-              rm Dockerfile.bak
-
-              git add Dockerfile
-              git commit -m "Update fluent bit to version $new_version"
-            else
-              echo "New Version: $new_version; Current Version: $current_version"
-              echo "Skipping build..."
-              exit 1
-            fi
-          popd
-
           rsync -ac out-syslog/ update-out-syslog
   - put: out-syslog
     params:
