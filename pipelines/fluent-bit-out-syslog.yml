@@ -83,7 +83,16 @@ jobs:
             sort -Vr | \
             head -1)
 
-          go get github.com/davidrjonas/semver-cli
+          go get github.com/oratos/semver-cli
+
+          # Ignore prerelease and metadata'd versions
+          prerelease=$(semver-cli get prerelease "$new_version")
+          metadata=$(semver-cli get metadata "$new_version")
+          if [ "$prerelease" != "" ] || [ "$metadata" != "" ]; then
+            echo "New version contains Prerelease or Metadata: $new_version"
+            echo "Skipping build..."
+            exit 1
+          fi
 
           pushd out-syslog > /dev/null
             current_version=$(grep 'ENV FLB_VERSION' < Dockerfile | awk '{print $3}')
@@ -102,6 +111,8 @@ jobs:
               git add Dockerfile
               git commit -m "Update fluent bit to version $new_version"
             else
+              echo "New Version: $new_version; Current Version: $current_version"
+              echo "Skipping build..."
               exit 1
             fi
           popd
