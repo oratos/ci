@@ -1,0 +1,7 @@
+---
+product-name: pivotal-container-service
+product-properties:
+  .properties.telemetry_selector:
+    value: enabled
+  .properties.telemetry_selector.enabled.telemetry_url:
+    value: http://35.244.153.208:80
