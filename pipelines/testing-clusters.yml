@@ -233,6 +233,9 @@ jobs:
               path: /variables/name=~1dns_api_server_tls
             - type: remove
               path: /variables/name=~1dns_api_client_tls
+            - type: replace
+              path: /instance_groups/name=worker/jobs/name=kubelet/properties/kubelet-configuration/readOnlyPort
+              value: 10255
             EOF
             bosh interpolate kubo-deployment/manifests/cfcr.yml \
               --ops-file ops.yml \
@@ -458,7 +461,9 @@ jobs:
               path: /variables/name=~1dns_api_server_tls
             - type: remove
               path: /variables/name=~1dns_api_client_tls
-
+            - type: replace
+              path: /instance_groups/name=worker/jobs/name=kubelet/properties/kubelet-configuration/readOnlyPort
+              value: 10255
             - type: replace
               path: /instance_groups/name=worker/instances
               value: 1
