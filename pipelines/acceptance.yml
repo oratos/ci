@@ -2,6 +2,10 @@ groups:
 - name: main
   jobs:
   - sink-resources-deploy
+  - sink-dripspinner
+  - sink-flowspinner
+  - sink-floodspinner
+  - latency-test
 - name: cfcr-lifecycle
   jobs:
   - bikepark-cfcr-deploy
@@ -19,6 +23,16 @@ resource_types:
     tag: latest
 
 resources:
+- name: 15m
+  type: time
+  source:
+    interval: 15m
+
+- name: 1h
+  type: time
+  source:
+    interval: 1h
+
 - name: bikepark-bbl-state
   type: vault
   source:
@@ -387,3 +401,174 @@ jobs:
       GET_CREDENTIALS_HOOK: |
           BBL_STATE_DIR=bbl-state \
               oratos-ci/scripts/cfcr.sh bikepark get-credentials
+
+- name: sink-floodspinner
+  serial: true
+  serial_groups: ["restage"]
+  plan:
+  - aggregate:
+    - get: bikepark-bbl-state
+    - get: oratos-ci
+    - get: 15m
+      trigger: true
+    - get: ghostunnel-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: cert-generator-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: event-controller-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: metric-controller-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: sink-resources-manifests
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: fluent-bit-out-syslog-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+  - task: run-test
+    file: oratos-ci/tasks/sink-blackbox/task.yml
+    input_mapping:
+      bbl-state: bikepark-bbl-state
+    params:
+      SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
+      GET_CREDENTIALS_HOOK: |
+        BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/cfcr.sh bikepark get-credentials
+      PAPERTRAIL_TOKEN: ((papertrail.token))
+      PAPERTRAIL_GROUP: oratos-blackbox-tests
+      PAPERTRAIL_DESTINATION: ((papertrail.addr))
+      DATADOG_API_KEY: ((datadog.oratos-ci-api-key))
+      WAIT: 300
+      CYCLES: 10000
+      DELAY: "2"
+      DELAY_UNIT: "us"
+      MESSAGE: "FIFTEEN-MINUTE"
+    timeout: 15m
+
+- name: sink-dripspinner
+  serial: true
+  serial_groups: ["restage"]
+  plan:
+  - aggregate:
+    - get: bikepark-bbl-state
+    - get: oratos-ci
+    - get: 1h
+      trigger: true
+    - get: ghostunnel-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: cert-generator-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: event-controller-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: metric-controller-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: sink-resources-manifests
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: fluent-bit-out-syslog-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+  - task: run-test
+    file: oratos-ci/tasks/sink-blackbox/task.yml
+    input_mapping:
+      bbl-state: bikepark-bbl-state
+    params:
+      SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
+      GET_CREDENTIALS_HOOK: |
+        BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/cfcr.sh bikepark get-credentials
+      PAPERTRAIL_TOKEN: ((papertrail.token))
+      PAPERTRAIL_GROUP: oratos-blackbox-tests
+      PAPERTRAIL_DESTINATION: ((papertrail.addr))
+      DATADOG_API_KEY: ((datadog.oratos-ci-api-key))
+      WAIT: 600
+      CYCLES: 1000
+      DELAY: "500"
+      DELAY_UNIT: "ms"
+      MESSAGE: "HOURLY"
+    timeout: 15m
+
+- name: sink-flowspinner
+  serial: true
+  serial_groups: ["restage"]
+  plan:
+  - aggregate:
+    - get: bikepark-bbl-state
+    - get: oratos-ci
+    - get: 1h
+      trigger: true
+    - get: ghostunnel-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: cert-generator-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: event-controller-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: metric-controller-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: sink-resources-manifests
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: fluent-bit-out-syslog-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+  - task: run-test
+    file: oratos-ci/tasks/sink-blackbox/task.yml
+    input_mapping:
+      bbl-state: bikepark-bbl-state
+    params:
+      SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
+      GET_CREDENTIALS_HOOK: |
+        BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/cfcr.sh bikepark get-credentials
+      PAPERTRAIL_TOKEN: ((papertrail.token))
+      PAPERTRAIL_GROUP: oratos-blackbox-tests
+      PAPERTRAIL_DESTINATION: ((papertrail.addr))
+      DATADOG_API_KEY: ((datadog.oratos-ci-api-key))
+      WAIT: 60
+      CYCLES: 1000
+      DELAY: "1"
+      DELAY_UNIT: "ms"
+      MESSAGE: "HOURLY"
+    timeout: 15m
+
+- name: latency-test
+  plan:
+  - aggregate:
+    - get: 15m
+      trigger: true
+    - get: bikepark-bbl-state
+    - get: oratos-ci
+    - get: ghostunnel-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: cert-generator-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: event-controller-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: metric-controller-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: sink-resources-manifests
+      trigger: true
+      passed: ["sink-resources-deploy"]
+    - get: fluent-bit-out-syslog-image
+      trigger: true
+      passed: ["sink-resources-deploy"]
+  - task: run-test
+    file: oratos-ci/tasks/latency-test/task.yml
+    params:
+      DATADOG_API_KEY: ((datadog.oratos-ci-api-key))
