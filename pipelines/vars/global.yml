@@ -18,3 +18,15 @@ sink_resource_release_params:
   # dockerhhub here:
   #   https://hub.docker.com/r/oratos/fluent-bit-out-syslog/tags/
   FLUENT_BIT_OUT_SYSLOG_VERSION: v0.11 # version of the fluent-bit image to use
+
+  # This is the major/minor version of pks this release will be intended to
+  # end up in.
+  # This will also be pushed as a tagged docker image to:
+  #   https://hub.docker.com/r/oratos/observability-manager/tags/
+  PKS_VERSION: v1.4
+
+  # This is the version of observability-manager. It should be monotonicially
+  # increasing.
+  # This will also be pushed as a tagged docker image to:
+  #   https://hub.docker.com/r/oratos/observability-manager/tags/
+  OBSERVABILITY_MANAGER_VERSION: 0

@@ -17,6 +17,7 @@ groups:
 - name: release
   jobs:
   - release
+  - build-and-release-observability-manager-image
   - update-bosh-release
 
 resource_types:
@@ -48,6 +49,13 @@ resources:
   type: git
   source:
     uri: git@github.com:pivotal-cf/sink-resources
+    branch: master
+    private_key: ((github.oratos-bot-private-key))
+
+- name: observability-manager
+  type: git
+  source:
+    uri: git@github.com:pivotal-cf/observability-manager
     branch: master
     private_key: ((github.oratos-bot-private-key))
 
@@ -94,6 +102,13 @@ resources:
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
+- name: observability-manager-image
+  type: docker-image
+  source:
+    repository: oratos/observability-manager
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
 - name: slack-alert
   type: slack-notification
   source:
@@ -122,6 +137,13 @@ resources:
   source:
     owner: pivotal-cf
     repository: sink-resources
+    access_token: ((github.oratos-bot-release-access-token))
+
+- name: observability-manager-github-release
+  type: github-release
+  source:
+    owner: pivotal-cf
+    repository: observability-manager
     access_token: ((github.oratos-bot-release-access-token))
 
 - name: sink-resources-release
@@ -879,38 +901,232 @@ jobs:
       name: github-release/name
       body: github-release/body
       tag: github-release/tag
-
       globs:
       - github-release/manifest.yml
       - github-release/*.tgz
 
+- name: build-and-release-observability-manager-image
+  plan:
+  - do:
+    - get: sink-resources-github-release
+      trigger: true
+      passed:
+      - release
+      version:
+        tag: ((sink_resource_release_params.VERSION))
+    - get: observability-manager
+    - get: oratos-ci
+  - task: prepare-image-with-manifest
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      inputs:
+      - name: sink-resources-github-release
+      - name: observability-manager
+      outputs:
+      - name: observability-manager-with-manifest
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          cp ./sink-resources-github-release/manifest.yml ./observability-manager/manifest.yml
+          rsync -avci ./observability-manager/ ./observability-manager-with-manifest/
+  - task: prepare-build
+    file: oratos-ci/tasks/build-docker-image/task.yml
+    input_mapping:
+      source-repo: observability-manager-with-manifest
+  - task: add-version-tag
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      inputs:
+      - name: build-image
+      outputs:
+      - name: build-image-with-tags
+      params:
+        SINK_RESOURCES_VERSION: ((sink_resource_release_params.VERSION))
+        PKS_VERSION: ((sink_resources_release_params.PKS_VERSION))
+        OBSERVABILITY_MANAGER_VERSION: ((sink_resources_release_params.OBSERVABILITY_MANAGER_VERSION))
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          rsync -avci ./build-image/ ./build-image-with-tags/
+
+          echo "sink-resources-$SINK_RESOURCES_VERSION" > build-image-with-tags/additional-tags
+          echo "pks-version-$PKS_VERSION" >> build-image-with-tags/additional-tags
+          echo "${PKS_VERSION}.${OBSERVABILITY_MANAGER_VERSION}" >> build-image-with-tags/additional-tags
+  - put: observability-manager-image
+    params:
+      build: build-image-with-tags/build
+      tag: build-image-with-tags/tag
+      additional_tags: build-image-with-tags/additional-tags
+      tag_as_latest: true
+      cache: true
+      cache_tag: latest
+    get_params:
+      skip_download: true
+  - task: create-github-release
+    privileged: true
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      params:
+        PKS_VERSION: ((sink_resources_release_params.PKS_VERSION))
+        OBSERVABILITY_MANAGER_VERSION: ((sink_resources_release_params.OBSERVABILITY_MANAGER_VERSION))
+        DOCKERHUB_USERNAME: ((docker-hub.username))
+        DOCKERHUB_PASSWORD: ((docker-hub.password))
+        DEBUG:
+      outputs:
+      - name: github-release
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+
+          if [ -z "$OBSERVABILITY_MANAGER_VERSION" ]; then
+            echo OBSERVABILITY_MANAGER_VERSION param required
+            exit 1
+          fi
+          if ! [[ "$PKS_VERSION" =~ v ]]; then
+            echo PKS_VERSION param required to start with v
+            exit 1
+          fi
+          VERSION="${PKS_VERSION}.${OBSERVABILITY_MANAGER_VERSION}"
+
+          # Note: this was copied from the docker-image-resource
+          # https://github.com/concourse/docker-image-resource/blob/c725c6277ca2820016de1bfe2bdfabaad5fd5879/assets/common.sh#L4
+          sanitize_cgroups() {
+            mkdir -p /sys/fs/cgroup
+            mountpoint -q /sys/fs/cgroup || \
+              mount -t tmpfs -o uid=0,gid=0,mode=0755 cgroup /sys/fs/cgroup
+
+            mount -o remount,rw /sys/fs/cgroup
+
+            sed -e 1d /proc/cgroups | while read -r sys _ _ enabled; do
+              if [ "$enabled" != "1" ]; then
+                # subsystem disabled; skip
+                continue
+              fi
+
+              grouping="$(cut -d: -f2 /proc/self/cgroup | grep "\\<$sys\\>")" || true
+              if [ -z "$grouping" ]; then
+                # subsystem not mounted anywhere; mount it on its own
+                grouping="$sys"
+              fi
+
+              mountpoint="/sys/fs/cgroup/$grouping"
+
+              mkdir -p "$mountpoint"
+
+              # clear out existing mount to make sure new one is read-write
+              if mountpoint -q "$mountpoint"; then
+                umount "$mountpoint"
+              fi
+
+              mount -n -t cgroup -o "$grouping" cgroup "$mountpoint"
+
+              if [ "$grouping" != "$sys" ]; then
+                if [ -L "/sys/fs/cgroup/$sys" ]; then
+                  rm "/sys/fs/cgroup/$sys"
+                fi
+
+                ln -s "$mountpoint" "/sys/fs/cgroup/$sys"
+              fi
+            done
+
+            if ! test -e /sys/fs/cgroup/systemd ; then
+              mkdir /sys/fs/cgroup/systemd
+              mount -t cgroup -o none,name=systemd none /sys/fs/cgroup/systemd
+            fi
+          }
+          sanitize_cgroups
+          /usr/bin/dockerd &
+          docker_pid=$!
+          function cleanup {
+            set +e
+            kill -9 $docker_pid
+          }
+          trap cleanup EXIT
+
+          echo waiting 10 seconds while docker starts up
+          sleep 10
+
+          echo "$VERSION" > github-release/name
+          echo "$VERSION" > github-release/tag
+          cat <<EOF > github-release/body
+          These are the versions of the docker images used in this release:
+          - [oratos/observability-manager][observability-manager]:$VERSION
+
+          [observability-manager]: https://hub.docker.com/r/oratos/observability-manager/
+          EOF
+
+          [ -n "${DEBUG:-}" ] && set +x
+          echo "$DOCKERHUB_PASSWORD" \
+            | docker login \
+              --username "$DOCKERHUB_USERNAME" \
+              --password-stdin
+          [ -n "${DEBUG:-}" ] && set -x
+
+          obm_docker_name="oratos/observability-manager:$VERSION"
+
+          docker pull "$obm_docker_name"
+          docker save "$obm_docker_name" | gzip > "github-release/oratos_observability-manager:$VERSION.tgz"
+  - put: observability-manager-github-release
+    params:
+      name: github-release/name
+      body: github-release/body
+      tag: github-release/tag
+      globs:
+      - github-release/*.tgz
 - name: update-bosh-release
   plan:
-  - get: sink-resources-github-release
-    trigger: true
-    passed:
-    - release
-    version:
-      tag: ((sink_resource_release_params.VERSION))
-  - get: sink-resources-release
-  - get: oratos-ci
+  - do:
+    - get: sink-resources-github-release
+      trigger: true
+      passed:
+      - build-and-release-observability-manager-image
+      version:
+        tag: ((sink_resource_release_params.VERSION))
+    - get: observability-manager-github-release
+      passed:
+      - build-and-release-observability-manager-image
+    - get: sink-resources-release
+    - get: oratos-ci
   - task: update-bosh-release
     file: oratos-ci/tasks/update-bosh-release/task.yml
     params:
       PRIVATE_YML: ((release.private_yml))
-  - put: pks-releng-release-bucket
-    params:
-      file: bosh-release/binaries/*.tgz
-  - put: sink-resources-release
-    params:
-      repository: put-sink-resources-release
-      name: bosh-release/name
-  - put: sink-resources-release-github-release
-    params:
-      name: bosh-release/name
-      tag: bosh-release/tag
-      globs:
-      - bosh-release/binaries/*.tgz
+  - do:
+    - put: pks-releng-release-bucket
+      params:
+        file: bosh-release/binaries/*.tgz
+    - put: sink-resources-release
+      params:
+        repository: put-sink-resources-release
+        name: bosh-release/name
+    - put: sink-resources-release-github-release
+      params:
+        name: bosh-release/name
+        tag: bosh-release/tag
+        globs:
+        - bosh-release/binaries/*.tgz
 
 - name: deploy-control-plane
   serial: true

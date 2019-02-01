@@ -16,7 +16,7 @@ pushd put-sink-resources-release
   done
 
   echo "Begin blob management"
-  for file in ../sink-resources-github-release/*.tgz; do
+  for file in ../sink-resources-github-release/*.tgz ../observability-manager-github-release/*.tgz; do
     file_name=${file##*/}
     bosh add-blob "${file}" "container-images/${file_name}"
   done
