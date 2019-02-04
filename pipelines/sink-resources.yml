@@ -817,6 +817,7 @@ jobs:
           popd
 
           kustomize build sink-resources/manifests/overlays/oratos > github-release/manifest.yml
+          ./sink-resources/hack/generate-pks-manifest.sh "$VERSION" "$FLUENT_BIT_OUT_SYSLOG_VERSION" > github-release/pks-manifest.yml
           echo "$VERSION" > github-release/name
           echo "$VERSION" > github-release/tag
 
@@ -903,6 +904,7 @@ jobs:
       tag: github-release/tag
       globs:
       - github-release/manifest.yml
+      - github-release/pks-manifest.yml
       - github-release/*.tgz
 
 - name: build-and-release-observability-manager-image
@@ -934,7 +936,7 @@ jobs:
         - "-c"
         - |
           #!/bin/bash
-          cp ./sink-resources-github-release/manifest.yml ./observability-manager/manifest.yml
+          cp ./sink-resources-github-release/pks-manifest.yml ./observability-manager/manifest.yml
           rsync -avci ./observability-manager/ ./observability-manager-with-manifest/
   - task: prepare-build
     file: oratos-ci/tasks/build-docker-image/task.yml
@@ -953,8 +955,8 @@ jobs:
       - name: build-image-with-tags
       params:
         SINK_RESOURCES_VERSION: ((sink_resource_release_params.VERSION))
-        PKS_VERSION: ((sink_resources_release_params.PKS_VERSION))
-        OBSERVABILITY_MANAGER_VERSION: ((sink_resources_release_params.OBSERVABILITY_MANAGER_VERSION))
+        PKS_VERSION: ((sink_resource_release_params.PKS_VERSION))
+        OBSERVABILITY_MANAGER_VERSION: ((sink_resource_release_params.OBSERVABILITY_MANAGER_VERSION))
       run:
         path: /bin/bash
         args:
@@ -985,8 +987,8 @@ jobs:
         source:
           repository: oratos/ci-base
       params:
-        PKS_VERSION: ((sink_resources_release_params.PKS_VERSION))
-        OBSERVABILITY_MANAGER_VERSION: ((sink_resources_release_params.OBSERVABILITY_MANAGER_VERSION))
+        PKS_VERSION: ((sink_resource_release_params.PKS_VERSION))
+        OBSERVABILITY_MANAGER_VERSION: ((sink_resource_release_params.OBSERVABILITY_MANAGER_VERSION))
         DOCKERHUB_USERNAME: ((docker-hub.username))
         DOCKERHUB_PASSWORD: ((docker-hub.password))
         DEBUG:
@@ -1105,6 +1107,7 @@ jobs:
       version:
         tag: ((sink_resource_release_params.VERSION))
     - get: observability-manager-github-release
+      trigger: true
       passed:
       - build-and-release-observability-manager-image
     - get: sink-resources-release
