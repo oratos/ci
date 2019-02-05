@@ -39,3 +39,9 @@ RUN cd /tmp \
 RUN cd /tmp \
   && wget https://github.com/kubernetes-sigs/kustomize/releases/download/v1.0.11/kustomize_1.0.11_linux_amd64 -O /usr/local/bin/kustomize \
   && chmod +x /usr/local/bin/kustomize
+
+ENV TELEGRAF_VERSION 1.9.3
+ADD https://dl.influxdata.com/telegraf/releases/telegraf_${TELEGRAF_VERSION}-1_amd64.deb /tmp/telegraf_${TELEGRAF_VERSION}-1_amd64.deb
+
+RUN apt install /tmp/telegraf_${TELEGRAF_VERSION}-1_amd64.deb && \
+    rm /tmp/telegraf_${TELEGRAF_VERSION}-1_amd64.deb
