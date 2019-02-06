@@ -365,7 +365,7 @@ jobs:
     input_mapping:
       source-repo: sink-resources
     params:
-      SOURCE_PATH: cmd/validator
+      DOCKERFILE: source-repo/cmd/validator/Dockerfile
   - put: validator-image
     params:
       build: build-image/build
