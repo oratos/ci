@@ -107,6 +107,22 @@ resources:
     password: ((docker-hub.password))
     tag: release-elect
 
+- name: validator-image
+  type: docker-image
+  source:
+    repository: oratos/validator
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+    tag: release-elect
+
+- name: sink-state-updater-image
+  type: docker-image
+  source:
+    repository: oratos/sink-state-updater
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+    tag: release-elect
+
 - name: kubo-deployment
   type: git
   source:
@@ -387,6 +403,14 @@ jobs:
       params:
         skip_download: true
     - get: ghostunnel-image
+      trigger: true
+      params:
+        skip_download: true
+    - get: validator-image
+      trigger: true
+      params:
+        skip_download: true
+    - get: sink-state-updater-image
       trigger: true
       params:
         skip_download: true
