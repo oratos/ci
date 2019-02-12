@@ -9,10 +9,12 @@ function validate {
 
 function delete_old_jobs {
     kubectl delete jobs --all --namespace oratos
+    echo "Completed deleting all jobs in oratos namespace"
 }
 
 function roll {
     kubectl delete pods --all --namespace oratos
+    echo "Completed rolling all the pods in oratos namespace"
 }
 
 function apply_manifests {
@@ -22,6 +24,8 @@ function apply_manifests {
     sink_digest="$(cat sink-controller-image/digest)"
     event_digest="$(cat event-controller-image/digest)"
     metric_digest="$(cat metric-controller-image/digest)"
+    validator_digest="$(cat validator-image/digest)"
+    sink_state_updater_digest="$(cat sink-state-updater-image/digest)"
     pushd sink-resources/manifests/overlays/oratos
         kustomize edit set imagetag "oratos/cert-generator@$cert_digest"
         kustomize edit set imagetag "oratos/ghostunnel@$ghost_digest"
@@ -29,9 +33,12 @@ function apply_manifests {
         kustomize edit set imagetag "oratos/sink-controller@$sink_digest"
         kustomize edit set imagetag "oratos/event-controller@$event_digest"
         kustomize edit set imagetag "oratos/metric-controller@$metric_digest"
+        kustomize edit set imagetag "oratos/validator@$validator_digest"
+        kustomize edit set imagetag "oratos/sink-state-updater@$sink_state_updater_digest"
     popd
     kustomize build sink-resources/manifests/overlays/oratos \
         | kubectl apply -f -
+    echo "Completed applying the manifests for sink-resources/oratos"
 }
 
 function main {
