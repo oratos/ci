@@ -236,7 +236,7 @@ function assert_metrics {
 
 function main {
     validate
-    if [ -z "${DEBUG:-}" ] then
+    if [ -z "${DEBUG:-}" ]; then
         trap cleanup EXIT
     fi
     login_to_cluster_as_admin
