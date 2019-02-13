@@ -236,7 +236,9 @@ function assert_metrics {
 
 function main {
     validate
-    trap cleanup EXIT
+    if [ -z "${DEBUG:-}" ] then
+        trap cleanup EXIT
+    fi
     login_to_cluster_as_admin
 
     apply_roles
