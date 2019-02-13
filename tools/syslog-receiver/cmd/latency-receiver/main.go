@@ -28,7 +28,6 @@ func main() {
 
 	server := tcpserver.New(
 		net.JoinHostPort("", syslogPort),
-		":0",
 		net.JoinHostPort("", apiPort),
 		lh.MessageHandler(),
 		tcpserver.Handler{

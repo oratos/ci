@@ -34,13 +34,11 @@ var _ = Describe("Crosstalk Receiver", func() {
 	})
 
 	It("counts messages by the namespace in structured data", func() {
-		s := tcpserver.New(
-			":0",
-			":0",
-			":0",
-			handlers.NewCountMessageHandler("crosstalk-test", testNamespacedCount, testClusterCount),
-			tcpserver.Handler{"/metrics", expvar.Handler()},
-		)
+		s := tcpserver.New(":0", ":0", handlers.NewCountMessageHandler("crosstalk-test", testNamespacedCount, testClusterCount),
+			tcpserver.Handler{
+				"/metrics",
+				expvar.Handler(),
+			})
 		defer s.Close()
 
 		writer, err := net.Dial("tcp", s.SyslogAddr())
@@ -80,13 +78,11 @@ var _ = Describe("Crosstalk Receiver", func() {
 	})
 
 	It("only counts messages intended for test", func() {
-		s := tcpserver.New(
-			":0",
-			":0",
-			":0",
-			handlers.NewCountMessageHandler("crosstalk-test", testNamespacedCount, testClusterCount),
-			tcpserver.Handler{"/metrics", expvar.Handler()},
-		)
+		s := tcpserver.New(":0", ":0", handlers.NewCountMessageHandler("crosstalk-test", testNamespacedCount, testClusterCount),
+			tcpserver.Handler{
+				"/metrics",
+				expvar.Handler(),
+			})
 		defer s.Close()
 
 		writer, err := net.Dial("tcp", s.SyslogAddr())
@@ -148,11 +144,7 @@ var _ = Describe("Crosstalk Receiver", func() {
 	})
 
 	It("counts messages with non-matching namespace in unexpected count", func() {
-		s := tcpserver.New(
-			":0",
-			":0",
-			":0",
-			handlers.NewCountMessageHandler("crosstalk-test", testNamespacedCount, testClusterCount),
+		s := tcpserver.New(":0", ":0", handlers.NewCountMessageHandler("crosstalk-test", testNamespacedCount, testClusterCount),
 			tcpserver.Handler{"/metrics", expvar.Handler()})
 
 		defer s.Close()
@@ -191,11 +183,7 @@ var _ = Describe("Crosstalk Receiver", func() {
 	})
 
 	It("shuts down the servers on Close()", func() {
-		s := tcpserver.New(
-			":0",
-			":0",
-			":0",
-			handlers.NewCountMessageHandler("crosstalk-test", testNamespacedCount, testClusterCount),
+		s := tcpserver.New(":0", ":0", handlers.NewCountMessageHandler("crosstalk-test", testNamespacedCount, testClusterCount),
 			tcpserver.Handler{"/metrics", expvar.Handler()})
 
 		_, err := net.Dial("tcp", s.SyslogAddr())
