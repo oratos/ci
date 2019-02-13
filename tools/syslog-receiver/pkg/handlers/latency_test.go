@@ -32,6 +32,7 @@ var _ = Describe("Latency Receiver", func() {
 			s := tcpserver.New(
 				":0",
 				":0",
+				":0",
 				latencyHandler.MessageHandler(),
 				tcpserver.Handler{
 					"/latency_test",
@@ -56,6 +57,7 @@ var _ = Describe("Latency Receiver", func() {
 			)
 
 			s := tcpserver.New(
+				":0",
 				":0",
 				":0",
 				latencyHandler.MessageHandler(),
@@ -111,6 +113,7 @@ var _ = Describe("Latency Receiver", func() {
 			s := tcpserver.New(
 				":0",
 				":0",
+				":0",
 				latencyHandler.MessageHandler(),
 				tcpserver.Handler{
 					"/latency_test",
@@ -140,6 +143,7 @@ var _ = Describe("Latency Receiver", func() {
 			s := tcpserver.New(
 				":0",
 				":0",
+				":0",
 				latencyHandler.MessageHandler(),
 				tcpserver.Handler{
 					"/latency_test",
@@ -159,6 +163,7 @@ var _ = Describe("Latency Receiver", func() {
 			latencyHandler := handlers.NewLatencyHandler(se, 10*time.Second, numLogsEmitted)
 
 			s := tcpserver.New(
+				":0",
 				":0",
 				":0",
 				latencyHandler.MessageHandler(),
@@ -194,6 +199,7 @@ var _ = Describe("Latency Receiver", func() {
 			)
 
 			s := tcpserver.New(
+				":0",
 				":0",
 				":0",
 				latencyHandler.MessageHandler(),

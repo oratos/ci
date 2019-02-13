@@ -13,12 +13,15 @@ import (
 type MessageHandler func(rfc5424.Message)
 
 type tcpServer struct {
-	syslogAddr     string
-	apiAddr        string
-	handleMsg      MessageHandler
-	syslogListener net.Listener
-	apiListener    net.Listener
-	apiServer      http.Server
+	syslogAddr      string
+	httpAddr        string
+	metricsAddr     string
+	handleMsg       MessageHandler
+	syslogListener  net.Listener
+	metricsListener net.Listener
+	httpListener    net.Listener
+	metricsConfig   http.Server
+	httpServer      http.Server
 }
 
 type Handler struct {
@@ -28,21 +31,24 @@ type Handler struct {
 
 func New(
 	syslogAddr string,
-	apiAddr string,
+	httpAddr string,
+	metricsAddr string,
 	messageFunc MessageHandler,
-	handlers ...Handler,
+	metricsHandler Handler,
+	httpHandlers ...Handler,
 ) *tcpServer {
 	ts := &tcpServer{
-		syslogAddr: syslogAddr,
-		apiAddr:    apiAddr,
-		handleMsg:  messageFunc,
+		syslogAddr:  syslogAddr,
+		httpAddr:    httpAddr,
+		metricsAddr: metricsAddr,
+		handleMsg:   messageFunc,
 	}
 
-	ts.start(handlers...)
+	ts.start(metricsHandler, httpHandlers...)
 	return ts
 }
 
-func (t *tcpServer) start(handlers ...Handler) {
+func (t *tcpServer) start(metricsHandler Handler, handlers ...Handler) {
 	log.Printf("Starting syslog server on: %s", t.syslogAddr)
 	var err error
 	t.syslogListener, err = net.Listen("tcp", t.syslogAddr)
@@ -50,28 +56,42 @@ func (t *tcpServer) start(handlers ...Handler) {
 		log.Fatalf("failed to start up tcp server: %s", err)
 	}
 
-	log.Printf("Starting metrics server on: %s", t.apiAddr)
-	t.apiListener, err = net.Listen("tcp", t.apiAddr)
+	log.Printf("Starting metrics server on: %s", t.metricsAddr)
+	t.metricsListener, err = net.Listen("tcp", t.metricsAddr)
 	if err != nil {
 		log.Fatalf("failed to start up metrics server: %s", err)
 	}
 
-	mux := http.NewServeMux()
-	for _, op := range handlers {
-		mux.Handle(op.Path, op.Handler)
+	log.Printf("Starting HTTP server on: %s", t.httpAddr)
+	t.httpListener, err = net.Listen("tcp", t.httpAddr)
+	if err != nil {
+		log.Fatalf("failed to start up http server: %s", err)
 	}
 
-	t.apiServer = http.Server{
-		Addr:         t.apiAddr,
-		Handler:      mux,
+	metricsMux := http.NewServeMux()
+	metricsMux.Handle(metricsHandler.Path, metricsHandler.Handler)
+
+	httpMux := http.NewServeMux()
+	for _, op := range handlers {
+		httpMux.Handle(op.Path, op.Handler)
+	}
+
+	t.httpServer = http.Server{
+		Addr:         t.httpAddr,
+		Handler:      httpMux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 
-	go func() {
-		t.apiServer.Serve(t.apiListener)
-	}()
+	t.metricsConfig = http.Server{
+		Addr:         t.metricsAddr,
+		Handler:      metricsMux,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
 
+	go t.httpServer.Serve(t.httpListener)
+	go t.metricsConfig.Serve(t.metricsListener)
 	go func() {
 		for {
 			conn, err := t.syslogListener.Accept()
@@ -89,12 +109,12 @@ func (t *tcpServer) SyslogAddr() string {
 }
 
 func (t *tcpServer) ApiAddr() string {
-	return t.apiListener.Addr().String()
+	return t.metricsListener.Addr().String()
 }
 
 func (t *tcpServer) Close() error {
 	err1 := t.syslogListener.Close()
-	err2 := t.apiServer.Close()
+	err2 := t.metricsConfig.Close()
 	if err1 != nil || err2 != nil {
 		return fmt.Errorf("error in cleanup up servers: %s %s", err1, err2)
 	}
