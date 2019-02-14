@@ -47,14 +47,15 @@ var (
 		},
 		{
 			"date": 1549929688.058203,
-			"log": "this is my log message",
+			"log": "this is my event message",
 			"kubernetes": {
 				"pod_name": "pod-name",
 				"namespace_name": "my-namespace",
 				"pod_id": "pod-id",
 				"host": "hostname",
 				"container_name": "container-name",
-				"docker_id": "docker-id"
+				"docker_id": "docker-id",
+				"source_type": "k8s.event"
 			}
 		},
 		{
