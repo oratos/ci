@@ -29,4 +29,4 @@ sink_resource_release_params:
   # increasing.
   # This will also be pushed as a tagged docker image to:
   #   https://hub.docker.com/r/oratos/observability-manager/tags/
-  OBSERVABILITY_MANAGER_VERSION: 6
+  OBSERVABILITY_MANAGER_VERSION: 7
