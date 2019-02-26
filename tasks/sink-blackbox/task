@@ -92,23 +92,23 @@ roleRef:
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: logspinner
+  name: logspinner-$MESSAGE
   namespace: blackbox-tests
   labels:
-    run: logspinner
+    run: logspinner-$MESSAGE
 spec:
   replicas: 1
   selector:
     matchLabels:
-      run: logspinner
+      run: logspinner-$MESSAGE
   template:
     metadata:
       labels:
-        run: logspinner
+        run: logspinner-$MESSAGE
     spec:
       serviceAccountName: blackbox-tests
       containers:
-      - name: logspinner
+      - name: logspinner-$MESSAGE
         image: loggregator/logspinner
         env:
         - name: PORT
@@ -179,6 +179,7 @@ function report_to_datadog {
   'https://app.datadoghq.com/api/v1/series?api_key='"$DATADOG_API_KEY"
 
   delete_sinks
+  echo "$manifest" | kubectl delete -f -
 
   set +e
   killall kubectl
@@ -192,12 +193,12 @@ eval "$GET_CREDENTIALS_HOOK"
 [ -n "${DEBUG:-}" ] && set -x
 
 delete_sinks
-
+echo "$manifest" | kubectl delete -f -
 echo "$manifest" | kubectl apply -f -
 
 logspinner_pod_name="$(
     kubectl get pod \
-        --selector run=logspinner \
+        --selector run=logspinner-$MESSAGE \
         --output=json \
         --namespace blackbox-tests \
         | jq --join-output .items[0].metadata.name
