@@ -29,6 +29,7 @@ if [ -z "$DATADOG_API_KEY" ]; then
 fi
 
 MESSAGE="$MESSAGE-$RANDOM"
+DEPLOYMENT=$(echo "$MESSAGE" | tr '[:upper:]' '[:lower:]')
 papertrail_host="$(echo "$PAPERTRAIL_DESTINATION" | awk -F ':' '{print $1}')"
 papertrail_port="$(echo "$PAPERTRAIL_DESTINATION" | awk -F ':' '{print $2}')"
 
@@ -92,23 +93,23 @@ roleRef:
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: logspinner-$MESSAGE
+  name: logspinner-$DEPLOYMENT
   namespace: blackbox-tests
   labels:
-    run: logspinner-$MESSAGE
+    run: logspinner-$DEPLOYMENT
 spec:
   replicas: 1
   selector:
     matchLabels:
-      run: logspinner-$MESSAGE
+      run: logspinner-$DEPLOYMENT
   template:
     metadata:
       labels:
-        run: logspinner-$MESSAGE
+        run: logspinner-$DEPLOYMENT
     spec:
       serviceAccountName: blackbox-tests
       containers:
-      - name: logspinner-$MESSAGE
+      - name: logspinner-$DEPLOYMENT
         image: loggregator/logspinner
         env:
         - name: PORT
@@ -179,7 +180,7 @@ function report_to_datadog {
   'https://app.datadoghq.com/api/v1/series?api_key='"$DATADOG_API_KEY"
 
   delete_sinks
-  kubectl delete deployment "logspinner-$MESSAGE"
+  kubectl delete deployment "logspinner-$DEPLOYMENT"
 
   set +e
   killall kubectl
@@ -197,7 +198,7 @@ echo "$manifest" | kubectl apply -f -
 
 logspinner_pod_name="$(
     kubectl get pod \
-        --selector run=logspinner-$MESSAGE \
+        --selector run=logspinner-$DEPLOYMENT \
         --output=json \
         --namespace blackbox-tests \
         | jq --join-output .items[0].metadata.name
