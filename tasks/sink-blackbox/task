@@ -180,7 +180,7 @@ function report_to_datadog {
   'https://app.datadoghq.com/api/v1/series?api_key='"$DATADOG_API_KEY"
 
   delete_sinks
-  kubectl delete deployment "logspinner-$DEPLOYMENT"
+  kubectl delete deployment "logspinner-$DEPLOYMENT" --namespace blackbox-tests
 
   set +e
   killall kubectl
