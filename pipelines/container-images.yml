@@ -67,7 +67,7 @@ jobs:
         source:
           repository: oratos/ci-base
       params:
-        VERSION: v0.4
+        VERSION: v0.5
         DEBUG:
       outputs:
       - name: tags
