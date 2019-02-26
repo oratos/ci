@@ -28,10 +28,20 @@ func (h *WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, m := range msg {
-		h.counts.Add(m.Kubernetes["namespace_name"], 1)
+		ns, ok := m.Kubernetes["namespace_name"]
+		if !ok {
+			continue
+		}
+
+		nsStr, ok := ns.(string)
+		if !ok {
+			continue
+		}
+
+		h.counts.Add(nsStr, 1)
 	}
 }
 
 type webhookMessage struct {
-	Kubernetes map[string]string `json:"kubernetes"`
+	Kubernetes map[string]interface{} `json:"kubernetes"`
 }
