@@ -198,7 +198,7 @@ echo "$manifest" | kubectl apply -f -
 
 logspinner_pod_name="$(
     kubectl get pod \
-        --selector run=logspinner-$DEPLOYMENT \
+        --selector "run=logspinner-$DEPLOYMENT" \
         --output=json \
         --namespace blackbox-tests \
         | jq --join-output .items[0].metadata.name
