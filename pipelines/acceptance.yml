@@ -127,13 +127,13 @@ resources:
   type: git
   source:
     uri: https://github.com/cloudfoundry-incubator/kubo-deployment
-    branch: v0.24.0
+    branch: v0.29.0
 
 - name: kubo-release-bosh-io
   type: bosh-io-release
   source:
     repository: cloudfoundry-incubator/kubo-release
-    regexp: "0.24.*"
+    regexp: "0.29.*"
 
 - name: cf-deployment-concourse-tasks
   type: git
@@ -285,29 +285,65 @@ jobs:
             set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
             cp -r kubo-deployment/. modified-kubo-deployment/
-            cat <<EOF > ops.yml
-            - type: remove
-              path: /releases/name=bosh-dns
-            - type: remove
-              path: /addons/name=bosh-dns
-            - type: remove
-              path: /variables/name=~1dns_healthcheck_tls_ca
-            - type: remove
-              path: /variables/name=~1dns_healthcheck_server_tls
-            - type: remove
-              path: /variables/name=~1dns_healthcheck_client_tls
-            - type: remove
-              path: /variables/name=~1dns_api_tls_ca
-            - type: remove
-              path: /variables/name=~1dns_api_server_tls
-            - type: remove
-              path: /variables/name=~1dns_api_client_tls
+            cat <<EOF > add-loggregator-agent.yml
             - type: replace
-              path: /instance_groups/name=worker/jobs/name=kubelet/properties/kubelet-configuration/readOnlyPort
-              value: 10255
+              path: /releases/-
+              value:
+                name: loggregator-agent
+                version: "3.7"
+                url: "https://bosh.io/d/github.com/cloudfoundry/loggregator-agent-release?v=3.7"
+                sha1: "67bb1c20a4bb209a1f611ba041cbba8ad1158087"
+            - type: replace
+              path: /addons/-
+              value:
+                name: metric-agent
+                include:
+                  stemcell:
+                  - os: ubuntu-xenial
+                jobs:
+                - name: loggr-system-metrics-agent
+                  release: loggregator-agent
+                  properties:
+                    enabled: true
+                    metrics_port: 9100
+                    sample_interval: 10s
+                    system_metrics:
+                      tls:
+                        ca_cert: ((metric_agent_ca.ca))
+                        cert: ((metric_agent_cert.certificate))
+                        key: ((metric_agent_cert.private_key))
+            - type: replace
+              path: /instance_groups/name=worker/jobs/-
+              value:
+                name: bpm
+                release: bpm
+            - type: replace
+              path: /instance_groups/name=apply-addons/jobs/-
+              value:
+                name: bpm
+                release: bpm
+            - type: replace
+              path: /variables/-
+              value:
+                name: metric_agent_ca
+                type: certificate
+                options:
+                  common_name: metrics
+                  is_ca: true
+            - type: replace
+              path: /variables/-
+              value:
+                name: metric_agent_cert
+                type: certificate
+                options:
+                  ca: metric_agent_ca
+                  common_name: metrics
+                  extended_key_usage:
+                  - server_auth
+                  - client_auth
             EOF
             bosh interpolate kubo-deployment/manifests/cfcr.yml \
-              --ops-file ops.yml \
+              --ops-file add-loggregator-agent.yml \
               > modified-kubo-deployment/manifests/cfcr.yml
   - task: cfcr-deploy
     file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
