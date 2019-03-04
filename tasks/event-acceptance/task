@@ -24,13 +24,13 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: event-test
-  namespace: oratos
+  namespace: pks-system
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: event-test
-  namespace: oratos
+  namespace: pks-system
 rules:
 - apiGroups:
   - policy
@@ -45,11 +45,11 @@ kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: event-test
-  namespace: oratos
+  namespace: pks-system
 subjects:
 - kind: ServiceAccount
   name: event-test
-  namespace: oratos
+  namespace: pks-system
 roleRef:
   kind: Role
   name: event-test
@@ -61,7 +61,7 @@ metadata:
   labels:
     app: event-test
   name: event-test
-  namespace: oratos
+  namespace: pks-system
 spec:
   replicas: 1
   selector:
@@ -85,7 +85,7 @@ function validate {
 
 function show_status {
     echo "outputs.conf in config map"
-    kubectl get cm fluent-bit -n oratos -o json | grep \"outputs.conf\"
+    kubectl get cm fluent-bit -n pks-system -o json | grep \"outputs.conf\"
 }
 
 function cleanup {
@@ -93,10 +93,10 @@ function cleanup {
     show_status
 
     print_section_msg  "STARTING CLEANUP ENV"
-    kubectl --namespace default delete pod crosstalk-receiver-oratos > /dev/null 2>&1
-    kubectl --namespace default delete service crosstalk-receiver-oratos > /dev/null 2>&1
+    kubectl --namespace default delete pod crosstalk-receiver-pks-system > /dev/null 2>&1
+    kubectl --namespace default delete service crosstalk-receiver-pks-system > /dev/null 2>&1
 
-    kubectl --namespace oratos delete sink crosstalk-sink > /dev/null 2>&1
+    kubectl --namespace pks-system delete sink crosstalk-sink > /dev/null 2>&1
 
     echo "$manifest" | kubectl delete --filename - > /dev/null 2>&1
 
@@ -110,22 +110,22 @@ function main {
     login_to_cluster_as_admin
 
     echo "verifying event-controller is Running"
-    verify_deployment_running "app=event-controller" "oratos"
+    verify_deployment_running "app=event-controller" "pks-system"
     echo "verifying fluent-bit is Running"
-    verify_daemonset_running "k8s-app=logging-agent" "oratos"
+    verify_daemonset_running "k8s-app=logging-agent" "pks-system"
 
     echo "deploy crosstalk receiver"
-    apply_crosstalk_receiver "oratos" 'Back-off pulling image "oratos/doesnotexist"'
+    apply_crosstalk_receiver "pks-system" 'Back-off pulling image "oratos/doesnotexist"'
     echo "verifying crosstalk receiver is running"
-    verify_pod_running "crosstalk-receiver-oratos" "default"
+    verify_pod_running "crosstalk-receiver-pks-system" "default"
 
-    echo "apply sink to 'oratos' namespace"
-    apply_namespace_sink "oratos"
+    echo "apply sink to 'pks-system' namespace"
+    apply_namespace_sink "pks-system"
 
     # Giving some time for the daemonset to re-deploy
     sleep 10
     echo "verifying fluent-bit is Running after the sink is applied"
-    verify_daemonset_running "k8s-app=logging-agent" "oratos"
+    verify_daemonset_running "k8s-app=logging-agent" "pks-system"
 
     echo "create test deployment with unavailable image"
     echo "$manifest" | kubectl apply --filename -
@@ -134,7 +134,7 @@ function main {
     sleep 10
 
     echo "setting up tunnel to crosstalk receiver"
-    kubectl --namespace default port-forward crosstalk-receiver-oratos 6061:6061 > /dev/null 2>&1 &
+    kubectl --namespace default port-forward crosstalk-receiver-pks-system 6061:6061 > /dev/null 2>&1 &
 
     sleep 5
     echo "asserting on metrics received from the crosstalk receiver"
@@ -144,9 +144,9 @@ function main {
     set -e
     echo "$receiver_metrics" | jq 'del(.memstats, .cmdline)'
     expected="1"
-    result="$(echo "$receiver_metrics" | jq '.namespaced["oratos"]' --join-output)"
+    result="$(echo "$receiver_metrics" | jq '.namespaced["pks-system"]' --join-output)"
     check_result_cnt "$expected" "$result" \
-        "Expected crosstalk-receiver-oratos to receive $expected matched event"
+        "Expected crosstalk-receiver-pks-system to receive $expected matched event"
 
 }
 

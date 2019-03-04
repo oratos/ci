@@ -227,7 +227,7 @@ spec:
   serviceAccountName: crosstalk-receiver
   containers:
   - name: crosstalk-receiver
-    image: oratos/crosstalk-receiver:v0.3
+    image: oratos/crosstalk-receiver:v0.5
     imagePullPolicy: Always
     env:
     - name: SYSLOG_PORT
