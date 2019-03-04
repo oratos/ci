@@ -58,7 +58,7 @@ function cfcr_env_get-credentials {
     kubectl config set-context "$env" \
       --cluster="$env" \
       --user="$env-admin" \
-      --namespace=oratos
+      --namespace=pks-system
     kubectl config use-context "$env"
 }
 
@@ -78,7 +78,7 @@ function cfcr_env_get-credentials-tunnel {
     kubectl config set-context "$env" \
       --cluster="$env" \
       --user="$env-admin" \
-      --namespace=oratos
+      --namespace=pks-system
     kubectl config use-context "$env"
 
     export BOSH_DEPLOYMENT=cfcr
