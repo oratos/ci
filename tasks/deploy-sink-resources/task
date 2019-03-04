@@ -36,7 +36,9 @@ function apply_manifests {
         kustomize edit set imagetag "oratos/validator@$validator_digest"
         kustomize edit set imagetag "oratos/sink-state-updater@$sink_state_updater_digest"
     popd
+
     kustomize build sink-resources/manifests/overlays/pks \
+        | sed "s/SINK_RESOURCES_VERSION/$cert_digest/g" \
         | kubectl apply -f -
     echo "Completed applying the manifests for sink-resources/pks"
 }

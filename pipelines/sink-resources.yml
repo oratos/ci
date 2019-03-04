@@ -955,6 +955,7 @@ jobs:
             git tag "$VERSION"
           popd > /dev/null
 
+          # Also update sink-resources/hack/generate-pks-manifest.sh
           pushd sink-resources/manifests/overlays/pks
             kustomize edit set imagetag "oratos/cert-generator:$VERSION"
             kustomize edit set imagetag "oratos/ghostunnel:$VERSION"
@@ -966,7 +967,6 @@ jobs:
             kustomize edit set imagetag "oratos/metric-controller:$VERSION"
           popd
 
-          kustomize build sink-resources/manifests/overlays/pks > github-release/manifest.yml
           ./sink-resources/hack/generate-pks-manifest.sh "$VERSION" "$FLUENT_BIT_OUT_SYSLOG_VERSION" > github-release/pks-manifest.yml
           echo "$VERSION" > github-release/name
           echo "$VERSION" > github-release/tag
@@ -1073,7 +1073,6 @@ jobs:
       body: github-release/body
       tag: github-release/tag
       globs:
-      - github-release/manifest.yml
       - github-release/pks-manifest.yml
       - github-release/*.tgz
 
