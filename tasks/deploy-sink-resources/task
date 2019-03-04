@@ -8,13 +8,13 @@ function validate {
 }
 
 function delete_old_jobs {
-    kubectl delete jobs --all --namespace oratos
-    echo "Completed deleting all jobs in oratos namespace"
+    kubectl delete jobs --all --namespace pks-system
+    echo "Completed deleting all jobs in pks-system namespace"
 }
 
 function roll {
-    kubectl delete pods --all --namespace oratos
-    echo "Completed rolling all the pods in oratos namespace"
+    kubectl delete pods --all --namespace pks-system
+    echo "Completed rolling all the pods in pks-system namespace"
 }
 
 function apply_manifests {
@@ -26,7 +26,7 @@ function apply_manifests {
     metric_digest="$(cat metric-controller-image/digest)"
     validator_digest="$(cat validator-image/digest)"
     sink_state_updater_digest="$(cat sink-state-updater-image/digest)"
-    pushd sink-resources/manifests/overlays/oratos
+    pushd sink-resources/manifests/overlays/pks
         kustomize edit set imagetag "oratos/cert-generator@$cert_digest"
         kustomize edit set imagetag "oratos/ghostunnel@$ghost_digest"
         kustomize edit set imagetag "oratos/fluent-bit-out-syslog@$fluent_digest"
@@ -36,9 +36,9 @@ function apply_manifests {
         kustomize edit set imagetag "oratos/validator@$validator_digest"
         kustomize edit set imagetag "oratos/sink-state-updater@$sink_state_updater_digest"
     popd
-    kustomize build sink-resources/manifests/overlays/oratos \
+    kustomize build sink-resources/manifests/overlays/pks \
         | kubectl apply -f -
-    echo "Completed applying the manifests for sink-resources/oratos"
+    echo "Completed applying the manifests for sink-resources/pks"
 }
 
 function main {
