@@ -123,6 +123,14 @@ resources:
     password: ((docker-hub.password))
     tag: release-elect
 
+- name: telegraf-image
+  type: docker-image
+  source:
+    repository: oratos/telegraf
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+    tag: release-elect
+
 - name: kubo-deployment
   type: git
   source:
@@ -447,6 +455,10 @@ jobs:
       params:
         skip_download: true
     - get: sink-state-updater-image
+      trigger: true
+      params:
+        skip_download: true
+    - get: telegraf-image
       trigger: true
       params:
         skip_download: true

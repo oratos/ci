@@ -8,6 +8,7 @@ groups:
   - build-cert-generator-image
   - build-ghostunnel-image
   - build-sink-state-updater-image
+  - build-telegraf-image
   - build-validator-image
   - deploy-gke
   - deploy-cfcr
@@ -108,6 +109,13 @@ resources:
   type: docker-image
   source:
     repository: oratos/sink-state-updater
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
+- name: telegraf-image
+  type: docker-image
+  source:
+    repository: oratos/telegraf
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
@@ -383,6 +391,30 @@ jobs:
     get_params:
       skip_download: true
 
+- name: build-telegraf-image
+  serial: true
+  plan:
+  - aggregate:
+    - get: sink-resources
+      trigger: true
+      passed:
+      - unit-tests
+    - get: oratos-ci
+  - task: prepare-build
+    file: oratos-ci/tasks/build-docker-image/task.yml
+    input_mapping:
+      source-repo: sink-resources
+    params:
+      DOCKERFILE: source-repo/cmd/telegraf/Dockerfile
+  - put: telegraf-image
+    params:
+      build: build-image/build
+      tag: build-image/tag
+      cache: true
+      cache_tag: latest
+    get_params:
+      skip_download: true
+
 - name: build-validator-image
   serial: true
   plan:
@@ -420,6 +452,7 @@ jobs:
       - build-cert-generator-image
       - build-ghostunnel-image
       - build-sink-state-updater-image
+      - build-telegraf-image
       - build-validator-image
     - get: sink-controller-image
       trigger: true
@@ -449,6 +482,12 @@ jobs:
       trigger: true
       passed:
       - build-sink-state-updater-image
+      params:
+        skip_download: true
+    - get: telegraf-image
+      trigger: true
+      passed:
+      - build-telegraf-image
       params:
         skip_download: true
     - get: validator-image
@@ -523,6 +562,12 @@ jobs:
       - deploy-gke
       params:
         skip_download: true
+    - get: telegraf-image
+      trigger: true
+      passed:
+      - deploy-gke
+      params:
+        skip_download: true
     - get: validator-image
       trigger: true
       passed:
@@ -557,6 +602,7 @@ jobs:
       - build-cert-generator-image
       - build-ghostunnel-image
       - build-sink-state-updater-image
+      - build-telegraf-image
       - build-validator-image
     - get: sink-controller-image
       trigger: true
@@ -592,6 +638,12 @@ jobs:
       trigger: true
       passed:
       - build-sink-state-updater-image
+      params:
+        skip_download: true
+    - get: telegraf-image
+      trigger: true
+      passed:
+      - build-telegraf-image
       params:
         skip_download: true
     - get: validator-image
@@ -653,6 +705,12 @@ jobs:
       params:
         skip_download: true
     - get: sink-state-updater-image
+      trigger: true
+      passed:
+      - deploy-cfcr
+      params:
+        skip_download: true
+    - get: telegraf-image
       trigger: true
       passed:
       - deploy-cfcr
@@ -747,6 +805,13 @@ jobs:
       # - control-plane-tests
       params:
         save: true
+    - get: telegraf-image
+      passed:
+      - cfcr-tests
+      - gke-tests
+      # - control-plane-tests
+      params:
+        save: true
     - get: validator-image
       passed:
       - cfcr-tests
@@ -823,6 +888,14 @@ jobs:
         cache_tag: latest
       get_params:
         skip_download: true
+    - put: telegraf-image
+      params:
+        load: telegraf-image
+        tag: promote/tag
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
     - put: validator-image
       params:
         load: validator-image
@@ -841,6 +914,7 @@ jobs:
   - get: cert-generator-image
   - get: ghostunnel-image
   - get: sink-state-updater-image
+  - get: telegraf-image
   - get: validator-image
   - task: release
     privileged: true
@@ -955,11 +1029,11 @@ jobs:
             git tag "$VERSION"
           popd > /dev/null
 
-          # Also update sink-resources/hack/generate-pks-manifest.sh
           pushd sink-resources/manifests/overlays/pks
             kustomize edit set imagetag "oratos/cert-generator:$VERSION"
             kustomize edit set imagetag "oratos/ghostunnel:$VERSION"
             kustomize edit set imagetag "oratos/sink-state-updater:$VERSION"
+            kustomize edit set imagetag "oratos/telegraf:$VERSION"
             kustomize edit set imagetag "oratos/validator:$VERSION"
             kustomize edit set imagetag "oratos/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION"
             kustomize edit set imagetag "oratos/sink-controller:$VERSION"
@@ -967,6 +1041,7 @@ jobs:
             kustomize edit set imagetag "oratos/metric-controller:$VERSION"
           popd
 
+          # TODO: Update sink-resources/hack/generate-pks-manifest.sh
           ./sink-resources/hack/generate-pks-manifest.sh "$VERSION" "$FLUENT_BIT_OUT_SYSLOG_VERSION" > github-release/pks-manifest.yml
           echo "$VERSION" > github-release/name
           echo "$VERSION" > github-release/tag
@@ -983,6 +1058,7 @@ jobs:
           - [oratos/cert-generator][cert-generator]:$VERSION
           - [oratos/ghostunnel][ghostunnel]:$VERSION
           - [oratos/sink-state-updater][sink-state-updater]:$VERSION
+          - [oratos/telegraf][telegraf]:$VERSION
           - [oratos/validator][validator]:$VERSION
           - [oratos/fluent-bit-out-syslog][fluent-bit-out-syslog]:$FLUENT_BIT_OUT_SYSLOG_VERSION
 
@@ -992,6 +1068,7 @@ jobs:
           [cert-generator]: https://hub.docker.com/r/oratos/cert-generator/
           [ghostunnel]: https://hub.docker.com/r/oratos/ghostunnel/
           [sink-state-updater]: https://hub.docker.com/r/oratos/sink-state-updater/
+          [telegraf]: https://hub.docker.com/r/oratos/telegraf/
           [validator]: https://hub.docker.com/r/oratos/validator/
           [fluent-bit-out-syslog]: https://hub.docker.com/r/oratos/fluent-bit-out-syslog/
           EOF
@@ -1009,6 +1086,7 @@ jobs:
           cg_docker_name="oratos/cert-generator:$VERSION"
           gt_docker_name="oratos/ghostunnel:$VERSION"
           ssu_docker_name="oratos/sink-state-updater:$VERSION"
+          t_docker_name="oratos/telegraf:$VERSION"
           vd_docker_name="oratos/validator:$VERSION"
           fb_docker_name="oratos/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION"
 
@@ -1048,6 +1126,12 @@ jobs:
           docker push "$ssu_docker_name"
           docker push "oratos/sink-state-updater:latest"
 
+          docker pull "oratos/telegraf:$GIT_REF"
+          docker tag "oratos/telegraf:$GIT_REF" "$t_docker_name"
+          docker tag "oratos/telegraf:$GIT_REF" "oratos/telegraf:latest"
+          docker push "$t_docker_name"
+          docker push "oratos/telegraf:latest"
+
           docker pull "oratos/validator:$GIT_REF"
           docker tag "oratos/validator:$GIT_REF" "$vd_docker_name"
           docker tag "oratos/validator:$GIT_REF" "oratos/validator:latest"
@@ -1061,6 +1145,7 @@ jobs:
           docker save "$cg_docker_name" | gzip > "github-release/oratos_cert-generator:$VERSION.tgz"
           docker save "$gt_docker_name" | gzip > "github-release/oratos_ghostunnel:$VERSION.tgz"
           docker save "$ssu_docker_name" | gzip > "github-release/oratos_sink-state-updater:$VERSION.tgz"
+          docker save "$t_docker_name" | gzip > "github-release/oratos_telegraf:$VERSION.tgz"
           docker save "$vd_docker_name" | gzip > "github-release/oratos_validator:$VERSION.tgz"
           docker save "$fb_docker_name" | gzip > "github-release/oratos_fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION.tgz"
 
@@ -1313,6 +1398,7 @@ jobs:
       - build-cert-generator-image
       - build-ghostunnel-image
       - build-sink-state-updater-image
+      - build-telegraf-image
       - build-validator-image
     - get: sink-controller-image
       trigger: true
@@ -1348,6 +1434,12 @@ jobs:
       trigger: true
       passed:
       - build-sink-state-updater-image
+      params:
+        skip_download: true
+    - get: telegraf-image
+      trigger: true
+      passed:
+      - build-telegraf-image
       params:
         skip_download: true
     - get: validator-image
@@ -1406,6 +1498,12 @@ jobs:
       params:
         skip_download: true
     - get: sink-state-updater-image
+      trigger: true
+      passed:
+      - deploy-control-plane
+      params:
+        skip_download: true
+    - get: telegraf-image
       trigger: true
       passed:
       - deploy-control-plane
