@@ -13,6 +13,7 @@ inputs:
 - name: fluent-bit-out-syslog-image
 - name: validator-image
 - name: sink-state-updater-image
+- name: telegraf-image
 - name: oratos-ci
 - name: bbl-state # only needed for cfcr clusters
 params:
