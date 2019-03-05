@@ -26,6 +26,7 @@ function apply_manifests {
     metric_digest="$(cat metric-controller-image/digest)"
     validator_digest="$(cat validator-image/digest)"
     sink_state_updater_digest="$(cat sink-state-updater-image/digest)"
+    telegraf_digest="$(cat telegraf-image/digest)"
     pushd sink-resources/manifests/overlays/pks
         kustomize edit set imagetag "oratos/cert-generator@$cert_digest"
         kustomize edit set imagetag "oratos/ghostunnel@$ghost_digest"
@@ -35,6 +36,7 @@ function apply_manifests {
         kustomize edit set imagetag "oratos/metric-controller@$metric_digest"
         kustomize edit set imagetag "oratos/validator@$validator_digest"
         kustomize edit set imagetag "oratos/sink-state-updater@$sink_state_updater_digest"
+        kustomize edit set imagetag "oratos/telegraf@$telegraf_digest"
     popd
 
     # Using $RANDOM for sink resources version to ensure cert-generator job is

@@ -465,6 +465,7 @@ jobs:
     - get: bikepark-bbl-state
     - get: oratos-ci
   - task: deploy-sink-resources
+    # TODO: UPDATE this task as well if adding new image
     file: oratos-ci/tasks/deploy-sink-resources/task.yml
     input_mapping:
       bbl-state: bikepark-bbl-state
