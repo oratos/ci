@@ -205,8 +205,8 @@ jobs:
         source:
           repository: oratos/ci-base
       params:
-        GIT_REF: c161d9b887fe4619dda4079748bb05a39384bd91
-        VERSION: v0.14
+        GIT_REF: c8d19fd628ca1bd63269ae2c687f5a48f3b308f6
+        VERSION: v0.15
         DOCKERHUB_USERNAME: ((docker-hub.username))
         DOCKERHUB_PASSWORD: ((docker-hub.password))
         GITHUB_PRIVATE_KEY: ((github.oratos-bot-private-key))
