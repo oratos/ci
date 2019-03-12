@@ -1,6 +1,6 @@
 # oratos-ci
 
-This repository contains the CI pipelines for the Oratos Team. 
+This repository contains the CI pipelines for the Oratos Team.
 
 ## How to target a CFCR cluster
 
@@ -11,7 +11,7 @@ We have `./scripts/cfcr.sh` in order to target specific CFCR environements.
 
 ```bash
 $ ./scripts/cfcr.sh
-cfcr.sh: <environment> <subcommand>                                                                                                                               │367       - secret¬
+cfcr.sh: <subcommand> <environment>
 
 Subcommands:                                                                                                                                                                                                          │368       allowedHostPaths:¬
    get-credentials         set kubernetes context                                                                                                                                                                     │369       - pathPrefix: /var/log¬
@@ -26,7 +26,7 @@ Development Subcommands:                                                        
 For example, in order to target the acceptance cluster.
 
 ```bash
-$ ./scripts/cfcr.sh bikepark get-credentials
+$ ./scripts/cfcr.sh get-credentials bikepark
 Cluster "bikepark" set.
 User "bikepark-admin" set.
 Context "bikepark" modified.
