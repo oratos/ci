@@ -126,6 +126,7 @@ function print_usage {
 }
 
 function set_globals {
+    env=${2:-}
     BBL_STATE_DIR="${BBL_STATE_DIR:-$HOME/workspace/$env-bbl-state}"
 
     local cmd
@@ -145,7 +146,6 @@ function set_globals {
             ;;
     esac
 
-    env=${2:-}
     case "$env" in
         bikepark)
             domain=bikepark.oratos.ci.cf-app.com
