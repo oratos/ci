@@ -664,7 +664,7 @@ jobs:
     params:
       GET_CREDENTIALS_HOOK: |
           BBL_STATE_DIR=bbl-state \
-              oratos-ci/scripts/cfcr.sh testing get-credentials
+              oratos-ci/scripts/cfcr.sh get-credentials testing
 
 - name: cfcr-tests
   serial: true
@@ -731,7 +731,7 @@ jobs:
     params:
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/cfcr.sh testing get-credentials
+            oratos-ci/scripts/cfcr.sh get-credentials testing
   - task: event-acceptance
     file: oratos-ci/tasks/event-acceptance/task.yml
     input_mapping:
@@ -739,7 +739,7 @@ jobs:
     params:
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/cfcr.sh testing get-credentials
+            oratos-ci/scripts/cfcr.sh get-credentials testing
   - task: crosstalk-test
     file: oratos-ci/tasks/sink-crosstalk/task.yml
     input_mapping:
@@ -747,7 +747,7 @@ jobs:
     params:
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/cfcr.sh testing get-credentials
+            oratos-ci/scripts/cfcr.sh get-credentials testing
       NAOMI_A_CERT: ((crosstalk.naomi_a_cert))
       NAOMI_A_KEY: ((crosstalk.naomi_a_key))
       NAOMI_B_CERT: ((crosstalk.naomi_b_cert))
@@ -1460,7 +1460,7 @@ jobs:
     params:
       GET_CREDENTIALS_HOOK: |
           BBL_STATE_DIR=bbl-state \
-              oratos-ci/scripts/cfcr.sh control-plane-test get-credentials
+              oratos-ci/scripts/cfcr.sh get-credentials control-plane-test
 
 - name: control-plane-tests
   plan:
@@ -1523,6 +1523,6 @@ jobs:
       SKIP_CLEANUP: false
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
-          oratos-ci/scripts/cfcr.sh control-plane-test get-credentials
+          oratos-ci/scripts/cfcr.sh get-credentials control-plane-test
     input_mapping:
       bbl-state: control-plane-test-bbl-state

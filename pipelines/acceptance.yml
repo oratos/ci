@@ -388,7 +388,7 @@ jobs:
         }
         trap cleanup EXIT
         BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/cfcr.sh bikepark get-credentials-tunnel
+            oratos-ci/scripts/cfcr.sh get-credentials-tunnel bikepark
   - task: configure-dev-dns-zone
     file: oratos-ci/tasks/configure-dev-dns-zone/task.yml
     params:
@@ -411,7 +411,7 @@ jobs:
     params:
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/cfcr.sh bikepark get-credentials
+            oratos-ci/scripts/cfcr.sh get-credentials bikepark
   - task: cfcr-deployment-destroy
     file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
     input_mapping:
@@ -473,7 +473,7 @@ jobs:
     params:
       GET_CREDENTIALS_HOOK: |
           BBL_STATE_DIR=bbl-state \
-              oratos-ci/scripts/cfcr.sh bikepark get-credentials
+              oratos-ci/scripts/cfcr.sh get-credentials bikepark
 
 - name: sink-floodspinner
   serial: true
@@ -510,7 +510,7 @@ jobs:
       SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/cfcr.sh bikepark get-credentials
+            oratos-ci/scripts/cfcr.sh get-credentials bikepark
       PAPERTRAIL_TOKEN: ((papertrail.token))
       PAPERTRAIL_GROUP: oratos-blackbox-tests
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
@@ -557,7 +557,7 @@ jobs:
       SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/cfcr.sh bikepark get-credentials
+            oratos-ci/scripts/cfcr.sh get-credentials bikepark
       PAPERTRAIL_TOKEN: ((papertrail.token))
       PAPERTRAIL_GROUP: oratos-blackbox-tests
       PAPERTRAIL_DESTINATION: ((papertrail.addr))
@@ -604,7 +604,7 @@ jobs:
       SYSTEM_DOMAIN: bikepark.oratos.ci.cf-app.com
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/cfcr.sh bikepark get-credentials
+            oratos-ci/scripts/cfcr.sh get-credentials bikepark
       PAPERTRAIL_TOKEN: ((papertrail.token))
       PAPERTRAIL_GROUP: oratos-blackbox-tests
       PAPERTRAIL_DESTINATION: ((papertrail.addr))

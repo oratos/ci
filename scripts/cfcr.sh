@@ -113,7 +113,7 @@ function cfcr_env_get-credentials-tunnel {
 
 function print_usage {
     bn="$(basename $0)"
-    echo "$bn: <environment> <subcommand>"
+    echo "$bn: <subcommand> <environment>"
     echo
     echo -e "\033[1mSubcommands:\033[0m"
     echo "   get-credentials         set kubernetes context"
@@ -126,7 +126,26 @@ function print_usage {
 }
 
 function set_globals {
-    env=${1:-}
+    BBL_STATE_DIR="${BBL_STATE_DIR:-$HOME/workspace/$env-bbl-state}"
+
+    local cmd
+    cmd=${1:-}
+    case "$cmd" in
+        print-env|delete-bbl-state|download-bbl-state|get-credentials|get-credentials-tunnel)
+            command=cfcr_env_$cmd
+            ;;
+        -h|-help|--help|help)
+            print_usage
+            exit 0
+            ;;
+        *)
+            echo -e "Invalid command: $cmd\n"
+            print_usage
+            exit 1
+            ;;
+    esac
+
+    env=${2:-}
     case "$env" in
         bikepark)
             domain=bikepark.oratos.ci.cf-app.com
@@ -151,24 +170,6 @@ function set_globals {
             ;;
     esac
 
-    BBL_STATE_DIR="${BBL_STATE_DIR:-$HOME/workspace/$env-bbl-state}"
-
-    local cmd
-    cmd=${2:-}
-    case "$cmd" in
-        print-env|delete-bbl-state|download-bbl-state|get-credentials|get-credentials-tunnel)
-            command=cfcr_env_$cmd
-            ;;
-        -h|-help|--help|help)
-            print_usage
-            exit 0
-            ;;
-        *)
-            echo -e "Invalid command: $cmd\n"
-            print_usage
-            exit 1
-            ;;
-    esac
 }
 
 function main {

@@ -312,7 +312,7 @@ jobs:
         }
         trap cleanup EXIT
         BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/cfcr.sh testing get-credentials-tunnel
+            oratos-ci/scripts/cfcr.sh get-credentials-tunnel testing
   - task: configure-dev-dns-zone
     file: oratos-ci/tasks/configure-dev-dns-zone/task.yml
     params:
@@ -335,7 +335,7 @@ jobs:
     params:
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/cfcr.sh testing get-credentials
+            oratos-ci/scripts/cfcr.sh get-credentials testing
   - task: cfcr-deployment-destroy
     file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
     input_mapping:
@@ -577,7 +577,7 @@ jobs:
         }
         trap cleanup EXIT
         BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/cfcr.sh control-plane-test get-credentials-tunnel
+            oratos-ci/scripts/cfcr.sh get-credentials-tunnel control-plane-test
   - task: configure-dev-dns-zone
     file: oratos-ci/tasks/configure-dev-dns-zone/task.yml
     params:
@@ -600,7 +600,7 @@ jobs:
     params:
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/cfcr.sh control-plane-test get-credentials
+            oratos-ci/scripts/cfcr.sh get-credentials control-plane-test
   - task: cfcr-deployment-destroy
     file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
     input_mapping:
