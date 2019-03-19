@@ -10,7 +10,7 @@ function validate {
 function clean_up_environment {
     kustomize build sink-resources/manifests/overlays/pks \
         | sed "s/SINK_RESOURCES_VERSION/delete/g" \
-        | kubectl delete -f -
+        | kubectl delete --ignore-not-found=true -f -
     echo "Cleaned up existing environment"
 }
 
