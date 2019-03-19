@@ -1,0 +1,23 @@
+#!/bin/bash
+set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+
+source "oratos-ci/scripts/test/common.sh"
+
+function validate {
+    ensure_variable_isset "$GET_CREDENTIALS_HOOK" "GET_CREDENTIALS_HOOK"
+}
+
+function clean_up_environment {
+    kustomize build sink-resources/manifests/overlays/pks \
+        | sed "s/SINK_RESOURCES_VERSION/delete/g" \
+        | kubectl delete -f -
+    echo "Cleaned up existing environment"
+}
+
+function main {
+    validate
+    login_to_cluster_as_admin
+    clean_up_environment
+}
+
+main

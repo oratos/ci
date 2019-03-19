@@ -588,6 +588,19 @@ jobs:
           gcloud container clusters get-credentials oratos-ci-testing \
             --zone us-central1-a
       SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
+  - task: clean-up-environment
+    file: oratos-ci/tasks/clean-up-environment/task.yml
+    input_mapping:
+      # bbl-state is not needed for GKE, pass in oratos-ci as a NOOP
+      bbl-state: oratos-ci
+    params:
+      SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
+      GET_CREDENTIALS_HOOK: |
+        echo "$SERVICE_ACCOUNT" > sa.json
+        gcloud auth activate-service-account --key-file sa.json
+        rm sa.json
+        gcloud container clusters get-credentials oratos-ci-testing \
+          --zone us-central1-a
 
 - name: deploy-cfcr
   serial: true
