@@ -11,6 +11,8 @@ function clean_up_environment {
     kustomize build sink-resources/manifests/overlays/pks \
         | sed "s/SINK_RESOURCES_VERSION/delete/g" \
         | kubectl delete --ignore-not-found=true -f -
+
+    kubectl delete jobs --all --namespace pks-system
     echo "Cleaned up existing environment"
 }
 
