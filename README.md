@@ -1,4 +1,4 @@
-# oratos-ci
+# [oratos-ci](https://oratos.ci.cf-app.com/)
 
 This repository contains the CI pipelines for the Oratos Team.
 
