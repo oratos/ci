@@ -16,4 +16,4 @@ params:
   # - Set to true to output all commands that are ran.
   DEBUG:
 run:
-  path: oratos-ci/tasks/event-acceptance/task
+  path: oratos-ci/tasks/sink-e2e/task
