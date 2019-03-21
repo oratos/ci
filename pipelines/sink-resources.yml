@@ -594,13 +594,26 @@ jobs:
       # bbl-state is not needed for GKE, pass in oratos-ci as a NOOP
       bbl-state: oratos-ci
     params:
+      SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
       GET_CREDENTIALS_HOOK: |
           echo "$SERVICE_ACCOUNT" > sa.json
           gcloud auth activate-service-account --key-file sa.json
           rm sa.json
           gcloud container clusters get-credentials oratos-ci-testing \
             --zone us-central1-a
+  - task: e2e-test
+    file: oratos-ci/tasks/sink-e2e/task.yml
+    input_mapping:
+      # bbl-state is not needed for GKE, pass in oratos-ci as a NOOP
+      bbl-state: oratos-ci
+    params:
       SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
+      GET_CREDENTIALS_HOOK: |
+          echo "$SERVICE_ACCOUNT" > sa.json
+          gcloud auth activate-service-account --key-file sa.json
+          rm sa.json
+          gcloud container clusters get-credentials oratos-ci-testing \
+            --zone us-central1-a
 
 - name: deploy-cfcr
   serial: true
@@ -753,26 +766,14 @@ jobs:
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh get-credentials testing
-  - task: event-acceptance
-    file: oratos-ci/tasks/event-acceptance/task.yml
+  - task: e2e-test
+    file: oratos-ci/tasks/sink-e2e/task.yml
     input_mapping:
       bbl-state: oratos-ci-testing-cfcr-bbl-state
     params:
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh get-credentials testing
-  - task: crosstalk-test
-    file: oratos-ci/tasks/sink-crosstalk/task.yml
-    input_mapping:
-      bbl-state: oratos-ci-testing-cfcr-bbl-state
-    params:
-      GET_CREDENTIALS_HOOK: |
-        BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/cfcr.sh get-credentials testing
-      NAOMI_A_CERT: ((crosstalk.naomi_a_cert))
-      NAOMI_A_KEY: ((crosstalk.naomi_a_key))
-      NAOMI_B_CERT: ((crosstalk.naomi_b_cert))
-      NAOMI_B_KEY: ((crosstalk.naomi_b_key))
 
 - name: promote
   serial: true

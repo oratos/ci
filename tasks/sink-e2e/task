@@ -1,0 +1,18 @@
+#!/bin/bash
+set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+
+source "oratos-ci/scripts/test/common.sh"
+
+function validate {
+    ensure_variable_isset "$GET_CREDENTIALS_HOOK" "GET_CREDENTIALS_HOOK"
+}
+
+function main {
+    validate
+    login_to_cluster_as_admin
+    pushd sink-resources
+        go test -v -mod=vendor -tags=e2e -count=1 ./tests/e2e/...
+    popd
+}
+
+main
