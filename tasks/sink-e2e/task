@@ -11,7 +11,7 @@ function main {
     validate
     login_to_cluster_as_admin
     pushd sink-resources
-        go test -v -mod=readonly -mod=vendor -tags=e2e -count=1 ./tests/e2e/...
+        go test -v -mod=vendor -tags=e2e -count=1 ./tests/e2e/...
     popd
 }
 
