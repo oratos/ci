@@ -13,6 +13,10 @@ params:
   GET_CREDENTIALS_HOOK:
 
   # - Optional
+  # - gcloud service account details
+  SERVICE_ACCOUNT:
+
+  # - Optional
   # - Set to true to output all commands that are ran.
   DEBUG:
 run:
