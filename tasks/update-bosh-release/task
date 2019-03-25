@@ -29,20 +29,30 @@ pushd put-sink-resources-release
        --force \
        --tarball="${release_file}"
 
-  version=$(yq r releases/sink-resources-release/index.yml --tojson \
+  SINK_RESOURCES_RELEASE_VERSION=$(yq r releases/sink-resources-release/index.yml --tojson \
                 | jq -r ".builds[].version" \
                 | sort --version-sort \
                 | tail -n1)
 
-  echo "Move build ${release_file} - ${version} to bosh-release/binaries"
+  # Generate OSL config
+  for f in blobs/container-images/*.tgz; do
+    docker load --input "$f"
+  done
+  ./scripts/generate-osl-deps.sh
+
+  echo "Move build ${release_file} - ${SINK_RESOURCES_RELEASE_VERSION} to bosh-release/binaries"
   mkdir -p ../bosh-release/binaries
-  mv "${release_file}" "../bosh-release/binaries/sink-resources-release-${version}.tgz"
+  mv "${release_file}" "../bosh-release/binaries/sink-resources-release-${SINK_RESOURCES_RELEASE_VERSION}.tgz"
+
+  echo "Copy OSL config sink-resources-${SINK_RESOURCES_RELEASE_VERSION}.yml to bosh-release/binaries"
+  cp "osl/${SINK_RESOURCES_RELEASE_VERSION}/sink-resources-${SINK_RESOURCES_RELEASE_VERSION}.yml" \
+      "../bosh-release/binaries/sink-resources-${SINK_RESOURCES_RELEASE_VERSION}.yml"
 
   git add .
-  git commit -m"CI bump sink resource release to ${version}"
+  git commit -m"CI bump sink resource release to ${SINK_RESOURCES_RELEASE_VERSION}"
 popd
 
-echo "$version" > bosh-release/name
-echo "$version" > bosh-release/tag
+echo "$SINK_RESOURCES_RELEASE_VERSION" > bosh-release/name
+echo "$SINK_RESOURCES_RELEASE_VERSION" > bosh-release/tag
 
 ls -alth bosh-release/binaries

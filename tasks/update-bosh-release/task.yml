@@ -16,6 +16,12 @@ params:
   # - The private yaml file required to access the release blob store
   PRIVATE_YML:
 
+  # - Required
+  # - Required for OSL generation
+  OBSERVABILITY_MANAGER_VERSION:
+  SINK_RESOURCES_VERSION:
+  FLUENT_BIT_OUT_SYSLOG_VERSION:
+
   # - Optional
   # - Set to true to output all commands that are ran.
   DEBUG:
