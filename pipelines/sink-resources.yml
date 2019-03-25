@@ -1390,6 +1390,7 @@ jobs:
     - get: sink-resources-release
     - get: oratos-ci
   - task: update-bosh-release
+    privileged: true
     file: oratos-ci/tasks/update-bosh-release/task.yml
     params:
       PRIVATE_YML: ((release.private_yml))
