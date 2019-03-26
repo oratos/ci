@@ -1480,6 +1480,14 @@ jobs:
         skip_download: true
     - get: control-plane-test-bbl-state
     - get: oratos-ci
+  - task: clean-up-environment
+    file: oratos-ci/tasks/clean-up-environment/task.yml
+    input_mapping:
+      bbl-state: control-plane-test-bbl-state
+    params:
+      GET_CREDENTIALS_HOOK: |
+        BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/cfcr.sh get-credentials control-plane-test
   - task: deploy
     file: oratos-ci/tasks/deploy-sink-resources/task.yml
     input_mapping:
