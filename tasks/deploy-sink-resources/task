@@ -50,7 +50,7 @@ function apply_manifests {
 function verify_resources_are_running {
     # Just wait for some time to increase the chances of the sink-resources to
     # come up. TODO: Remove this eventually.
-    sleep 60
+    sleep 10
 
     # Verify sink resources are healthy
     verify_deployment_running "app=sink-controller"
