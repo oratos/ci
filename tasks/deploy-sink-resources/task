@@ -47,12 +47,28 @@ function apply_manifests {
     echo "Completed applying the manifests for sink-resources/pks"
 }
 
+function verify_resources_are_running {
+    # Just wait for some time to increase the chances of the sink-resources to
+    # come up. TODO: Remove this eventually.
+    sleep 60
+
+    # Verify sink resources are healthy
+    verify_deployment_running "app=sink-controller"
+    verify_deployment_running "app=event-controller"
+    verify_deployment_running "app=metric-controller"
+    verify_deployment_running "app=validator"
+
+    verify_daemonset_running "k8s-app=logging-agent"
+    verify_daemonset_running "app=telegraf"
+}
+
 function main {
     validate
     login_to_cluster_as_admin
     delete_old_jobs
     apply_manifests
     roll
+    verify_resources_are_running
 }
 
 main

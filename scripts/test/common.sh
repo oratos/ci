@@ -48,7 +48,7 @@ function ensure_variable_isset {
 
 function verify_pod_running {
     local podName=${1?}
-    local namespace=${2?}
+    local namespace=${2:-"pks-system"}
     local n=0
     local maxN=5
 
@@ -72,7 +72,7 @@ function verify_pod_running {
 
 function verify_deployment_running {
     local label=${1?}
-    local namespace=${2?}
+    local namespace=${2:-"pks-system"}
     local n=0
     local maxN=5
 
@@ -96,7 +96,7 @@ function verify_deployment_running {
 
 function verify_daemonset_running {
     local label=${1?}
-    local namespace=${2?}
+    local namespace=${2:-"pks-system"}
     local n=0
     local maxN=5
 

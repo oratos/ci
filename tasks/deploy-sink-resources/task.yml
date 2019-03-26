@@ -28,5 +28,9 @@ params:
   # - Optional
   # - Set to true to output all commands that are ran.
   DEBUG:
+
+  # - Optional
+  # - Number of times to poll to verify resources are running
+  POLLING_COUNT: 12
 run:
   path: oratos-ci/tasks/deploy-sink-resources/task
