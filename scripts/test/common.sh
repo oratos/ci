@@ -76,6 +76,7 @@ function verify_deployment_running {
     local n=0
     local maxN=5
 
+    echo "Verify deployment $label is running"
     until [ "$n" -ge "$maxN" ]; do
         echo -n .
         status="$(
@@ -101,6 +102,7 @@ function verify_daemonset_running {
     local maxN=5
 
     nodes="$(kubectl get nodes --output json | jq '.items | length')"
+    echo "Verify daemonset $label is running"
     until [ "$n" -ge "$maxN" ]; do
         echo -n .
 
