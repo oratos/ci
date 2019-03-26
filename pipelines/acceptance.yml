@@ -135,13 +135,13 @@ resources:
   type: git
   source:
     uri: https://github.com/cloudfoundry-incubator/kubo-deployment
-    branch: v0.29.0
+    branch: v0.31.0
 
 - name: kubo-release-bosh-io
   type: bosh-io-release
   source:
     repository: cloudfoundry-incubator/kubo-release
-    regexp: "0.29.*"
+    regexp: "0.31.*"
 
 - name: cf-deployment-concourse-tasks
   type: git
@@ -365,6 +365,7 @@ jobs:
       MANIFEST_FILE: manifests/cfcr.yml
       OPS_FILES: |
         manifests/ops-files/allow-privileged-containers.yml
+        manifests/ops-files/set-fs-inotify-limit.yml
         manifests/ops-files/iaas/gcp/cloud-provider.yml
         manifests/ops-files/iaas/gcp/add-service-key-master.yml
         manifests/ops-files/iaas/gcp/add-service-key-worker.yml
