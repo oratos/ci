@@ -11,7 +11,7 @@ sink_resource_release_params:
   # This will also be pushed as a tagged docker image to:
   #   https://hub.docker.com/r/oratos/sink-controller/tags/
   #   https://hub.docker.com/r/oratos/event-controller/tags/
-  VERSION: v0.19
+  VERSION: v0.19.1
 
   # This is the version of the fluent-bit-out-syslog image to be included in
   # this release. This version needs to be a tag on the docker image on
@@ -29,4 +29,4 @@ sink_resource_release_params:
   # increasing.
   # This will also be pushed as a tagged docker image to:
   #   https://hub.docker.com/r/oratos/observability-manager/tags/
-  OBSERVABILITY_MANAGER_VERSION: 12
+  OBSERVABILITY_MANAGER_VERSION: 13
