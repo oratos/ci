@@ -95,6 +95,7 @@ pushd put-sink-resources-release
                 | tail -n1)
 
   # Generate OSL config
+  export SINK_RESOURCES_RELEASE_VERSION="${SINK_RESOURCES_RELEASE_VERSION}"
   for f in blobs/container-images/*.tgz; do
     docker load --input "$f"
   done
