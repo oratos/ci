@@ -333,7 +333,7 @@ jobs:
     input_mapping:
       source-repo: sink-resources
     params:
-      SOURCE_PATH: cmd/cert-generator
+      DOCKERFILE: source-repo/cmd/cert-generator/Dockerfile
   - put: cert-generator-image
     params:
       build: build-image/build

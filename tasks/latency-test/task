@@ -99,7 +99,7 @@ spec:
     name: syslog
 ---
 apiVersion: apps.pivotal.io/v1beta1
-kind: Sink
+kind: LogSink
 metadata:
   name: latency-sink
   namespace: latency-test

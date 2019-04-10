@@ -415,25 +415,12 @@ roleRef:
 " | kubectl apply --filename -
 }
 
-function apply_cluster_sink {
-    echo "
-apiVersion: apps.pivotal.io/v1beta1
-kind: ClusterSink
-metadata:
-  name: crosstalk-cluster-sink
-spec:
-  type: syslog
-  host: crosstalk-receiver-cluster.default.svc.cluster.local
-  port: 8080
-" | kubectl apply --filename -
-}
-
 function apply_namespace_sink {
     local namespace=${1?}
 
     echo "
 apiVersion: apps.pivotal.io/v1beta1
-kind: Sink
+kind: LogSink
 metadata:
   name: crosstalk-sink
   namespace: $namespace
