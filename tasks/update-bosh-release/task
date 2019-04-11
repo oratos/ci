@@ -87,7 +87,7 @@ pushd put-sink-resources-release
   bosh --non-interactive create-release \
        --final \
        --force \
-       --version=${SINK_RESOURCES_RELEASE_VERSION} \
+       --version="${SINK_RESOURCES_RELEASE_VERSION}" \
        --tarball="${release_file}"
 
   # Generate OSL config
