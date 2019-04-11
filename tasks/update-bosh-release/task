@@ -87,12 +87,8 @@ pushd put-sink-resources-release
   bosh --non-interactive create-release \
        --final \
        --force \
+       --version=${SINK_RESOURCES_RELEASE_VERSION} \
        --tarball="${release_file}"
-
-  SINK_RESOURCES_RELEASE_VERSION=$(yq r releases/sink-resources-release/index.yml --tojson \
-                | jq -r ".builds[].version" \
-                | sort --version-sort \
-                | tail -n1)
 
   # Generate OSL config
   echo "Generating OSL config"

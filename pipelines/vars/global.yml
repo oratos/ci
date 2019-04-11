@@ -30,3 +30,7 @@ sink_resource_release_params:
   # This will also be pushed as a tagged docker image to:
   #   https://hub.docker.com/r/oratos/observability-manager/tags/
   OBSERVABILITY_MANAGER_VERSION: 13
+
+  # This is the version of the sink resources bosh release that will be
+  # created.
+  SINK_RESOURCES_RELEASE_VERSION: 0.1.28
