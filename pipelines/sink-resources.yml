@@ -1064,7 +1064,7 @@ jobs:
           popd
 
           # TODO: Update sink-resources/hack/generate-pks-manifest.sh
-          ./sink-resources/hack/generate-pks-manifest.sh "$VERSION" "$FLUENT_BIT_OUT_SYSLOG_VERSION" > github-release/pks-manifest.yml
+          ./sink-resources/hack/generate-pks-manifest.sh "$VERSION" "$FLUENT_BIT_OUT_SYSLOG_VERSION" > github-release/pks-manifest.yaml
           echo "$VERSION" > github-release/name
           echo "$VERSION" > github-release/tag
 
@@ -1180,7 +1180,7 @@ jobs:
       body: github-release/body
       tag: github-release/tag
       globs:
-      - github-release/pks-manifest.yml
+      - github-release/pks-manifest.yaml
       - github-release/*.tgz
 
 - name: build-and-release-observability-manager-image
@@ -1212,7 +1212,7 @@ jobs:
         - "-c"
         - |
           #!/bin/bash
-          cp ./sink-resources-github-release/pks-manifest.yml ./observability-manager/manifest.yml
+          cp ./sink-resources-github-release/pks-manifest.yaml ./observability-manager/manifest.yaml
           rsync -avci ./observability-manager/ ./observability-manager-with-manifest/
   - task: prepare-build
     file: oratos-ci/tasks/build-docker-image/task.yml
