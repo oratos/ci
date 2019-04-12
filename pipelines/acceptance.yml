@@ -477,6 +477,7 @@ jobs:
               oratos-ci/scripts/cfcr.sh get-credentials bikepark
 
 - name: sink-floodspinner
+  build_logs_to_retain: 1000
   serial: true
   serial_groups: ["restage"]
   plan:
@@ -524,6 +525,7 @@ jobs:
     timeout: 15m
 
 - name: sink-dripspinner
+  build_logs_to_retain: 1000
   serial: true
   serial_groups: ["restage"]
   plan:
@@ -571,6 +573,7 @@ jobs:
     timeout: 15m
 
 - name: sink-flowspinner
+  build_logs_to_retain: 1000
   serial: true
   serial_groups: ["restage"]
   plan:
@@ -618,6 +621,7 @@ jobs:
     timeout: 15m
 
 - name: latency-test
+  build_logs_to_retain: 1000
   plan:
   - aggregate:
     - get: 15m

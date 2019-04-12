@@ -47,8 +47,7 @@ function set_pipeline {
     echo setting pipeline for "$1"
     fly -t "$TARGET" set-pipeline -p "$1" \
         -l pipelines/vars/global.yml \
-        -c <(yq read "pipelines/$1.yml" --tojson \
-                | jq '.jobs[].build_logs_to_retain = 20')
+        -c <(yq read "pipelines/$1.yml" --tojson)
 }
 
 function sync_fly {
