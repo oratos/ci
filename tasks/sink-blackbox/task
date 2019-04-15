@@ -210,7 +210,7 @@ verify_pod_running "$logspinner_pod_name" "blackbox-tests"
 sleep 10
 
 echo waiting for fluent-bit to be up
-verify_daemonset_running "k8s-app=logging-agent" "pks-system"
+verify_daemonset_running "app=fluent-bit" "pks-system"
 
 kubectl port-forward "$logspinner_pod_name" 8080:8080 \
     --namespace blackbox-tests > /dev/null &

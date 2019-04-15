@@ -58,7 +58,7 @@ function verify_resources_are_running {
     verify_deployment_running "app=metric-controller"
     verify_deployment_running "app=validator"
 
-    verify_daemonset_running "k8s-app=logging-agent"
+    verify_daemonset_running "app=fluent-bit"
     verify_daemonset_running "app=telegraf"
 }
 
