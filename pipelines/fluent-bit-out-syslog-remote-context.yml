@@ -1,0 +1,89 @@
+groups:
+- name: main
+  jobs:
+  - unit-tests
+  - build-fluent-bit-out-syslog-image
+
+resources:
+- name: oratos-ci
+  type: git
+  source:
+    uri: https://github.com/pivotal-cf/oratos-ci
+    branch: master
+
+- name: out-syslog
+  type: git
+  source:
+    uri: git@github.com:pivotal-cf/fluent-bit-out-syslog
+    branch: remote-context
+    private_key: ((github.oratos-bot-private-key))
+
+- name: fluent-bit-out-syslog-image
+  type: docker-image
+  source:
+    repository: oratos/fluent-bit-out-syslog
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
+jobs:
+- name: unit-tests
+  plan:
+  - aggregate:
+    - get: out-syslog
+      trigger: true
+    - get: oratos-ci
+  - aggregate:
+    - task: run-linter
+      file: oratos-ci/tasks/golangci-lint-modules/task.yml
+      input_mapping:
+        source-repo: out-syslog
+    - task: run-tests
+      file: oratos-ci/tasks/go-test-mod/task.yml
+      privileged: true
+      input_mapping:
+        source-repo: out-syslog
+      params:
+
+- name: build-fluent-bit-out-syslog-image
+  serial: true
+  plan:
+  - aggregate:
+    - get: out-syslog
+      trigger: true
+      passed:
+      - unit-tests
+    - get: oratos-ci
+  - aggregate:
+    - task: prepare-build
+      file: oratos-ci/tasks/build-docker-image/task.yml
+      input_mapping:
+        source-repo: out-syslog
+    - task: write-promote-tag
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: oratos/ci-base
+        outputs:
+        - name: promote
+        params:
+          DEBUG:
+        run:
+          path: /bin/bash
+          args:
+          - "-c"
+          - |
+            #!/bin/bash
+            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+
+            echo "remote-context" > promote/tag
+  - put: fluent-bit-out-syslog-image
+    params:
+      build: build-image/build
+      tag: build-image/tag
+      additional_tags: promote/tag
+      cache: true
+      cache_tag: latest
+    get_params:
+      skip_download: true

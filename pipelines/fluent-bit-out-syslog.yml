@@ -153,10 +153,6 @@ jobs:
       trigger: true
       passed:
       - unit-tests
-    - get: fluent-bit-image
-      trigger: true
-      params:
-        skip_download: true
     - get: oratos-ci
   - aggregate:
     - task: prepare-build
