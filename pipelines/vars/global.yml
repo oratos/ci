@@ -3,7 +3,7 @@ sink_resource_release_params:
   # This SHA needs to be a tag on the docker image on dockerhub here:
   #   https://hub.docker.com/r/oratos/sink-controller/tags/
   #   https://hub.docker.com/r/oratos/event-controller/tags/
-  GIT_REF: af5ab80b5ab11b6a56da3fe489f9c1e30708310b
+  GIT_REF: 837dbe6888653adc3c09c37643afe9c7a1c1e586
 
   # This is the version that you intend to release. This will be pushed as a
   # git tag to:
@@ -11,26 +11,26 @@ sink_resource_release_params:
   # This will also be pushed as a tagged docker image to:
   #   https://hub.docker.com/r/oratos/sink-controller/tags/
   #   https://hub.docker.com/r/oratos/event-controller/tags/
-  VERSION: v0.19.1
+  VERSION: v0.20.0
 
   # This is the version of the fluent-bit-out-syslog image to be included in
   # this release. This version needs to be a tag on the docker image on
   # dockerhhub here:
   #   https://hub.docker.com/r/oratos/fluent-bit-out-syslog/tags/
-  FLUENT_BIT_OUT_SYSLOG_VERSION: v0.15 # version of the fluent-bit image to use
+  FLUENT_BIT_OUT_SYSLOG_VERSION: v0.16 # version of the fluent-bit image to use
 
   # This is the major/minor version of pks this release will be intended to
   # end up in.
   # This will also be pushed as a tagged docker image to:
   #   https://hub.docker.com/r/oratos/observability-manager/tags/
-  PKS_VERSION: v1.4
+  PKS_VERSION: v1.5
 
   # This is the version of observability-manager. It should be monotonicially
   # increasing.
   # This will also be pushed as a tagged docker image to:
   #   https://hub.docker.com/r/oratos/observability-manager/tags/
-  OBSERVABILITY_MANAGER_VERSION: 13
+  OBSERVABILITY_MANAGER_VERSION: 0
 
   # This is the version of the sink resources bosh release that will be
   # created.
-  SINK_RESOURCES_RELEASE_VERSION: 0.1.28
+  SINK_RESOURCES_RELEASE_VERSION: 0.20.0
