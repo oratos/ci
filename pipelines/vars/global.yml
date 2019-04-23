@@ -34,3 +34,15 @@ sink_resource_release_params:
   # This is the version of the sink resources bosh release that will be
   # created.
   SINK_RESOURCES_RELEASE_VERSION: 0.20.0
+
+fluent_bit_out_syslog_params:
+
+  # This is the version of the fluent-bit-out-syslog image to be built. It
+  # will be the tag of the docker image in dockerhub:
+  #   https://hub.docker.com/r/oratos/fluent-bit-out-syslog/tags/
+  VERSION: v0.16 # version of the fluent-bit image to BUILD
+
+  # This is the git SHA for the fluent-bit-out-syslog that you intend to release.
+  # This SHA needs to be a tag on the docker image on dockerhub here:
+  #   https://hub.docker.com/r/oratos/fluent-bit-out-syslog/tags/
+  GIT_REF: f293fd015626df32fac4e2b23dfa354206877bf0
