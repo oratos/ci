@@ -239,7 +239,6 @@ jobs:
             set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
             pushd sink-resources/ > /dev/null
-              go mod download
               hack/verify-codegen.sh
             popd > /dev/null
       on_failure:

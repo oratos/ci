@@ -6,12 +6,11 @@ ssh-keyscan github.com >> ~/.ssh/known_hosts 2> /dev/null
 
 echo "$GOPATH"
 pushd source-repo > /dev/null
-  go mod download
   eval "$PRE_TEST_HOOK"
   if [ "$PKGS_HOOK" != "" ]; then
-    eval "$PKGS_HOOK" | xargs go test -race
+    eval "$PKGS_HOOK" | xargs go test -mod=vendor -race
   else
-    go list ./... | grep -v vendor | xargs go test -race
+    go list ./... | grep -v vendor | xargs go test -mod=vendor -race
   fi
   eval "$POST_TEST_HOOK"
 popd > /dev/null
