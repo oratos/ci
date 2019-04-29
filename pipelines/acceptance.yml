@@ -42,6 +42,13 @@ resources:
     path: secret/envs/bikepark-bbl-state
     tarball: true
 
+- name: bosh-metric-sink
+  type: github-release
+  source:
+    owner: pivotal
+    repository: bosh-metric-sink
+    access_token: ((github.oratos-bot-release-access-token))
+
 - name: bikepark-cfcr-gcp-vars
   type: vault
   source:
@@ -209,39 +216,22 @@ jobs:
     - get: bikepark-cfcr-gcp-vars
     - get: cf-deployment-concourse-tasks
     - get: oratos-ci
+    - get: bosh-metric-sink
     - get: kubo-deployment
       trigger: true
     - get: kubo-release-bosh-io
       trigger: true
   - aggregate:
-    - task: upload-release
-      config:
-        platform: linux
-        image_resource:
-          type: docker-image
-          source:
-            repository: relintdockerhubpushbot/cf-deployment-concourse-tasks
-        inputs:
-        - name: kubo-release-bosh-io
-        - name: bikepark-bbl-state
-        params:
-          DEBUG:
-        run:
-          path: /bin/bash
-          args:
-          - "-c"
-          - |
-            #!/bin/bash
-            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-
-            # set bosh env vars
-            set +x
-            pushd bikepark-bbl-state/bbl-state > /dev/null
-              eval "$(bbl print-env)"
-            popd > /dev/null
-            set -x
-
-            bosh upload-release kubo-release-bosh-io/release.tgz
+    - task: upload-bosh-release
+      file: oratos-ci/tasks/cfcr-upload-bosh-release/task.yml
+      input_mapping:
+        bbl-state: bikepark-bbl-state
+        bosh-release: bosh-metric-sink
+    - task: upload-bosh-release
+      file: oratos-ci/tasks/cfcr-upload-bosh-release/task.yml
+      input_mapping:
+        bbl-state: bikepark-bbl-state
+        bosh-release: kubo-release-bosh-io
     - task: upload-stemcell
       file: oratos-ci/tasks/cfcr-upload-stemcell/task.yml
       input_mapping:
@@ -350,8 +340,26 @@ jobs:
                   - server_auth
                   - client_auth
             EOF
+            cat <<EOF > add-bosh-metric-sink.yml
+            - type: replace
+              path: /releases/-
+              value:
+                name: bosh-metric-sink
+                version: latest
+            - type: replace
+              path: /addons/-
+              value:
+                name: bosh-metric-sink
+                include:
+                  stemcell:
+                  - os: ubuntu-xenial
+                jobs:
+                - name: telegraf
+                  release: bosh-metric-sink
+            EOF
             bosh interpolate kubo-deployment/manifests/cfcr.yml \
               --ops-file add-loggregator-agent.yml \
+              --ops-file add-bosh-metric-sink.yml \
               > modified-kubo-deployment/manifests/cfcr.yml
   - task: cfcr-deploy
     file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
