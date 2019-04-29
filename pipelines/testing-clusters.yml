@@ -145,34 +145,6 @@ jobs:
     - get: kubo-release-bosh-io
       trigger: true
   - aggregate:
-    - task: upload-release
-      config:
-        platform: linux
-        image_resource:
-          type: docker-image
-          source:
-            repository: relintdockerhubpushbot/cf-deployment-concourse-tasks
-        inputs:
-        - name: kubo-release-bosh-io
-        - name: oratos-ci-testing-cfcr-bbl-state
-        params:
-          DEBUG:
-        run:
-          path: /bin/bash
-          args:
-          - "-c"
-          - |
-            #!/bin/bash
-            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-
-            # set bosh env vars
-            [ -n "${DEBUG:-}" ] && set +x
-            pushd oratos-ci-testing-cfcr-bbl-state/bbl-state > /dev/null
-              eval "$(bbl print-env)"
-            popd > /dev/null
-            [ -n "${DEBUG:-}" ] && set -x
-
-            bosh upload-release kubo-release-bosh-io/release.tgz
     - task: upload-stemcell
       file: oratos-ci/tasks/cfcr-upload-stemcell/task.yml
       input_mapping:
@@ -182,6 +154,11 @@ jobs:
       input_mapping:
         bbl-state: oratos-ci-testing-cfcr-bbl-state
         bosh-release: bosh-metric-sink
+    - task: upload-bosh-release
+      file: oratos-ci/tasks/cfcr-upload-bosh-release/task.yml
+      input_mapping:
+        bbl-state: oratos-ci-testing-cfcr-bbl-state
+        bosh-release: kubo-release-bosh-io
     - task: upload-vars-to-credhub
       config:
         platform: linux
@@ -434,34 +411,6 @@ jobs:
     - get: kubo-release-bosh-io
       trigger: true
   - aggregate:
-    - task: upload-release
-      config:
-        platform: linux
-        image_resource:
-          type: docker-image
-          source:
-            repository: relintdockerhubpushbot/cf-deployment-concourse-tasks
-        inputs:
-        - name: kubo-release-bosh-io
-        - name: control-plane-test-bbl-state
-        params:
-          DEBUG:
-        run:
-          path: /bin/bash
-          args:
-          - "-c"
-          - |
-            #!/bin/bash
-            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-
-            # set bosh env vars
-            set +x
-            pushd control-plane-test-bbl-state/bbl-state > /dev/null
-              eval "$(bbl print-env)"
-            popd > /dev/null
-            set -x
-
-            bosh upload-release kubo-release-bosh-io/release.tgz
     - task: upload-stemcell
       file: oratos-ci/tasks/cfcr-upload-stemcell/task.yml
       input_mapping:
@@ -469,8 +418,13 @@ jobs:
     - task: upload-bosh-release
       file: oratos-ci/tasks/cfcr-upload-bosh-release/task.yml
       input_mapping:
-        bbl-state: oratos-ci-testing-cfcr-bbl-state
+        bbl-state: control-plane-test-bbl-state
         bosh-release: bosh-metric-sink
+    - task: upload-bosh-release
+      file: oratos-ci/tasks/cfcr-upload-bosh-release/task.yml
+      input_mapping:
+        bbl-state: control-plane-test-bbl-state
+        bosh-release: kubo-release-bosh-io
     - task: upload-vars-to-credhub
       config:
         platform: linux
