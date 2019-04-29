@@ -228,6 +228,7 @@ jobs:
             repository: oratos/ci-base
         inputs:
         - name: sink-resources
+          path: go/src/github.com/pivotal-cf/sink-resources
         params:
           DEBUG:
         run:
@@ -238,7 +239,8 @@ jobs:
             #!/bin/bash
             set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
-            pushd sink-resources/ > /dev/null
+            export GOPATH="$PWD/go"
+            pushd go/src/github.com/pivotal-cf/sink-resources/ > /dev/null
               hack/verify-codegen.sh
             popd > /dev/null
       on_failure:
