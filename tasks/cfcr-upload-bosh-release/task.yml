@@ -1,0 +1,15 @@
+platform: linux
+image_resource:
+  type: docker-image
+  source:
+    repository: oratos/ci-base
+inputs:
+- name: oratos-ci
+- name: bbl-state
+- name: bosh-release
+params:
+  # - Optional
+  # - Set to true to output all commands that are ran.
+  DEBUG:
+run:
+  path: oratos-ci/tasks/cfcr-upload-bosh-release/task
