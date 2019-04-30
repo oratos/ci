@@ -222,6 +222,9 @@ jobs:
                 jobs:
                 - name: metric-sink
                   release: bosh-metric-sink
+                  properties:
+                    outputs: |
+                      [[outputs.discard]]
             EOF
             bosh interpolate kubo-deployment/manifests/cfcr.yml \
               --ops-file add-bosh-metric-sink.yml \
@@ -430,6 +433,9 @@ jobs:
                 jobs:
                 - name: metric-sink
                   release: bosh-metric-sink
+                  properties:
+                    outputs: |
+                      [[outputs.discard]]
             EOF
             bosh interpolate kubo-deployment/manifests/cfcr.yml \
               --ops-file add-bosh-metric-sink.yml \
