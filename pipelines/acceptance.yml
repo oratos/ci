@@ -96,7 +96,7 @@ resources:
     repository: oratos/fluent-bit-out-syslog
     username: ((docker-hub.username))
     password: ((docker-hub.password))
-    tag: remote-context
+    tag: release-elect
 
 - name: cert-generator-image
   type: docker-image
