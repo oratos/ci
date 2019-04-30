@@ -283,63 +283,6 @@ jobs:
             set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
             cp -r kubo-deployment/. modified-kubo-deployment/
-            cat <<EOF > add-loggregator-agent.yml
-            - type: replace
-              path: /releases/-
-              value:
-                name: loggregator-agent
-                version: "3.7"
-                url: "https://bosh.io/d/github.com/cloudfoundry/loggregator-agent-release?v=3.7"
-                sha1: "67bb1c20a4bb209a1f611ba041cbba8ad1158087"
-            - type: replace
-              path: /addons/-
-              value:
-                name: metric-agent
-                include:
-                  stemcell:
-                  - os: ubuntu-xenial
-                jobs:
-                - name: loggr-system-metrics-agent
-                  release: loggregator-agent
-                  properties:
-                    enabled: true
-                    metrics_port: 9100
-                    sample_interval: 10s
-                    system_metrics:
-                      tls:
-                        ca_cert: ((metric_agent_ca.ca))
-                        cert: ((metric_agent_cert.certificate))
-                        key: ((metric_agent_cert.private_key))
-            - type: replace
-              path: /instance_groups/name=worker/jobs/-
-              value:
-                name: bpm
-                release: bpm
-            - type: replace
-              path: /instance_groups/name=apply-addons/jobs/-
-              value:
-                name: bpm
-                release: bpm
-            - type: replace
-              path: /variables/-
-              value:
-                name: metric_agent_ca
-                type: certificate
-                options:
-                  common_name: metrics
-                  is_ca: true
-            - type: replace
-              path: /variables/-
-              value:
-                name: metric_agent_cert
-                type: certificate
-                options:
-                  ca: metric_agent_ca
-                  common_name: metrics
-                  extended_key_usage:
-                  - server_auth
-                  - client_auth
-            EOF
             cat <<EOF > add-bosh-metric-sink.yml
             - type: replace
               path: /releases/-
@@ -358,7 +301,6 @@ jobs:
                   release: bosh-metric-sink
             EOF
             bosh interpolate kubo-deployment/manifests/cfcr.yml \
-              --ops-file add-loggregator-agent.yml \
               --ops-file add-bosh-metric-sink.yml \
               > modified-kubo-deployment/manifests/cfcr.yml
   - task: cfcr-deploy
