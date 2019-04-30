@@ -354,7 +354,7 @@ jobs:
                   stemcell:
                   - os: ubuntu-xenial
                 jobs:
-                - name: telegraf
+                - name: metric-sink
                   release: bosh-metric-sink
             EOF
             bosh interpolate kubo-deployment/manifests/cfcr.yml \
