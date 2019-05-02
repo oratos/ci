@@ -7,8 +7,3 @@ This is a sample app that continuously emits a log line every second.
 cd tools/logspewer
 docker build . -t oratos/logspewer:<version>
 ```
-
-### Deployment
-```
-kubectl apply -f manifests/
-```
