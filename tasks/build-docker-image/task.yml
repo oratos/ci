@@ -20,5 +20,9 @@ params:
   # - Optional
   # - Set to true to output all commands that are ran.
   DEBUG:
+
+  DOCKER_WINDOWS_CA:
+  DOCKER_WINDOWS_CERT:
+  DOCKER_WINDOWS_KEY:
 run:
   path: oratos-ci/tasks/build-docker-image/task

@@ -9,6 +9,7 @@ groups:
   - build-ghostunnel-image
   - build-sink-state-updater-image
   - build-telegraf-image
+  - build-telegraf-windows-image
   - build-validator-image
   - deploy-gke
   - deploy-cfcr
@@ -116,6 +117,13 @@ resources:
   type: docker-image
   source:
     repository: oratos/telegraf
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
+- name: telegraf-windows-image
+  type: docker-image
+  source:
+    repository: oratos/telegraf-windows
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
@@ -416,6 +424,37 @@ jobs:
     get_params:
       skip_download: true
 
+- name: build-telegraf-windows-image
+  serial: true
+  plan:
+  - aggregate:
+    - get: sink-resources
+      trigger: true
+      passed:
+      - unit-tests
+    - get: oratos-ci
+  - task: prepare-build
+    file: oratos-ci/tasks/build-docker-image/task.yml
+    input_mapping:
+      source-repo: sink-resources
+    params:
+      DOCKER_WINDOWS_CA: ((docker-windows.ca))
+      DOCKER_WINDOWS_CERT: ((docker-windows.cert))
+      DOCKER_WINDOWS_KEY: ((docker-windows.key))
+      DOCKERFILE: source-repo/cmd/telegraf/Dockerfile-Windows
+  - put: telegraf-windows-image
+    params:
+      build: build-image/build
+      tag: build-image/tag
+      cache: true
+      cache_tag: latest
+      build_args:
+        DOCKER_HOST: ((windows_docker_build_params.DOCKER_HOST))
+        DOCKER_TLS_VERIFY: ((windows_docker_build_params.DOCKER_TLS_VERIFY))
+        DOCKER_CERT_PATH: build-image/certs
+    get_params:
+      skip_download: true
+
 - name: build-validator-image
   serial: true
   plan:
@@ -454,6 +493,7 @@ jobs:
       - build-ghostunnel-image
       - build-sink-state-updater-image
       - build-telegraf-image
+      - build-telegraf-windows-image
       - build-validator-image
     - get: sink-controller-image
       trigger: true
@@ -489,6 +529,12 @@ jobs:
       trigger: true
       passed:
       - build-telegraf-image
+      params:
+        skip_download: true
+    - get: telegraf-windows-image
+      trigger: true
+      passed:
+      - build-telegraf-windows-image
       params:
         skip_download: true
     - get: validator-image
@@ -582,6 +628,12 @@ jobs:
       - deploy-gke
       params:
         skip_download: true
+    - get: telegraf-windows-image
+      trigger: true
+      passed:
+      - deploy-gke
+      params:
+        skip_download: true
     - get: validator-image
       trigger: true
       passed:
@@ -630,6 +682,7 @@ jobs:
       - build-ghostunnel-image
       - build-sink-state-updater-image
       - build-telegraf-image
+      - build-telegraf-windows-image
       - build-validator-image
     - get: sink-controller-image
       trigger: true
@@ -671,6 +724,12 @@ jobs:
       trigger: true
       passed:
       - build-telegraf-image
+      params:
+        skip_download: true
+    - get: telegraf-windows-image
+      trigger: true
+      passed:
+      - build-telegraf-windows-image
       params:
         skip_download: true
     - get: validator-image
@@ -746,6 +805,12 @@ jobs:
       params:
         skip_download: true
     - get: telegraf-image
+      trigger: true
+      passed:
+      - deploy-cfcr
+      params:
+        skip_download: true
+    - get: telegraf-windows-image
       trigger: true
       passed:
       - deploy-cfcr
@@ -835,6 +900,13 @@ jobs:
       # - control-plane-tests
       params:
         save: true
+    - get: telegraf-windows-image
+      passed:
+      - cfcr-tests
+      - gke-tests
+      # - control-plane-tests
+      params:
+        save: true
     - get: validator-image
       passed:
       - cfcr-tests
@@ -914,6 +986,14 @@ jobs:
     - put: telegraf-image
       params:
         load: telegraf-image
+        tag: promote/tag
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
+    - put: telegraf-windows-image
+      params:
+        load: telegraf-windows-image
         tag: promote/tag
         cache: true
         cache_tag: latest
@@ -1057,6 +1137,7 @@ jobs:
             kustomize edit set imagetag "oratos/ghostunnel:$VERSION"
             kustomize edit set imagetag "oratos/sink-state-updater:$VERSION"
             kustomize edit set imagetag "oratos/telegraf:$VERSION"
+            kustomize edit set imagetag "oratos/telegraf-windows:$VERSION"
             kustomize edit set imagetag "oratos/validator:$VERSION"
             kustomize edit set imagetag "oratos/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION"
             kustomize edit set imagetag "oratos/sink-controller:$VERSION"
@@ -1082,6 +1163,7 @@ jobs:
           - [oratos/ghostunnel][ghostunnel]:$VERSION
           - [oratos/sink-state-updater][sink-state-updater]:$VERSION
           - [oratos/telegraf][telegraf]:$VERSION
+          - [oratos/telegraf-windows][telegraf-windows]:$VERSION
           - [oratos/validator][validator]:$VERSION
           - [oratos/fluent-bit-out-syslog][fluent-bit-out-syslog]:$FLUENT_BIT_OUT_SYSLOG_VERSION
 
@@ -1092,6 +1174,7 @@ jobs:
           [ghostunnel]: https://hub.docker.com/r/oratos/ghostunnel/
           [sink-state-updater]: https://hub.docker.com/r/oratos/sink-state-updater/
           [telegraf]: https://hub.docker.com/r/oratos/telegraf/
+          [telegraf-windows]: https://hub.docker.com/r/oratos/telegraf-windows/
           [validator]: https://hub.docker.com/r/oratos/validator/
           [fluent-bit-out-syslog]: https://hub.docker.com/r/oratos/fluent-bit-out-syslog/
           EOF
@@ -1110,6 +1193,7 @@ jobs:
           gt_docker_name="oratos/ghostunnel:$VERSION"
           ssu_docker_name="oratos/sink-state-updater:$VERSION"
           t_docker_name="oratos/telegraf:$VERSION"
+          tw_docker_name="oratos/telegraf-windows:$VERSION"
           vd_docker_name="oratos/validator:$VERSION"
           fb_docker_name="oratos/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION"
 
@@ -1154,6 +1238,12 @@ jobs:
           docker tag "oratos/telegraf:$GIT_REF" "oratos/telegraf:latest"
           docker push "$t_docker_name"
           docker push "oratos/telegraf:latest"
+
+          docker pull "oratos/telegraf-windows:$GIT_REF"
+          docker tag "oratos/telegraf-windows:$GIT_REF" "$tw_docker_name"
+          docker tag "oratos/telegraf-windows:$GIT_REF" "oratos/telegraf-windows:latest"
+          docker push "$tw_docker_name"
+          docker push "oratos/telegraf-windows:latest"
 
           docker pull "oratos/validator:$GIT_REF"
           docker tag "oratos/validator:$GIT_REF" "$vd_docker_name"
@@ -1428,6 +1518,7 @@ jobs:
       - build-ghostunnel-image
       - build-sink-state-updater-image
       - build-telegraf-image
+      - build-telegraf-windows-image
       - build-validator-image
     - get: sink-controller-image
       trigger: true
@@ -1469,6 +1560,12 @@ jobs:
       trigger: true
       passed:
       - build-telegraf-image
+      params:
+        skip_download: true
+    - get: telegraf-windows-image
+      trigger: true
+      passed:
+      - build-telegraf-windows-image
       params:
         skip_download: true
     - get: validator-image
@@ -1541,6 +1638,12 @@ jobs:
       params:
         skip_download: true
     - get: telegraf-image
+      trigger: true
+      passed:
+      - deploy-control-plane
+      params:
+        skip_download: true
+    - get: telegraf-windows-image
       trigger: true
       passed:
       - deploy-control-plane
