@@ -300,6 +300,7 @@ jobs:
                 - name: metric-sink
                   release: bosh-metric-sink
                   properties:
+                    cluster_name: bikepark
                     outputs: |
                       [[outputs.discard]]
             EOF

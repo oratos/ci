@@ -223,6 +223,7 @@ jobs:
                 - name: metric-sink
                   release: bosh-metric-sink
                   properties:
+                    cluster_name: testing
                     outputs: |
                       [[outputs.discard]]
             EOF
@@ -434,6 +435,7 @@ jobs:
                 - name: metric-sink
                   release: bosh-metric-sink
                   properties:
+                    cluster_name: control-plane
                     outputs: |
                       [[outputs.discard]]
             EOF
