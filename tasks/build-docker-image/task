@@ -15,10 +15,3 @@ if [ -n "$DOCKERFILE" ]; then
 fi
 echo "$sha" > "$ciroot/build-image/tag"
 
-if [ -n "$DOCKER_WINDOWS_CA" ]; then
-    mkdir -p "$ciroot/build-image/certs"
-    echo "$DOCKER_WINDOWS_CA" > "$ciroot/build-image/certs/ca.pem"
-    echo "$DOCKER_WINDOWS_CERT" > "$ciroot/build-image/certs/cert.pem"
-    echo "$DOCKER_WINDOWS_KEY" > "$ciroot/build-image/certs/key.pem"
-fi
-
