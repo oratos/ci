@@ -18,32 +18,14 @@ function roll {
 }
 
 function apply_manifests {
-    cert_digest="$(cat cert-generator-image/digest)"
-    ghost_digest="$(cat ghostunnel-image/digest)"
-    fluent_digest=$(cat fluent-bit-out-syslog-image/digest)
-    sink_digest="$(cat sink-controller-image/digest)"
-    event_digest="$(cat event-controller-image/digest)"
-    metric_digest="$(cat metric-controller-image/digest)"
-    validator_digest="$(cat validator-image/digest)"
-    sink_state_updater_digest="$(cat sink-state-updater-image/digest)"
-    telegraf_digest="$(cat telegraf-image/digest)"
-    pushd sink-resources/manifests/overlays/pks
-        kustomize edit set imagetag "oratos/cert-generator@$cert_digest"
-        kustomize edit set imagetag "oratos/ghostunnel@$ghost_digest"
-        kustomize edit set imagetag "oratos/fluent-bit-out-syslog@$fluent_digest"
-        kustomize edit set imagetag "oratos/sink-controller@$sink_digest"
-        kustomize edit set imagetag "oratos/event-controller@$event_digest"
-        kustomize edit set imagetag "oratos/metric-controller@$metric_digest"
-        kustomize edit set imagetag "oratos/validator@$validator_digest"
-        kustomize edit set imagetag "oratos/sink-state-updater@$sink_state_updater_digest"
-        kustomize edit set imagetag "oratos/telegraf@$telegraf_digest"
+    observability_manager_digest="$(cat observability-manager-image/digest)"
+    pushd sink-resources/manifests/observability-manager
+        kustomize edit set imagetag "oratos/observability-manager@$observability_manager_digest"
     popd
 
     # Using $RANDOM for sink resources version to ensure cert-generator job is
     # always ran.
-    kustomize build sink-resources/manifests/overlays/pks \
-        | sed "s/SINK_RESOURCES_VERSION/$RANDOM/g" \
-        | kubectl apply -f -
+    kustomize build sink-resources/manifests/observability-manager | kubectl apply -f -
     echo "Completed applying the manifests for sink-resources/pks"
 }
 

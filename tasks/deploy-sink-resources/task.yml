@@ -5,15 +5,7 @@ image_resource:
     repository: oratos/ci-base
 inputs:
 - name: sink-resources
-- name: sink-controller-image
-- name: event-controller-image
-- name: metric-controller-image
-- name: cert-generator-image
-- name: ghostunnel-image
-- name: fluent-bit-out-syslog-image
-- name: validator-image
-- name: sink-state-updater-image
-- name: telegraf-image
+- name: observability-manager-image
 - name: oratos-ci
 - name: bbl-state # only needed for cfcr clusters
 params:
