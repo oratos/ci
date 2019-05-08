@@ -1,0 +1,142 @@
+groups:
+- name: sink-resources-new
+  jobs:
+  - build-observability-manager-image
+  - deploy-gke
+
+resource_types:
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+    tag: latest
+
+- name: vault
+  type: docker-image
+  source:
+    repository: wfernandes/vault-resource
+    tag: latest
+
+- name: gcs-resource
+  type: docker-image
+  source:
+    repository: frodenas/gcs-resource
+
+resources:
+- name: oratos-ci
+  type: git
+  source:
+    uri: https://github.com/pivotal-cf/oratos-ci
+    branch: observability-manager
+
+- name: sink-resources
+  type: git
+  source:
+    uri: git@github.com:pivotal-cf/sink-resources
+    branch: master
+    private_key: ((github.oratos-bot-private-key))
+
+- name: out-syslog
+  type: git
+  source:
+    uri: git@github.com:pivotal-cf/fluent-bit-out-syslog
+    branch: master
+    private_key: ((github.oratos-bot-private-key))
+
+- name: observability-manager-image
+  type: docker-image
+  source:
+    repository: oratos/observability-manager
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
+jobs:
+- name: build-observability-manager-image
+  plan:
+    - aggregate:
+        - get: sink-resources
+        - get: oratos-ci
+        - get: out-syslog
+    - task: prepare-image-with-manifest
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: oratos/ci-base
+        inputs:
+          - name: sink-resources
+          - name: out-syslog
+        outputs:
+          - name: sink-resources-with-manifest
+        run:
+          path: /bin/bash
+          args:
+            - "-c"
+            - |
+              #!/bin/bash
+              SR_SHA="$(cd sink-resources && git rev-parse @)"
+              FLUENT_SHA="$(cd out-syslog && git rev-parse @)"
+              ./sink-resources/hack/generate-pks-manifest.sh "$SR_SHA" "$FLUENT_SHA" > sink-resources/cmd/observability-manager/manifest.yaml
+              rsync -avci sink-resources/ ./sink-resources-with-manifest/
+    - task: prepare-build
+      file: oratos-ci/tasks/build-docker-image/task.yml
+      input_mapping:
+        source-repo: sink-resources-with-manifest
+      params:
+        DOCKERFILE: source-repo/cmd/observability-manager/Dockerfile
+    - put: observability-manager-image
+      params:
+        build: build-image/build
+        tag: build-image/tag
+        tag_as_latest: true
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
+- name: deploy-gke
+  serial: true
+  plan:
+    - aggregate:
+        - get: sink-resources
+          trigger: true
+          passed:
+            - build-observability-manager-image
+#            - build-sink-controller-image
+#            - build-event-controller-image
+#            - build-metric-controller-image
+#            - build-cert-generator-image
+#            - build-ghostunnel-image
+#            - build-sink-state-updater-image
+#            - build-telegraf-image
+#            - build-telegraf-windows-image
+#            - build-validator-image
+        - get: observability-manager-image
+        - get: oratos-ci
+    - task: clean-up-environment
+      file: oratos-ci/tasks/clean-up-environment/task.yml
+      input_mapping:
+        # bbl-state is not needed for GKE, pass in oratos-ci as a NOOP
+        bbl-state: oratos-ci
+      params:
+        SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
+        GET_CREDENTIALS_HOOK: |
+          echo "$SERVICE_ACCOUNT" > sa.json
+          gcloud auth activate-service-account --key-file sa.json
+          rm sa.json
+          gcloud container clusters get-credentials oratos-ci-testing \
+            --zone us-central1-a
+    - task: deploy
+      file: oratos-ci/tasks/deploy-sink-resources/task.yml
+      input_mapping:
+        # bbl-state is not needed for GKE, pass in oratos-ci as a NOOP
+        bbl-state: oratos-ci
+      params:
+        SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
+        DEBUG: true
+        GET_CREDENTIALS_HOOK: |
+          echo "$SERVICE_ACCOUNT" > sa.json
+          gcloud auth activate-service-account --key-file sa.json
+          rm sa.json
+          gcloud container clusters get-credentials oratos-ci-testing \
+            --zone us-central1-a
