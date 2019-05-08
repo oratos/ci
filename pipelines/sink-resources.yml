@@ -120,13 +120,6 @@ resources:
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
-- name: telegraf-windows-image
-  type: docker-image
-  source:
-    repository: oratos/telegraf-windows
-    username: ((docker-hub.username))
-    password: ((docker-hub.password))
-
 - name: validator-image
   type: docker-image
   source:
@@ -433,27 +426,63 @@ jobs:
       passed:
       - unit-tests
     - get: oratos-ci
-  - task: prepare-build
-    file: oratos-ci/tasks/build-docker-image/task.yml
+  - task: build-windows-image
     input_mapping:
       source-repo: sink-resources
-    params:
-      DOCKER_WINDOWS_CA: ((docker-windows.ca))
-      DOCKER_WINDOWS_CERT: ((docker-windows.cert))
-      DOCKER_WINDOWS_KEY: ((docker-windows.key))
-      DOCKERFILE: source-repo/cmd/telegraf/Dockerfile-Windows
-  - put: telegraf-windows-image
-    params:
-      build: build-image/build
-      tag: build-image/tag
-      cache: true
-      cache_tag: latest
-      build_args:
-        DOCKER_HOST: ((windows_docker_build_params.DOCKER_HOST))
-        DOCKER_TLS_VERIFY: ((windows_docker_build_params.DOCKER_TLS_VERIFY))
-        DOCKER_CERT_PATH: build-image/certs
-    get_params:
-      skip_download: true
+    config:
+      inputs:
+        - name: source-repo
+      outputs:
+        - name: build-image
+      platform: windows
+      params:
+        DOCKER_USERNAME: ((docker-hub.username))
+        DOCKER_PASSWORD: ((docker-hub.password))
+        DOCKERFILE: source-repo/cmd/telegraf/Dockerfile-Windows
+        EPHEMERAL_DISK_TEMP_PATH: "C:\\var\\vcap\\data\\tmp"
+        IMAGE_NAME: "oratos/telegraf-windows"
+      run:
+        path: powershell
+        args:
+          - -Command
+          - |
+            $ProgressPreference="SilentlyContinue"
+            $ErrorActionPreference = "Stop";
+            trap { $host.SetShouldExit(1) }
+
+            cd source-repo
+            $sha = git rev-parse HEAD
+            cd ..
+
+            Set-Content -Path build-image/tag -Value "$sha"
+
+            mkdir "$env:EPHEMERAL_DISK_TEMP_PATH" -ea 0
+            $env:TEMP = $env:TMP = $env:GOTMPDIR = $env:EPHEMERAL_DISK_TEMP_PATH
+            $env:GOCACHE = "$env:EPHEMERAL_DISK_TEMP_PATH\go-build"
+
+            function Run-Docker {
+              param([String[]] $cmd)
+
+              docker @cmd
+              if ($LASTEXITCODE -ne 0) {
+                Exit $LASTEXITCODE
+              }
+            }
+
+            restart-service docker
+
+            mkdir buildDir
+            cp $env:DOCKERFILE buildDir\Dockerfile
+
+            cd buildDir
+
+            Run-Docker "--version"
+            Run-Docker "build", "-t", "${env:IMAGE_NAME}:$sha", "--pull", "."
+            Run-Docker "images", "-a"
+            Run-Docker "login", "-u", "$env:DOCKER_USERNAME", "-p", "$env:DOCKER_PASSWORD"
+            Run-Docker "push", "${env:IMAGE_NAME}:$sha"
+
+            # Run-Docker "save", "-o", "../build-image/image.tar", "${env:IMAGE_NAME}:$sha"
 
 - name: build-validator-image
   serial: true
@@ -529,12 +558,6 @@ jobs:
       trigger: true
       passed:
       - build-telegraf-image
-      params:
-        skip_download: true
-    - get: telegraf-windows-image
-      trigger: true
-      passed:
-      - build-telegraf-windows-image
       params:
         skip_download: true
     - get: validator-image
@@ -623,12 +646,6 @@ jobs:
       params:
         skip_download: true
     - get: telegraf-image
-      trigger: true
-      passed:
-      - deploy-gke
-      params:
-        skip_download: true
-    - get: telegraf-windows-image
       trigger: true
       passed:
       - deploy-gke
@@ -726,12 +743,6 @@ jobs:
       - build-telegraf-image
       params:
         skip_download: true
-    - get: telegraf-windows-image
-      trigger: true
-      passed:
-      - build-telegraf-windows-image
-      params:
-        skip_download: true
     - get: validator-image
       trigger: true
       passed:
@@ -805,12 +816,6 @@ jobs:
       params:
         skip_download: true
     - get: telegraf-image
-      trigger: true
-      passed:
-      - deploy-cfcr
-      params:
-        skip_download: true
-    - get: telegraf-windows-image
       trigger: true
       passed:
       - deploy-cfcr
@@ -900,13 +905,6 @@ jobs:
       # - control-plane-tests
       params:
         save: true
-    - get: telegraf-windows-image
-      passed:
-      - cfcr-tests
-      - gke-tests
-      # - control-plane-tests
-      params:
-        save: true
     - get: validator-image
       passed:
       - cfcr-tests
@@ -986,14 +984,6 @@ jobs:
     - put: telegraf-image
       params:
         load: telegraf-image
-        tag: promote/tag
-        cache: true
-        cache_tag: latest
-      get_params:
-        skip_download: true
-    - put: telegraf-windows-image
-      params:
-        load: telegraf-windows-image
         tag: promote/tag
         cache: true
         cache_tag: latest
@@ -1562,12 +1552,6 @@ jobs:
       - build-telegraf-image
       params:
         skip_download: true
-    - get: telegraf-windows-image
-      trigger: true
-      passed:
-      - build-telegraf-windows-image
-      params:
-        skip_download: true
     - get: validator-image
       trigger: true
       passed:
@@ -1638,12 +1622,6 @@ jobs:
       params:
         skip_download: true
     - get: telegraf-image
-      trigger: true
-      passed:
-      - deploy-control-plane
-      params:
-        skip_download: true
-    - get: telegraf-windows-image
       trigger: true
       passed:
       - deploy-control-plane
