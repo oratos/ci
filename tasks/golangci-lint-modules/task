@@ -4,6 +4,8 @@ set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 mkdir -p ~/.ssh/
 ssh-keyscan github.com >> ~/.ssh/known_hosts 2> /dev/null
 
+export GOPATH=$PWD/go-mod-deps
+
 pushd source-repo > /dev/null
   golangci-lint run --deadline 20m ./...
 popd > /dev/null
