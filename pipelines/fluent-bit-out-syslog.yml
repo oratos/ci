@@ -125,35 +125,11 @@ jobs:
     - get: out-syslog
       trigger: true
     - get: oratos-ci
-  - task: get-deps
-    attempts: 3
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: oratos/ci-base
-      inputs:
-        - name: out-syslog
-      outputs:
-        - name: out-syslog-deps
-      run:
-        path: /bin/bash
-        args:
-        - "-c"
-        - |
-          #!/bin/bash
-          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-          cwd="$PWD"
-          cd "$cwd/out-syslog"
-          go mod download
-          rsync -avci /go/pkg "$cwd/out-syslog-deps"
   - aggregate:
     - task: run-linter
       file: oratos-ci/tasks/golangci-lint-modules/task.yml
       input_mapping:
         source-repo: out-syslog
-        go-mod-deps: out-syslog-deps
       on_failure:
         put: slack-alert
         params:
@@ -163,7 +139,6 @@ jobs:
       privileged: true
       input_mapping:
         source-repo: out-syslog
-        go-mod-deps: out-syslog-deps
       params:
       on_failure:
         put: slack-alert

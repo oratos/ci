@@ -9,7 +9,6 @@ image_resource:
 inputs:
 - name: oratos-ci   # - This repo
 - name: source-repo # - The Go package to test
-- name: go-mod-deps # - The Go mod dependencies
 
 run:
   path: oratos-ci/tasks/golangci-lint-modules/task
