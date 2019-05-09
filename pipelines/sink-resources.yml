@@ -14,10 +14,8 @@ groups:
   - build-observability-manager-image
   - deploy-gke
   - deploy-cfcr
-  - deploy-control-plane
   - gke-tests
   - cfcr-tests
-  - control-plane-tests
   - promote
 - name: release
   jobs:
@@ -53,13 +51,6 @@ resources:
   type: git
   source:
     uri: git@github.com:pivotal-cf/sink-resources
-    branch: master
-    private_key: ((github.oratos-bot-private-key))
-
-- name: observability-manager
-  type: git
-  source:
-    uri: git@github.com:pivotal-cf/observability-manager
     branch: master
     private_key: ((github.oratos-bot-private-key))
 
@@ -134,6 +125,13 @@ resources:
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
+- name: out-syslog
+  type: git
+  source:
+    uri: git@github.com:pivotal-cf/fluent-bit-out-syslog
+    branch: master
+    private_key: ((github.oratos-bot-private-key))
+
 - name: slack-alert
   type: slack-notification
   source:
@@ -148,27 +146,11 @@ resources:
     path: secret/envs/oratos-ci-testing-cfcr-bbl-state
     tarball: true
 
-- name: control-plane-test-bbl-state
-  type: vault
-  source:
-    url: https://vault.oratos.ci.cf-app.com
-    role_id: ((vault.role_id))
-    secret_id: ((vault.secret_id))
-    path: secret/envs/control-plane-test-bbl-state
-    tarball: true
-
 - name: sink-resources-github-release
   type: github-release
   source:
     owner: pivotal-cf
     repository: sink-resources
-    access_token: ((github.oratos-bot-release-access-token))
-
-- name: observability-manager-github-release
-  type: github-release
-  source:
-    owner: pivotal-cf
-    repository: observability-manager
     access_token: ((github.oratos-bot-release-access-token))
 
 - name: sink-resources-release
@@ -537,6 +519,9 @@ jobs:
   plan:
     - aggregate:
         - get: sink-resources
+          trigger: true
+          passed:
+            - unit-tests
         - get: oratos-ci
         - get: out-syslog
     - task: prepare-image-with-manifest
@@ -974,6 +959,8 @@ jobs:
       passed:
       - cfcr-tests
       - gke-tests
+      params:
+        save: true
     - task: write-promote-tag
       config:
         platform: linux
@@ -1351,7 +1338,7 @@ jobs:
     - get: sink-resources-github-release
       trigger: true
       passed:
-      - build-and-release-observability-manager-image
+      - release
       version:
         tag: ((sink_resource_release_params.VERSION))
     - get: sink-resources-release

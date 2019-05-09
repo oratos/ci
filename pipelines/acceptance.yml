@@ -138,6 +138,14 @@ resources:
     password: ((docker-hub.password))
     tag: release-elect
 
+- name: observability-manager-image
+  type: docker-image
+  source:
+    repository: oratos/observability-manager
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+    tag: release-elect
+
 - name: kubo-deployment
   type: git
   source:
@@ -382,39 +390,34 @@ jobs:
     - get: sink-resources-manifests
       trigger: true
     - get: sink-controller-image
+      params:
+        skip_download: true
+    - get: observability-manager-image
       trigger: true
       params:
         skip_download: true
     - get: event-controller-image
-      trigger: true
       params:
         skip_download: true
     - get: metric-controller-image
-      trigger: true
       params:
         skip_download: true
     - get: fluent-bit-out-syslog-image
-      trigger: true
       params:
         skip_download: true
     - get: cert-generator-image
-      trigger: true
       params:
         skip_download: true
     - get: ghostunnel-image
-      trigger: true
       params:
         skip_download: true
     - get: validator-image
-      trigger: true
       params:
         skip_download: true
     - get: sink-state-updater-image
-      trigger: true
       params:
         skip_download: true
     - get: telegraf-image
-      trigger: true
       params:
         skip_download: true
     - get: bikepark-bbl-state
