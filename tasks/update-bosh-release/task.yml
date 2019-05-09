@@ -5,7 +5,6 @@ image_resource:
     repository: oratos/ci-base
 inputs:
 - name: sink-resources-github-release
-- name: observability-manager-github-release
 - name: oratos-ci
 - name: sink-resources-release
 outputs:
@@ -18,7 +17,6 @@ params:
 
   # - Required
   # - Required for OSL generation
-  OBSERVABILITY_MANAGER_VERSION:
   SINK_RESOURCES_VERSION:
   FLUENT_BIT_OUT_SYSLOG_VERSION:
   SINK_RESOURCES_RELEASE_VERSION:

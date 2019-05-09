@@ -1348,7 +1348,6 @@ jobs:
     file: oratos-ci/tasks/update-bosh-release/task.yml
     params:
       PRIVATE_YML: ((release.private_yml))
-      OBSERVABILITY_MANAGER_VERSION: ((sink_resource_release_params.PKS_VERSION)).((sink_resource_release_params.OBSERVABILITY_MANAGER_VERSION))
       SINK_RESOURCES_VERSION: ((sink_resource_release_params.VERSION))
       FLUENT_BIT_OUT_SYSLOG_VERSION: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
       SINK_RESOURCES_RELEASE_VERSION: ((sink_resource_release_params.SINK_RESOURCES_RELEASE_VERSION))
