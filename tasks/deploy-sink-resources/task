@@ -30,18 +30,14 @@ function apply_manifests {
 }
 
 function verify_resources_are_running {
-    # Just wait for some time to increase the chances of the sink-resources to
-    # come up. TODO: Remove this eventually.
-    sleep 10
-
     # Verify sink resources are healthy
-    verify_deployment_running "app=sink-controller"
-    verify_deployment_running "app=event-controller"
-    verify_deployment_running "app=metric-controller"
-    verify_deployment_running "app=validator"
+    verify_labeled_pod_running "app=sink-controller"
+    verify_labeled_pod_running "app=event-controller"
+    verify_labeled_pod_running "app=metric-controller"
+    verify_labeled_pod_running "app=validator"
 
-    verify_daemonset_running "app=fluent-bit"
-    verify_daemonset_running "app=telegraf"
+    verify_labeled_pod_running "app=fluent-bit"
+    verify_labeled_pod_running "app=telegraf"
 }
 
 function main {
