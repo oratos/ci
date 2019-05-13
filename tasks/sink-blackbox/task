@@ -136,7 +136,7 @@ function delete_sinks {
     # only one blackbox tests can run at a given time
     # delete all the sinks for the blackbox-tests namespace before and after
     # tests run
-    kubectl delete sink --all --namespace blackbox-tests || true
+    kubectl delete logsink --all --namespace blackbox-tests || true
 }
 
 function report_to_datadog {

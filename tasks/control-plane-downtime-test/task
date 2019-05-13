@@ -96,7 +96,7 @@ function clean_up {
     echo "$manifest" | kubectl delete --filename -
     kubectl delete service crosstalk-receiver-oratos --namespace default
     kubectl delete pod crosstalk-receiver-oratos --namespace default
-    kubectl delete sink crosstalk-sink --namespace oratos
+    kubectl delete logsink crosstalk-sink --namespace oratos
 }
 
 function metrics_lb_ip {
