@@ -1180,19 +1180,6 @@ jobs:
             git tag "$VERSION"
           popd > /dev/null
 
-          pushd sink-resources/manifests/overlays/pks
-            kustomize edit set imagetag "oratos/cert-generator:$VERSION"
-            kustomize edit set imagetag "oratos/ghostunnel:$VERSION"
-            kustomize edit set imagetag "oratos/sink-state-updater:$VERSION"
-            kustomize edit set imagetag "oratos/telegraf:$VERSION"
-            kustomize edit set imagetag "oratos/telegraf-windows:$VERSION"
-            kustomize edit set imagetag "oratos/validator:$VERSION"
-            kustomize edit set imagetag "oratos/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION"
-            kustomize edit set imagetag "oratos/sink-controller:$VERSION"
-            kustomize edit set imagetag "oratos/event-controller:$VERSION"
-            kustomize edit set imagetag "oratos/metric-controller:$VERSION"
-          popd
-
           # TODO: Update sink-resources/hack/generate-pks-manifest.sh
           ./sink-resources/hack/generate-pks-manifest.sh "$VERSION" "$FLUENT_BIT_OUT_SYSLOG_VERSION" > github-release/pks-manifest.yaml
           echo "$VERSION" > github-release/name

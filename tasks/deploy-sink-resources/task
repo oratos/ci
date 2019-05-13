@@ -20,7 +20,7 @@ function roll {
 function apply_manifests {
     observability_manager_digest="$(cat observability-manager-image/digest)"
     pushd sink-resources/manifests/observability-manager
-        kustomize edit set imagetag "oratos/observability-manager@$observability_manager_digest"
+        kustomize edit set image "oratos/observability-manager@$observability_manager_digest"
     popd
 
     # Using $RANDOM for sink resources version to ensure cert-generator job is
