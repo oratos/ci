@@ -98,7 +98,7 @@ spec:
     port: 8080
     name: syslog
 ---
-apiVersion: apps.pivotal.io/v1beta1
+apiVersion: pksapi.io/v1beta1
 kind: LogSink
 metadata:
   name: latency-sink

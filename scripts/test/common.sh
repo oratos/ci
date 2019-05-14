@@ -295,7 +295,7 @@ rules:
   - extensions
   - batch
   - autoscaling
-  - apps.pivotal.io
+  - pksapi.io
   resources:
   - \"*\"
   verbs:
@@ -313,7 +313,7 @@ rules:
   - extensions
   - batch
   - autoscaling
-  - apps.pivotal.io
+  - pksapi.io
   resources:
   - \"*\"
   verbs:
@@ -353,7 +353,7 @@ function apply_namespace_sink {
     local namespace=${1?}
 
     echo "
-apiVersion: apps.pivotal.io/v1beta1
+apiVersion: pksapi.io/v1beta1
 kind: LogSink
 metadata:
   name: crosstalk-sink
