@@ -20,7 +20,12 @@ RUN go build \
     -mod=readonly \
     main.go
 
-FROM alpine:latest
+FROM ubuntu:latest
+
+RUN groupadd --system logspewer --gid 1000 && \
+    useradd --no-log-init --system --gid logspewer logspewer --uid 1000
+
+USER 1000:1000
 
 COPY --from=builder /logspewer /srv/
 WORKDIR /srv
