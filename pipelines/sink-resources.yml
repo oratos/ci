@@ -1100,6 +1100,7 @@ jobs:
   - get: sink-state-updater-image
   - get: telegraf-image
   - get: validator-image
+  - get: node-exporter-image
   - get: observability-manager-image
   - task: release
     privileged: true
@@ -1234,6 +1235,7 @@ jobs:
           - [oratos/telegraf][telegraf]:$VERSION
           - [oratos/telegraf-windows][telegraf-windows]:$VERSION
           - [oratos/validator][validator]:$VERSION
+          - [oratos/node-exporter][node-exporter]:$VERSION
           - [oratos/observability-manager][observability-manager]:$VERSION
           - [oratos/fluent-bit-out-syslog][fluent-bit-out-syslog]:$FLUENT_BIT_OUT_SYSLOG_VERSION
 
@@ -1266,6 +1268,7 @@ jobs:
           t_docker_name="oratos/telegraf:$VERSION"
           tw_docker_name="oratos/telegraf-windows:$VERSION"
           vd_docker_name="oratos/validator:$VERSION"
+          ne_docker_name="oratos/node-exporter:$VERSION"
           om_docker_name="oratos/observability-manager:$VERSION"
           fb_docker_name="oratos/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION"
 
@@ -1323,6 +1326,12 @@ jobs:
           docker push "$vd_docker_name"
           docker push "oratos/validator:latest"
 
+          docker pull "oratos/node-exporter:$GIT_REF"
+          docker tag "oratos/node-exporter:$GIT_REF" "$ne_docker_name"
+          docker tag "oratos/node-exporter:$GIT_REF" "oratos/node-exporter:latest"
+          docker push "$vd_docker_name"
+          docker push "oratos/node-exporter:latest"
+
           docker pull "oratos/observability-manager:$GIT_REF"
           docker tag "oratos/observability-manager:$GIT_REF" "$om_docker_name"
           docker tag "oratos/observability-manager:$GIT_REF" "oratos/observability-manager:latest"
@@ -1338,6 +1347,7 @@ jobs:
           docker save "$ssu_docker_name" | gzip > "github-release/oratos_sink-state-updater:$VERSION.tgz"
           docker save "$t_docker_name" | gzip > "github-release/oratos_telegraf:$VERSION.tgz"
           docker save "$vd_docker_name" | gzip > "github-release/oratos_validator:$VERSION.tgz"
+          docker save "$ne_docker_name" | gzip > "github-release/oratos_node-exporter:$VERSION.tgz"
           docker save "$om_docker_name" | gzip > "github-release/oratos_observability-manager:$VERSION.tgz"
           docker save "$fb_docker_name" | gzip > "github-release/oratos_fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION.tgz"
 
