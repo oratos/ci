@@ -1092,16 +1092,6 @@ jobs:
 - name: release
   serial: true
   plan:
-  - get: sink-controller-image
-  - get: event-controller-image
-  - get: metric-controller-image
-  - get: cert-generator-image
-  - get: ghostunnel-image
-  - get: sink-state-updater-image
-  - get: telegraf-image
-  - get: validator-image
-  - get: node-exporter-image
-  - get: observability-manager-image
   - task: release
     privileged: true
     config:
@@ -1112,8 +1102,9 @@ jobs:
           repository: oratos/ci-base
       params:
         GIT_REF: ((sink_resource_release_params.GIT_REF))
-        VERSION: ((sink_resource_release_params.VERSION))
+        SINK_RESOURCES_VERSION: ((sink_resource_release_params.SINK_RESOURCES_VERSION))
         FLUENT_BIT_OUT_SYSLOG_VERSION: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
+        OBSERVABILITY_MANAGER_VERSION: ((sink_resource_release_params.PKS_VERSION)).((sink_resource_release_params.OBSERVABILITY_MANAGER_PATCH))
         DOCKERHUB_USERNAME: ((docker-hub.username))
         DOCKERHUB_PASSWORD: ((docker-hub.password))
         GITHUB_PRIVATE_KEY: ((github.oratos-bot-private-key))
@@ -1132,12 +1123,16 @@ jobs:
             echo GIT_REF param required
             exit 1
           fi
-          if ! [[ "$VERSION" =~ v ]]; then
+          if ! [[ "$SINK_RESOURCES_VERSION" =~ v ]]; then
             echo VERSION param required to start with v
             exit 1
           fi
           if ! [[ "$FLUENT_BIT_OUT_SYSLOG_VERSION" =~ v ]]; then
             echo FLUENT_BIT_OUT_SYSLOG_VERSION param required to start with v
+            exit 1
+          fi
+          if ! [[ "$OBSERVABILITY_MANAGER_VERSION" =~ v ]]; then
+            echo OBSERVABILITY_MANAGER_VERSION param required to start with v
             exit 1
           fi
 
@@ -1211,32 +1206,30 @@ jobs:
           rm key
           git clone git@github.com:pivotal-cf/sink-resources
           pushd sink-resources > /dev/null
-            git checkout "$GIT_REF"
-            git tag "$VERSION"
+            git tag "$SINK_RESOURCES_VERSION" "$GIT_REF"
+          popd > /dev/null
+          git clone git@github.com:pivotal-cf/fluent-bit-out-syslog
+          pushd fluent-bit-out-syslog > /dev/null
+            FLUENT_BIT_REF="$(git rev-parse @)"
           popd > /dev/null
 
-          # TODO: Update sink-resources/hack/generate-pks-manifest.sh
-          ./sink-resources/hack/generate-pks-manifest.sh "$VERSION" "$FLUENT_BIT_OUT_SYSLOG_VERSION" > github-release/pks-manifest.yaml
-          echo "$VERSION" > github-release/name
-          echo "$VERSION" > github-release/tag
-
-          pushd sink-resources > /dev/null
-            git reset --hard HEAD
-          popd > /dev/null
+          ./sink-resources/hack/generate-pks-manifest.sh "$SINK_RESOURCES_VERSION" "$FLUENT_BIT_OUT_SYSLOG_VERSION" > github-release/pks-manifest.yaml
+          echo "$SINK_RESOURCES_VERSION" > github-release/name
+          echo "$SINK_RESOURCES_VERSION" > github-release/tag
 
           cat <<EOF > github-release/body
           These are the versions of the docker images used in this release:
-          - [oratos/sink-controller][sink-controller]:$VERSION
-          - [oratos/event-controller][event-controller]:$VERSION
-          - [oratos/metric-controller][metric-controller]:$VERSION
-          - [oratos/cert-generator][cert-generator]:$VERSION
-          - [oratos/ghostunnel][ghostunnel]:$VERSION
-          - [oratos/sink-state-updater][sink-state-updater]:$VERSION
-          - [oratos/telegraf][telegraf]:$VERSION
-          - [oratos/telegraf-windows][telegraf-windows]:$VERSION
-          - [oratos/validator][validator]:$VERSION
-          - [oratos/node-exporter][node-exporter]:$VERSION
-          - [oratos/observability-manager][observability-manager]:$VERSION
+          - [oratos/sink-controller][sink-controller]:$SINK_RESOURCES_VERSION
+          - [oratos/event-controller][event-controller]:$SINK_RESOURCES_VERSION
+          - [oratos/metric-controller][metric-controller]:$SINK_RESOURCES_VERSION
+          - [oratos/cert-generator][cert-generator]:$SINK_RESOURCES_VERSION
+          - [oratos/ghostunnel][ghostunnel]:$SINK_RESOURCES_VERSION
+          - [oratos/sink-state-updater][sink-state-updater]:$SINK_RESOURCES_VERSION
+          - [oratos/telegraf][telegraf]:$SINK_RESOURCES_VERSION
+          - [oratos/telegraf-windows][telegraf-windows]:$SINK_RESOURCES_VERSION
+          - [oratos/validator][validator]:$SINK_RESOURCES_VERSION
+          - [oratos/node-exporter][node-exporter]:$SINK_RESOURCES_VERSION
+          - [oratos/observability-manager][observability-manager]:$OBSERVABILITY_MANAGER_VERSION
           - [oratos/fluent-bit-out-syslog][fluent-bit-out-syslog]:$FLUENT_BIT_OUT_SYSLOG_VERSION
 
           [sink-controller]: https://hub.docker.com/r/oratos/sink-controller/
@@ -1248,6 +1241,7 @@ jobs:
           [telegraf]: https://hub.docker.com/r/oratos/telegraf/
           [telegraf-windows]: https://hub.docker.com/r/oratos/telegraf-windows/
           [validator]: https://hub.docker.com/r/oratos/validator/
+          [node-exporter]: https://hub.docker.com/r/oratos/node-exporter/
           [observability-manager]: https://hub.docker.com/r/oratos/observability-manager/
           [fluent-bit-out-syslog]: https://hub.docker.com/r/oratos/fluent-bit-out-syslog/
           EOF
@@ -1259,97 +1253,108 @@ jobs:
               --password-stdin
           [ -n "${DEBUG:-}" ] && set -x
 
-          sc_docker_name="oratos/sink-controller:$VERSION"
-          ec_docker_name="oratos/event-controller:$VERSION"
-          mc_docker_name="oratos/metric-controller:$VERSION"
-          cg_docker_name="oratos/cert-generator:$VERSION"
-          gt_docker_name="oratos/ghostunnel:$VERSION"
-          ssu_docker_name="oratos/sink-state-updater:$VERSION"
-          t_docker_name="oratos/telegraf:$VERSION"
-          tw_docker_name="oratos/telegraf-windows:$VERSION"
-          vd_docker_name="oratos/validator:$VERSION"
-          ne_docker_name="oratos/node-exporter:$VERSION"
-          om_docker_name="oratos/observability-manager:$VERSION"
-          fb_docker_name="oratos/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION"
+          sc_docker_name="oratos/sink-controller:$GIT_REF"
+          ec_docker_name="oratos/event-controller:$GIT_REF"
+          mc_docker_name="oratos/metric-controller:$GIT_REF"
+          cg_docker_name="oratos/cert-generator:$GIT_REF"
+          gt_docker_name="oratos/ghostunnel:$GIT_REF"
+          ssu_docker_name="oratos/sink-state-updater:$GIT_REF"
+          t_docker_name="oratos/telegraf:$GIT_REF"
+          # tw_docker_name="oratos/telegraf-windows:$GIT_REF"
+          vd_docker_name="oratos/validator:$GIT_REF"
+          ne_docker_name="oratos/node-exporter:$GIT_REF"
+          om_docker_name="oratos/observability-manager:$OBSERVABILITY_MANAGER_VERSION"
+          fb_docker_name="oratos/fluent-bit-out-syslog:$FLUENT_BIT_REF"
 
           docker pull "oratos/sink-controller:$GIT_REF"
           docker tag "oratos/sink-controller:$GIT_REF" "$sc_docker_name"
           docker tag "oratos/sink-controller:$GIT_REF" "oratos/sink-controller:latest"
+          docker tag "oratos/sink-controller:$GIT_REF" "oratos/sink-controller:$SINK_RESOURCES_VERSION"
           docker push "$sc_docker_name"
           docker push "oratos/sink-controller:latest"
 
           docker pull "oratos/event-controller:$GIT_REF"
           docker tag "oratos/event-controller:$GIT_REF" "$ec_docker_name"
           docker tag "oratos/event-controller:$GIT_REF" "oratos/event-controller:latest"
+          docker tag "oratos/event-controller:$GIT_REF" "oratos/event-controller:$SINK_RESOURCES_VERSION"
           docker push "$ec_docker_name"
           docker push "oratos/event-controller:latest"
 
           docker pull "oratos/metric-controller:$GIT_REF"
           docker tag "oratos/metric-controller:$GIT_REF" "$mc_docker_name"
           docker tag "oratos/metric-controller:$GIT_REF" "oratos/metric-controller:latest"
+          docker tag "oratos/metric-controller:$GIT_REF" "oratos/metric-controller:$SINK_RESOURCES_VERSION"
           docker push "$mc_docker_name"
           docker push "oratos/metric-controller:latest"
 
           docker pull "oratos/cert-generator:$GIT_REF"
           docker tag "oratos/cert-generator:$GIT_REF" "$cg_docker_name"
           docker tag "oratos/cert-generator:$GIT_REF" "oratos/cert-generator:latest"
+          docker tag "oratos/cert-generator:$GIT_REF" "oratos/cert-generator:$SINK_RESOURCES_VERSION"
           docker push "$cg_docker_name"
           docker push "oratos/cert-generator:latest"
 
           docker pull "oratos/ghostunnel:$GIT_REF"
           docker tag "oratos/ghostunnel:$GIT_REF" "$gt_docker_name"
           docker tag "oratos/ghostunnel:$GIT_REF" "oratos/ghostunnel:latest"
+          docker tag "oratos/ghostunnel:$GIT_REF" "oratos/ghostunnel:$SINK_RESOURCES_VERSION"
           docker push "$gt_docker_name"
           docker push "oratos/ghostunnel:latest"
 
           docker pull "oratos/sink-state-updater:$GIT_REF"
           docker tag "oratos/sink-state-updater:$GIT_REF" "$ssu_docker_name"
           docker tag "oratos/sink-state-updater:$GIT_REF" "oratos/sink-state-updater:latest"
+          docker tag "oratos/sink-state-updater:$GIT_REF" "oratos/sink-state-updater:$SINK_RESOURCES_VERSION"
           docker push "$ssu_docker_name"
           docker push "oratos/sink-state-updater:latest"
 
           docker pull "oratos/telegraf:$GIT_REF"
           docker tag "oratos/telegraf:$GIT_REF" "$t_docker_name"
           docker tag "oratos/telegraf:$GIT_REF" "oratos/telegraf:latest"
+          docker tag "oratos/telegraf:$GIT_REF" "oratos/telegraf:$SINK_RESOURCES_VERSION"
           docker push "$t_docker_name"
           docker push "oratos/telegraf:latest"
 
-          docker pull "oratos/telegraf-windows:$GIT_REF"
-          docker tag "oratos/telegraf-windows:$GIT_REF" "$tw_docker_name"
-          docker tag "oratos/telegraf-windows:$GIT_REF" "oratos/telegraf-windows:latest"
-          docker push "$tw_docker_name"
-          docker push "oratos/telegraf-windows:latest"
+          # docker pull "oratos/telegraf-windows:$GIT_REF"
+          # docker tag "oratos/telegraf-windows:$GIT_REF" "$tw_docker_name"
+          # docker tag "oratos/telegraf-windows:$GIT_REF" "oratos/telegraf-windows:latest"
+          # docker tag "oratos/telegraf-windows:$GIT_REF" "oratos/telegraf-windows:$SINK_RESOURCES_VERSION"
+          # docker push "$tw_docker_name"
+          # docker push "oratos/telegraf-windows:latest"
 
           docker pull "oratos/validator:$GIT_REF"
           docker tag "oratos/validator:$GIT_REF" "$vd_docker_name"
           docker tag "oratos/validator:$GIT_REF" "oratos/validator:latest"
+          docker tag "oratos/validator:$GIT_REF" "oratos/validator:$SINK_RESOURCES_VERSION"
           docker push "$vd_docker_name"
           docker push "oratos/validator:latest"
 
           docker pull "oratos/node-exporter:$GIT_REF"
           docker tag "oratos/node-exporter:$GIT_REF" "$ne_docker_name"
           docker tag "oratos/node-exporter:$GIT_REF" "oratos/node-exporter:latest"
+          docker tag "oratos/node-exporter:$GIT_REF" "oratos/node-exporter:$SINK_RESOURCES_VERSION"
           docker push "$vd_docker_name"
           docker push "oratos/node-exporter:latest"
 
           docker pull "oratos/observability-manager:$GIT_REF"
           docker tag "oratos/observability-manager:$GIT_REF" "$om_docker_name"
           docker tag "oratos/observability-manager:$GIT_REF" "oratos/observability-manager:latest"
+          docker tag "oratos/observability-manager:$GIT_REF" "oratos/observability-manager:$OBSERVABILITY_MANAGER_VERSION"
           docker push "$om_docker_name"
           docker push "oratos/observability-manager:latest"
 
           docker pull "$fb_docker_name"
-          docker save "$sc_docker_name" | gzip > "github-release/oratos_sink-controller:$VERSION.tgz"
-          docker save "$ec_docker_name" | gzip > "github-release/oratos_event-controller:$VERSION.tgz"
-          docker save "$mc_docker_name" | gzip > "github-release/oratos_metric-controller:$VERSION.tgz"
-          docker save "$cg_docker_name" | gzip > "github-release/oratos_cert-generator:$VERSION.tgz"
-          docker save "$gt_docker_name" | gzip > "github-release/oratos_ghostunnel:$VERSION.tgz"
-          docker save "$ssu_docker_name" | gzip > "github-release/oratos_sink-state-updater:$VERSION.tgz"
-          docker save "$t_docker_name" | gzip > "github-release/oratos_telegraf:$VERSION.tgz"
-          docker save "$vd_docker_name" | gzip > "github-release/oratos_validator:$VERSION.tgz"
-          docker save "$ne_docker_name" | gzip > "github-release/oratos_node-exporter:$VERSION.tgz"
-          docker save "$om_docker_name" | gzip > "github-release/oratos_observability-manager:$VERSION.tgz"
-          docker save "$fb_docker_name" | gzip > "github-release/oratos_fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION.tgz"
+          docker save "$sc_docker_name" | gzip > "github-release/oratos_sink-controller:$GIT_REF.tgz"
+          docker save "$ec_docker_name" | gzip > "github-release/oratos_event-controller:$GIT_REF.tgz"
+          docker save "$mc_docker_name" | gzip > "github-release/oratos_metric-controller:$GIT_REF.tgz"
+          docker save "$cg_docker_name" | gzip > "github-release/oratos_cert-generator:$GIT_REF.tgz"
+          docker save "$gt_docker_name" | gzip > "github-release/oratos_ghostunnel:$GIT_REF.tgz"
+          docker save "$ssu_docker_name" | gzip > "github-release/oratos_sink-state-updater:$GIT_REF.tgz"
+          docker save "$t_docker_name" | gzip > "github-release/oratos_telegraf:$GIT_REF.tgz"
+          docker save "$vd_docker_name" | gzip > "github-release/oratos_validator:$GIT_REF.tgz"
+          docker save "$ne_docker_name" | gzip > "github-release/oratos_node-exporter:$GIT_REF.tgz"
+          docker save "$om_docker_name" | gzip > "github-release/oratos_observability-manager:$OBSERVABILITY_MANAGER_VERSION.tgz"
+          docker save "$fb_docker_name" | gzip > "github-release/oratos_fluent-bit-out-syslog:$FLUENT_BIT_REF.tgz"
 
           pushd sink-resources > /dev/null
             git push origin --tags
@@ -1371,7 +1376,7 @@ jobs:
       passed:
       - release
       version:
-        tag: ((sink_resource_release_params.VERSION))
+        tag: ((sink_resource_release_params.SINK_RESOURCES_VERSION))
     - get: sink-resources-release
     - get: oratos-ci
   - task: update-bosh-release
@@ -1379,9 +1384,9 @@ jobs:
     file: oratos-ci/tasks/update-bosh-release/task.yml
     params:
       PRIVATE_YML: ((release.private_yml))
-      SINK_RESOURCES_VERSION: ((sink_resource_release_params.VERSION))
+      SINK_RESOURCES_VERSION: ((sink_resource_release_params.SINK_RESOURCES_VERSION))
       FLUENT_BIT_OUT_SYSLOG_VERSION: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
-      SINK_RESOURCES_RELEASE_VERSION: ((sink_resource_release_params.SINK_RESOURCES_RELEASE_VERSION))
+      SINK_RESOURCES_RELEASE_VERSION: ((sink_resource_release_params.SINK_RESOURCES_VERSION))
   - do:
     - put: pks-releng-release-bucket
       params:
