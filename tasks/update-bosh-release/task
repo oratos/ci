@@ -87,11 +87,12 @@ pushd put-sink-resources-release
   bosh --non-interactive create-release \
        --final \
        --force \
-       --version="${SINK_RESOURCES_RELEASE_VERSION#v}" \
+       --version="${SINK_RESOURCES_VERSION#v}" \
        --tarball="${release_file}"
 
   # Generate OSL config
   echo "Generating OSL config"
+  export SINK_RESOURCES_RELEASE_VERSION="${SINK_RESOURCES_VERSION}"
   for f in blobs/container-images/*.tgz; do
     docker load --input "$f"
   done
