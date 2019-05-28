@@ -72,7 +72,7 @@ spec:
   serviceAccountName: latency-test
   containers:
   - name: latency-receiver
-    image: oratos/latency-receiver:v0.3
+    image: oratos/latency-receiver:v0.6
     imagePullPolicy: Always
     env:
     - name: SYSLOG_PORT
@@ -107,6 +107,8 @@ spec:
   type: syslog
   host: latency-receiver.latency-test.svc.cluster.local
   port: 8080
+  enable_tls: true
+  insecure_skip_verify: true
 "
 
 function cleanup {

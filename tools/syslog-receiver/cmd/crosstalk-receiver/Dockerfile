@@ -20,8 +20,16 @@ RUN go build \
     -mod=readonly \
     cmd/crosstalk-receiver/main.go
 
-FROM alpine:latest
+FROM ubuntu:xenial
+
+WORKDIR /srv
+
+RUN apt-get update && \
+    apt-get install -y openssl && \
+    apt-get clean
+
+RUN openssl genrsa -out localhost.key 2048 && \
+    openssl req -new -subj '/CN=localhost' -x509 -sha256 -key localhost.key -out localhost.crt -days 3650
 
 COPY --from=builder /crosstalk-receiver /srv/
-WORKDIR /srv
 CMD [ "/srv/crosstalk-receiver" ]

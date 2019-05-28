@@ -1,6 +1,7 @@
 package tcpserver
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net"
@@ -22,6 +23,7 @@ type tcpServer struct {
 	httpListener    net.Listener
 	metricsConfig   http.Server
 	httpServer      http.Server
+	tlsConfig       *tls.Config
 }
 
 type Handler struct {
@@ -37,11 +39,17 @@ func New(
 	metricsHandler Handler,
 	httpHandlers ...Handler,
 ) *tcpServer {
+	cer, err := tls.LoadX509KeyPair("localhost.crt", "localhost.key")
+	if err != nil {
+		log.Fatalf("Failed to load testing key and certificate: %q", err)
+	}
+
 	ts := &tcpServer{
 		syslogAddr:  syslogAddr,
 		httpAddr:    httpAddr,
 		metricsAddr: metricsAddr,
 		handleMsg:   messageFunc,
+		tlsConfig:   &tls.Config{Certificates: []tls.Certificate{cer}},
 	}
 
 	ts.start(metricsHandler, httpHandlers...)
@@ -51,7 +59,7 @@ func New(
 func (t *tcpServer) start(metricsHandler Handler, handlers ...Handler) {
 	log.Printf("Starting syslog server on: %s", t.syslogAddr)
 	var err error
-	t.syslogListener, err = net.Listen("tcp", t.syslogAddr)
+	t.syslogListener, err = tls.Listen("tcp", t.syslogAddr, t.tlsConfig)
 	if err != nil {
 		log.Fatalf("failed to start up tcp server: %s", err)
 	}
@@ -63,7 +71,7 @@ func (t *tcpServer) start(metricsHandler Handler, handlers ...Handler) {
 	}
 
 	log.Printf("Starting HTTP server on: %s", t.httpAddr)
-	t.httpListener, err = net.Listen("tcp", t.httpAddr)
+	t.httpListener, err = tls.Listen("tcp", t.httpAddr, t.tlsConfig)
 	if err != nil {
 		log.Fatalf("failed to start up http server: %s", err)
 	}
@@ -81,6 +89,7 @@ func (t *tcpServer) start(metricsHandler Handler, handlers ...Handler) {
 		Handler:      httpMux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
+		TLSConfig:    t.tlsConfig,
 	}
 
 	t.metricsConfig = http.Server{

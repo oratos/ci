@@ -124,6 +124,7 @@ spec:
   type: syslog
   host: $papertrail_host
   port: $papertrail_port
+  enable_tls: true
 "
 
 # Install and setup papertrail cli
