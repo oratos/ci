@@ -660,6 +660,11 @@ jobs:
     - get: fluent-bit-out-syslog-image
       params:
         skip_download: true
+    - get: node-exporter-image
+      passed:
+      - build-node-exporter-image
+      params:
+        skip_download: true
     - get: oratos-ci
   - task: clean-up-environment
     file: oratos-ci/tasks/clean-up-environment/task.yml
@@ -735,6 +740,11 @@ jobs:
       params:
         skip_download: true
     - get: validator-image
+      passed:
+      - deploy-gke
+      params:
+        skip_download: true
+    - get: node-exporter-image
       passed:
       - deploy-gke
       params:
@@ -833,6 +843,11 @@ jobs:
     - get: fluent-bit-out-syslog-image
       params:
         skip_download: true
+    - get: node-exporter-image
+      passed:
+      - build-node-exporter-image
+      params:
+        skip_download: true
     - get: oratos-ci-testing-cfcr-bbl-state
     - get: oratos-ci
   - task: clean-up-environment
@@ -908,6 +923,12 @@ jobs:
       params:
         skip_download: true
     - get: validator-image
+      trigger: true
+      passed:
+      - deploy-cfcr
+      params:
+        skip_download: true
+    - get: node-exporter-image
       trigger: true
       passed:
       - deploy-cfcr
@@ -990,6 +1011,12 @@ jobs:
       params:
         save: true
     - get: observability-manager-image
+      passed:
+      - cfcr-tests
+      - gke-tests
+      params:
+        save: true
+    - get: node-exporter-image
       passed:
       - cfcr-tests
       - gke-tests
@@ -1083,6 +1110,14 @@ jobs:
     - put: observability-manager-image
       params:
         load: observability-manager-image
+        tag: promote/tag
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
+    - put: node-exporter-image
+      params:
+        load: node-exporter-image
         tag: promote/tag
         cache: true
         cache_tag: latest
