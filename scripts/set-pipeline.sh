@@ -3,7 +3,14 @@ set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
 function set_globals {
     pipeline="${1:-}"
-    TARGET="${TARGET:-oratos}"
+
+    DEFAULT_TARGET=oratos
+
+    if [[ ${pipeline} == denver-* ]]; then
+        DEFAULT_TARGET=denver
+    fi
+
+    TARGET="${TARGET:-${DEFAULT_TARGET}}"
 }
 
 function validate_args {

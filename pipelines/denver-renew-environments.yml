@@ -1,0 +1,43 @@
+resources:
+  - name: daily
+    type: time
+    source:
+      interval: 24h
+
+jobs:
+- name: renew-environments
+  serial: true
+  plan:
+  - get: daily
+    trigger: true
+  - task: renew-environments
+    tags: [cf-denver-shared-vsphere]
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+
+      params:
+        TOOLSMITHS_API_TOKEN: ((toolsmiths-api-token))
+        ENV_NAMES: ((renew_environments_params.ENV_NAMES))
+
+      run:
+        path: /bin/bash
+        args:
+        - -c
+        - |
+          #!/bin/bash
+          set -eu
+
+          for env in ${ENV_NAMES}; do
+            curl --fail "https://environments.toolsmiths.cf-app.com/v1/custom_gcp/pas/renew" -H "Content-Type: application/json" -d @- <<JSON
+            {
+              "api_token": "${TOOLSMITHS_API_TOKEN}",
+              "name": "${env}"
+            }
+          JSON
+            echo
+          done
+
