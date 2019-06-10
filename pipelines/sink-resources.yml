@@ -181,35 +181,11 @@ jobs:
     - get: sink-resources
       trigger: true
     - get: oratos-ci
-  - task: get-deps
-    attempts: 3
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: oratos/ci-base
-      inputs:
-        - name: sink-resources
-      outputs:
-        - name: sink-resources-deps
-      run:
-        path: /bin/bash
-        args:
-          - "-c"
-          - |
-            #!/bin/bash
-            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-            cwd="$PWD"
-            cd "$cwd/sink-resources"
-            go mod download
-            rsync -avci /go/pkg "$cwd/sink-resources-deps"
   - aggregate:
     - task: run-linter
       file: oratos-ci/tasks/golangci-lint-modules/task.yml
       input_mapping:
         source-repo: sink-resources
-        go-mod-deps: sink-resources-deps
       on_failure:
         put: slack-alert
         params:
@@ -219,7 +195,6 @@ jobs:
       privileged: true
       input_mapping:
         source-repo: sink-resources
-        go-mod-deps: sink-resources-deps
       params:
         PKGS_HOOK: |
           go list ./... | grep -v vendor | grep -v pkg/client
