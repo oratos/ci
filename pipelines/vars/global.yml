@@ -36,12 +36,12 @@ fluent_bit_out_syslog_params:
   # This is the version of the fluent-bit-out-syslog image to be built. It
   # will be the tag of the docker image in dockerhub:
   #   https://hub.docker.com/r/oratos/fluent-bit-out-syslog/tags/
-  VERSION: v0.17 # version of the fluent-bit image to BUILD
+  VERSION: v0.18 # version of the fluent-bit image to BUILD
 
   # This is the git SHA for the fluent-bit-out-syslog that you intend to release.
   # This SHA needs to be a tag on the docker image on dockerhub here:
   #   https://hub.docker.com/r/oratos/fluent-bit-out-syslog/tags/
-  GIT_REF: c172e610c5118206c8ea046076bc9bbe9c8b6471
+  GIT_REF: 052fa06cd0fffe95d624754dfc0bc80df5be83fa
 
 renew_environments_params:
 
