@@ -129,7 +129,7 @@ resources:
   type: git
   source:
     uri: git@github.com:pivotal-cf/fluent-bit-out-syslog
-    branch: master
+    branch: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
     private_key: ((github.oratos-bot-private-key))
 
 - name: slack-alert
@@ -1179,7 +1179,6 @@ jobs:
             FLUENT_BIT_REF="$(git rev-parse @)"
           popd > /dev/null
 
-          ./sink-resources/hack/generate-pks-manifest.sh "$SINK_RESOURCES_VERSION" "$FLUENT_BIT_OUT_SYSLOG_VERSION" > github-release/pks-manifest.yaml
           echo "$SINK_RESOURCES_VERSION" > github-release/name
           echo "$SINK_RESOURCES_VERSION" > github-release/tag
 
@@ -1331,7 +1330,6 @@ jobs:
       body: github-release/body
       tag: github-release/tag
       globs:
-      - github-release/pks-manifest.yaml
       - github-release/*.tgz
 
 - name: update-bosh-release
