@@ -1,4 +1,4 @@
-FROM golang:1.11
+FROM golang:1.12
 
 RUN go version
 
@@ -40,7 +40,7 @@ RUN cd /tmp \
   && wget https://github.com/kubernetes-sigs/kustomize/releases/download/v2.0.3/kustomize_2.0.3_linux_amd64 -O /usr/local/bin/kustomize \
   && chmod +x /usr/local/bin/kustomize
 
-ENV TELEGRAF_VERSION 1.9.3
+ENV TELEGRAF_VERSION 1.11.0
 ADD https://dl.influxdata.com/telegraf/releases/telegraf_${TELEGRAF_VERSION}-1_amd64.deb /tmp/telegraf_${TELEGRAF_VERSION}-1_amd64.deb
 
 RUN apt install /tmp/telegraf_${TELEGRAF_VERSION}-1_amd64.deb && \
