@@ -296,6 +296,7 @@ jobs:
       DOCKERFILE: source-repo/cmd/metric-controller/Dockerfile
   - put: metric-controller-image
     params:
+      build_args_file: build-image/docker_build_args.json
       build: build-image/build
       tag: build-image/tag
       cache: true
