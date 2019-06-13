@@ -7,5 +7,5 @@ ssh-keyscan github.com >> ~/.ssh/known_hosts 2> /dev/null
 export GOFLAGS="-mod=vendor"
 
 pushd source-repo > /dev/null
-  golangci-lint run --deadline 20m ./...
+  ./tests/run-linter.sh
 popd > /dev/null
