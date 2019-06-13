@@ -6,9 +6,6 @@ ciroot="$PWD"
 
 # compute sha for tagging the docker image
 sha="$(cd source-repo && git rev-parse @)"
-# we need to specify this build arg for metric controller for namespaced
-# telegraf deployments
-echo "{\"TELEGRAF_IMAGE_VERSION\": \"$sha\"}" > "$ciroot/build-image/docker_build_args.json"
 
 # copy over build context and tag
 mkdir -p "$ciroot/build-image/build"
@@ -17,4 +14,6 @@ if [ -n "$DOCKERFILE" ]; then
     cp "$DOCKERFILE" "$ciroot/build-image/build/Dockerfile"
 fi
 echo "$sha" > "$ciroot/build-image/tag"
-
+# we need to specify this build arg for metric controller for namespaced
+# telegraf deployments
+echo "{\"TELEGRAF_IMAGE_VERSION\": \"$sha\"}" > "$ciroot/build-image/docker_build_args.json"
