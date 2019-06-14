@@ -6,6 +6,7 @@ groups:
   jobs:
   - crosstalk-receiver
   - latency-receiver
+  - prometheus-scrape-target
 
 resources:
 - name: base-image-docker-build-context
@@ -34,6 +35,13 @@ resources:
   type: docker-image
   source:
     repository: oratos/latency-receiver
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
+- name: prometheus-scrape-target-image
+  type: docker-image
+  source:
+    repository: oratos/prometheus-scrape-target
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
@@ -118,6 +126,40 @@ jobs:
     params:
       build: oratos-ci/tools/syslog-receiver
       dockerfile: oratos-ci/tools/syslog-receiver/cmd/latency-receiver/Dockerfile
+      tag_as_latest: true
+      tag: tags/version
+      cache_tag: latest
+    get_params:
+      skip_download: true
+
+- name: prometheus-scrape-target
+  plan:
+  - get: oratos-ci
+  - task: write-version
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      params:
+        VERSION: v0.1
+        DEBUG:
+      outputs:
+      - name: tags
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+
+          echo "$VERSION" > tags/version
+  - put: prometheus-scrape-target-image
+    params:
+      build: oratos-ci/tools/prometheus-scrape-target
+      dockerfile: oratos-ci/tools/prometheus-scrape-target/Dockerfile
       tag_as_latest: true
       tag: tags/version
       cache_tag: latest
