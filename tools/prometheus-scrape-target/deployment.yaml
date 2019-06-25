@@ -15,7 +15,7 @@ spec:
         app: scrape
       annotations:
         prometheus.io/scrape: 'true'
-        prometheus.io/port: '9102'
+        prometheus.io/port: '2112'
     spec:
       containers:
       - name: scrape
