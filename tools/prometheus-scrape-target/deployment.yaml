@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scrape-deployment
+  labels:
+    app: scrape
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: scrape
+  template:
+    metadata:
+      labels:
+        app: scrape
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9102'
+    spec:
+      containers:
+      - name: scrape
+        image: oratos/prometheus-scrape-target:v0.1
+        ports:
+        - containerPort: 2112
+        env:
+        - name: METRIC_NAME
+          value: "metricname"
+
