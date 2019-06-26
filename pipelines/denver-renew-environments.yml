@@ -21,7 +21,6 @@ jobs:
 
       params:
         TOOLSMITHS_API_TOKEN: ((toolsmiths-api-token))
-        ENV_NAMES: ((renew_environments_params.ENV_NAMES))
 
       run:
         path: /bin/bash
@@ -31,8 +30,8 @@ jobs:
           #!/bin/bash
           set -eu
 
-          for env in ${ENV_NAMES}; do
-            curl --fail "https://environments.toolsmiths.cf-app.com/v1/custom_gcp/pas/renew" -H "Content-Type: application/json" -d @- <<JSON
+          for env in $(curl https://environments.toolsmiths.cf-app.com/v1/custom_gcp/pks/list -G -d "api_token=${TOOLSMITHS_API_TOKEN}" | jq -r '.[].name'); do
+            curl --fail "https://environments.toolsmiths.cf-app.com/v1/custom_gcp/pks/renew" -H "Content-Type: application/json" -d @- <<JSON
             {
               "api_token": "${TOOLSMITHS_API_TOKEN}",
               "name": "${env}"
