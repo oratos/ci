@@ -19,7 +19,7 @@ resource_types:
 - name: vault
   type: docker-image
   source:
-    repository: wfernandes/vault-resource
+    repository: oratos/vault-resource
     tag: latest
 
 resources:
@@ -40,6 +40,7 @@ resources:
     role_id: ((vault.role_id))
     secret_id: ((vault.secret_id))
     path: secret/envs/bikepark-bbl-state
+    timeout: 120s
     tarball: true
 
 - name: bosh-metric-sink
@@ -55,6 +56,7 @@ resources:
     url: https://vault.oratos.ci.cf-app.com
     role_id: ((vault.role_id))
     secret_id: ((vault.secret_id))
+    timeout: 120s
     path: secret/envs/bikepark-cfcr-gcp-vars
 
 - name: sink-resources-manifests
