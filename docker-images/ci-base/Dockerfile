@@ -37,7 +37,7 @@ RUN cd /tmp \
   && cp terraform /usr/local/bin/
 
 RUN cd /tmp \
-  && wget https://github.com/kubernetes-sigs/kustomize/releases/download/v2.1.0/kustomize_2.1.0_linux_amd64 -O /usr/local/bin/kustomize \
+  && wget https://github.com/kubernetes-sigs/kustomize/releases/download/v3.0.0/kustomize_3.0.0_linux_amd64 -O /usr/local/bin/kustomize \
   && chmod +x /usr/local/bin/kustomize
 
 ENV TELEGRAF_VERSION 1.11.0
