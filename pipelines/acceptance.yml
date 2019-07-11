@@ -179,7 +179,7 @@ jobs:
   serial_groups:
   - bikepark-director-lifecycle
   plan:
-  - aggregate:
+  - in_parallel:
     - get: bikepark-bbl-state
     - get: cf-deployment-concourse-tasks
   - task: bbl-up
@@ -202,7 +202,7 @@ jobs:
   serial_groups:
   - bikepark-director-lifecycle
   plan:
-  - aggregate:
+  - in_parallel:
     - get: bikepark-bbl-state
     - get: cf-deployment-concourse-tasks
   - task: bbl-destroy
@@ -221,7 +221,7 @@ jobs:
   serial_groups:
   - bikepark-cfcr-lifecycle
   plan:
-  - aggregate:
+  - in_parallel:
     - get: bikepark-bbl-state
     - get: bikepark-cfcr-gcp-vars
     - get: cf-deployment-concourse-tasks
@@ -231,7 +231,7 @@ jobs:
       trigger: true
     - get: kubo-release-bosh-io
       trigger: true
-  - aggregate:
+  - in_parallel:
     - task: upload-bosh-release
       file: oratos-ci/tasks/cfcr-upload-bosh-release/task.yml
       input_mapping:
@@ -365,7 +365,7 @@ jobs:
   serial_groups:
   - bikepark-cfcr-lifecycle
   plan:
-  - aggregate:
+  - in_parallel:
     - get: bikepark-bbl-state
     - get: oratos-ci
     - get: cf-deployment-concourse-tasks
@@ -388,7 +388,7 @@ jobs:
 - name: sink-resources-deploy
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - get: sink-resources-manifests
       trigger: true
     - get: sink-controller-image
@@ -449,7 +449,7 @@ jobs:
   serial: true
   serial_groups: ["restage"]
   plan:
-  - aggregate:
+  - in_parallel:
     - get: bikepark-bbl-state
     - get: oratos-ci
     - get: 15m
@@ -497,7 +497,7 @@ jobs:
   serial: true
   serial_groups: ["restage"]
   plan:
-  - aggregate:
+  - in_parallel:
     - get: bikepark-bbl-state
     - get: oratos-ci
     - get: 1h
@@ -545,7 +545,7 @@ jobs:
   serial: true
   serial_groups: ["restage"]
   plan:
-  - aggregate:
+  - in_parallel:
     - get: bikepark-bbl-state
     - get: oratos-ci
     - get: 1h
@@ -591,7 +591,7 @@ jobs:
 - name: latency-test
   build_logs_to_retain: 1000
   plan:
-  - aggregate:
+  - in_parallel:
     - get: 15m
       trigger: true
     - get: bikepark-bbl-state

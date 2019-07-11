@@ -51,7 +51,7 @@ resources:
 jobs:
 - name: bump-fluent-bit
   plan:
-  - aggregate:
+  - in_parallel:
     - get: fluent-bit-image
       trigger: true
       params:
@@ -121,11 +121,11 @@ jobs:
 
 - name: unit-tests
   plan:
-  - aggregate:
+  - in_parallel:
     - get: out-syslog
       trigger: true
     - get: oratos-ci
-  - aggregate:
+  - in_parallel:
     - task: run-linter
       file: oratos-ci/tasks/golangci-lint-modules/task.yml
       input_mapping:
@@ -148,13 +148,13 @@ jobs:
 - name: build-fluent-bit-out-syslog-image
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - get: out-syslog
       trigger: true
       passed:
       - unit-tests
     - get: oratos-ci
-  - aggregate:
+  - in_parallel:
     - task: prepare-build
       file: oratos-ci/tasks/build-docker-image/task.yml
       input_mapping:

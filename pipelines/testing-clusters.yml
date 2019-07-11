@@ -92,7 +92,7 @@ jobs:
   serial_groups:
   - oratos-ci-testing-cfcr-director-lifecycle
   plan:
-  - aggregate:
+  - in_parallel:
     - get: oratos-ci-testing-cfcr-bbl-state
     - get: cf-deployment-concourse-tasks
   - task: bbl-up
@@ -115,7 +115,7 @@ jobs:
   serial_groups:
   - oratos-ci-testing-cfcr-director-lifecycle
   plan:
-  - aggregate:
+  - in_parallel:
     - get: oratos-ci-testing-cfcr-bbl-state
     - get: cf-deployment-concourse-tasks
   - task: bbl-destroy
@@ -134,7 +134,7 @@ jobs:
   serial_groups:
   - oratos-ci-testing-cfcr-lifecycle
   plan:
-  - aggregate:
+  - in_parallel:
     - get: oratos-ci-testing-cfcr-bbl-state
     - get: oratos-ci-testing-cfcr-gcp-vars
     - get: cf-deployment-concourse-tasks
@@ -144,7 +144,7 @@ jobs:
       trigger: true
     - get: kubo-release-bosh-io
       trigger: true
-  - aggregate:
+  - in_parallel:
     - task: upload-stemcell
       file: oratos-ci/tasks/cfcr-upload-stemcell/task.yml
       input_mapping:
@@ -279,7 +279,7 @@ jobs:
   serial_groups:
   - oratos-ci-testing-cfcr-lifecycle
   plan:
-  - aggregate:
+  - in_parallel:
     - get: oratos-ci-testing-cfcr-bbl-state
     - get: oratos-ci
     - get: cf-deployment-concourse-tasks
@@ -304,7 +304,7 @@ jobs:
   serial_groups:
   - control-plane-test-director-lifecycle
   plan:
-  - aggregate:
+  - in_parallel:
     - get: control-plane-test-bbl-state
     - get: cf-deployment-concourse-tasks
   - task: bbl-up
@@ -327,7 +327,7 @@ jobs:
   serial_groups:
   - control-plane-test-director-lifecycle
   plan:
-  - aggregate:
+  - in_parallel:
     - get: control-plane-test-bbl-state
     - get: cf-deployment-concourse-tasks
   - task: bbl-destroy
@@ -346,7 +346,7 @@ jobs:
   serial_groups:
   - control-plane-test-lifecycle
   plan:
-  - aggregate:
+  - in_parallel:
     - get: control-plane-test-bbl-state
     - get: control-plane-test-gcp-vars
     - get: cf-deployment-concourse-tasks
@@ -356,7 +356,7 @@ jobs:
       trigger: true
     - get: kubo-release-bosh-io
       trigger: true
-  - aggregate:
+  - in_parallel:
     - task: upload-stemcell
       file: oratos-ci/tasks/cfcr-upload-stemcell/task.yml
       input_mapping:
@@ -492,7 +492,7 @@ jobs:
   serial_groups:
   - control-plane-test-lifecycle
   plan:
-  - aggregate:
+  - in_parallel:
     - get: control-plane-test-bbl-state
     - get: oratos-ci
     - get: cf-deployment-concourse-tasks

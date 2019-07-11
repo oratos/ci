@@ -177,11 +177,11 @@ resources:
 jobs:
 - name: unit-tests
   plan:
-  - aggregate:
+  - in_parallel:
     - get: sink-resources
       trigger: true
     - get: oratos-ci
-  - aggregate:
+  - in_parallel:
     - task: run-linter
       file: oratos-ci/tasks/golangci-lint-modules/task.yml
       input_mapping:
@@ -234,7 +234,7 @@ jobs:
 - name: build-sink-controller-image
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - get: sink-resources
       trigger: true
       passed:
@@ -258,7 +258,7 @@ jobs:
 - name: build-event-controller-image
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - get: sink-resources
       trigger: true
       passed:
@@ -282,7 +282,7 @@ jobs:
 - name: build-metric-controller-image
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - get: sink-resources
       trigger: true
       passed:
@@ -307,7 +307,7 @@ jobs:
 - name: build-cert-generator-image
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - get: sink-resources
       trigger: true
       passed:
@@ -331,7 +331,7 @@ jobs:
 - name: build-ghostunnel-image
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - get: sink-resources
       trigger: true
       passed:
@@ -355,7 +355,7 @@ jobs:
 - name: build-telegraf-image
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - get: sink-resources
       trigger: true
       passed:
@@ -379,7 +379,7 @@ jobs:
 - name: build-telegraf-windows-image
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - get: sink-resources
       trigger: true
       passed:
@@ -446,7 +446,7 @@ jobs:
 - name: build-validator-image
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - get: sink-resources
       trigger: true
       passed:
@@ -470,7 +470,7 @@ jobs:
 - name: build-node-exporter-image
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - get: sink-resources
       trigger: true
       passed:
@@ -493,7 +493,7 @@ jobs:
 
 - name: build-observability-manager-image
   plan:
-    - aggregate:
+    - in_parallel:
         - get: sink-resources
           trigger: true
           passed:
@@ -541,7 +541,7 @@ jobs:
 - name: deploy-gke
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - get: sink-resources
       trigger: true
       passed:
@@ -634,7 +634,7 @@ jobs:
 - name: gke-tests
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - get: sink-resources
       trigger: true
       passed:
@@ -713,7 +713,7 @@ jobs:
 - name: deploy-cfcr
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - get: sink-resources
       trigger: true
       passed:
@@ -797,7 +797,7 @@ jobs:
 - name: cfcr-tests
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - get: sink-resources
       trigger: true
       passed:
@@ -877,7 +877,7 @@ jobs:
 - name: promote
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - get: sink-resources
       trigger: true
       passed:
@@ -957,7 +957,7 @@ jobs:
             set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
             echo "release-elect" > promote/tag
-  - aggregate:
+  - in_parallel:
     - put: sink-controller-image
       params:
         load: sink-controller-image
