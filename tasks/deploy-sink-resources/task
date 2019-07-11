@@ -21,12 +21,9 @@ function apply_manifests {
     observability_manager_digest="$(cat observability-manager-image/digest)"
     pushd sink-resources/manifests/observability-manager
         kustomize edit set image "oratos/observability-manager@$observability_manager_digest"
+        kubectl apply -k .
+        echo "Completed applying the manifests for sink-resources/pks"
     popd
-
-    # Using $RANDOM for sink resources version to ensure cert-generator job is
-    # always ran.
-    kustomize build sink-resources/manifests/observability-manager | kubectl apply -f -
-    echo "Completed applying the manifests for sink-resources/pks"
 }
 
 function verify_resources_are_running {

@@ -709,6 +709,51 @@ jobs:
           rm sa.json
           gcloud container clusters get-credentials oratos-ci-testing \
             --zone us-central1-a
+  - task: empty-deployment-test
+    params:
+      SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
+      GET_CREDENTIALS_HOOK: |
+          echo "$SERVICE_ACCOUNT" > sa.json
+          gcloud auth activate-service-account --key-file sa.json
+          rm sa.json
+          gcloud container clusters get-credentials oratos-ci-testing \
+            --zone us-central1-a
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      inputs:
+        - name: observability-manager-image
+        - name: oratos-ci
+        - name: sink-resources
+      params:
+        DEBUG:
+        GET_CREDENTIALS_HOOK:
+        SERVICE_ACCOUNT:
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+
+          eval "$GET_CREDENTIALS_HOOK"
+
+          observability_manager_digest="$(cat observability-manager-image/digest)"
+          pushd sink-resources/manifests/observability-manager
+              kustomize edit set image "oratos/observability-manager@$observability_manager_digest"
+          popd
+
+          kubectl apply -k sink-resources/manifests/observability-manager-overlays/remove
+          trap "kubectl apply -k sink-resources/manifests/observability-manager" EXIT
+
+          kubectl -n pks-system rollout status --watch deployment/observability-manager
+
+          kubectl get namespace pks-system
+
 
 - name: deploy-cfcr
   serial: true
