@@ -1270,7 +1270,7 @@ jobs:
             docker tag "oratos/observability-manager:$GIT_REF" "oratos/observability-manager:$OBSERVABILITY_MANAGER_VERSION"
             docker push "oratos/observability-manager:$OBSERVABILITY_MANAGER_VERSION"
 
-            docker save "$om_docker_name" | gzip > "github-release/oratos_observability-manager:$OBSERVABILITY_MANAGER_VERSION.tgz"
+            docker save "oratos/observability-manager:$OBSERVABILITY_MANAGER_VERSION" | gzip > "github-release/oratos_observability-manager:$OBSERVABILITY_MANAGER_VERSION.tgz"
           }
           {
             docker pull "oratos/fluent-bit-out-syslog:$FLUENT_BIT_REF"
