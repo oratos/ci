@@ -1095,6 +1095,7 @@ jobs:
         DOCKERHUB_USERNAME: ((docker-hub.username))
         DOCKERHUB_PASSWORD: ((docker-hub.password))
         GITHUB_PRIVATE_KEY: ((github.oratos-bot-private-key))
+        SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
         DEBUG:
       outputs:
       - name: github-release
@@ -1179,6 +1180,11 @@ jobs:
           }
           trap cleanup EXIT
 
+          echo "$SERVICE_ACCOUNT" > sa.json
+          gcloud auth activate-service-account --key-file sa.json
+          rm sa.json
+          gcloud auth configure-docker --quiet
+
           echo waiting 10 seconds while docker starts up
           sleep 10
 
@@ -1243,7 +1249,6 @@ jobs:
           cg_docker_name="oratos/cert-generator:$GIT_REF"
           gt_docker_name="oratos/ghostunnel:$GIT_REF"
           t_docker_name="oratos/telegraf:$GIT_REF"
-          # tw_docker_name="oratos/telegraf-windows:$GIT_REF"
           vd_docker_name="oratos/validator:$GIT_REF"
           ne_docker_name="oratos/node-exporter:$GIT_REF"
           om_docker_name="oratos/observability-manager:$OBSERVABILITY_MANAGER_VERSION"
@@ -1255,6 +1260,8 @@ jobs:
           docker push "$sc_docker_name"
           docker push "oratos/sink-controller:latest"
           docker tag "oratos/sink-controller:$GIT_REF" "oratos/sink-controller:$SINK_RESOURCES_VERSION"
+          docker tag "oratos/sink-controller:$GIT_REF" "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/sink-controller:$SINK_RESOURCES_VERSION"
+          docker push "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/sink-controller:$SINK_RESOURCES_VERSION"
           docker push "oratos/sink-controller:$SINK_RESOURCES_VERSION"
 
           docker pull "oratos/event-controller:$GIT_REF"
@@ -1263,6 +1270,8 @@ jobs:
           docker push "$ec_docker_name"
           docker push "oratos/event-controller:latest"
           docker tag "oratos/event-controller:$GIT_REF" "oratos/event-controller:$SINK_RESOURCES_VERSION"
+          docker tag "oratos/event-controller:$GIT_REF" "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/event-controller:$SINK_RESOURCES_VERSION"
+          docker push "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/event-controller:$SINK_RESOURCES_VERSION"
           docker push "oratos/event-controller:$SINK_RESOURCES_VERSION"
 
           docker pull "oratos/metric-controller:$GIT_REF"
@@ -1271,6 +1280,8 @@ jobs:
           docker push "$mc_docker_name"
           docker push "oratos/metric-controller:latest"
           docker tag "oratos/metric-controller:$GIT_REF" "oratos/metric-controller:$SINK_RESOURCES_VERSION"
+          docker tag "oratos/metric-controller:$GIT_REF" "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/metric-controller:$SINK_RESOURCES_VERSION"
+          docker push "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/metric-controller:$SINK_RESOURCES_VERSION"
           docker push "oratos/metric-controller:$SINK_RESOURCES_VERSION"
 
           docker pull "oratos/cert-generator:$GIT_REF"
@@ -1279,6 +1290,8 @@ jobs:
           docker push "$cg_docker_name"
           docker push "oratos/cert-generator:latest"
           docker tag "oratos/cert-generator:$GIT_REF" "oratos/cert-generator:$SINK_RESOURCES_VERSION"
+          docker tag "oratos/cert-generator:$GIT_REF" "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/cert-generator:$SINK_RESOURCES_VERSION"
+          docker push "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/cert-generator:$SINK_RESOURCES_VERSION"
           docker push "oratos/cert-generator:$SINK_RESOURCES_VERSION"
 
           docker pull "oratos/ghostunnel:$GIT_REF"
@@ -1287,6 +1300,8 @@ jobs:
           docker push "$gt_docker_name"
           docker push "oratos/ghostunnel:latest"
           docker tag "oratos/ghostunnel:$GIT_REF" "oratos/ghostunnel:$SINK_RESOURCES_VERSION"
+          docker tag "oratos/ghostunnel:$GIT_REF" "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/ghostunnel:$SINK_RESOURCES_VERSION"
+          docker push "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/ghostunnel:$SINK_RESOURCES_VERSION"
           docker push "oratos/ghostunnel:$SINK_RESOURCES_VERSION"
 
           docker pull "oratos/telegraf:$GIT_REF"
@@ -1295,23 +1310,18 @@ jobs:
           docker push "$t_docker_name"
           docker push "oratos/telegraf:latest"
           docker tag "oratos/telegraf:$GIT_REF" "oratos/telegraf:$SINK_RESOURCES_VERSION"
+          docker tag "oratos/telegraf:$GIT_REF" "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/telegraf:$SINK_RESOURCES_VERSION"
+          docker push "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/telegraf:$SINK_RESOURCES_VERSION"
           docker push "oratos/telegraf:$SINK_RESOURCES_VERSION"
-
-          # docker pull "oratos/telegraf-windows:$GIT_REF"
-          # docker tag "oratos/telegraf-windows:$GIT_REF" "$tw_docker_name"
-          # docker tag "oratos/telegraf-windows:$GIT_REF" "oratos/telegraf-windows:latest"
-          # docker push "$tw_docker_name"
-          # docker push "oratos/telegraf-windows:latest"
-          # docker tag "oratos/telegraf-windows:$GIT_REF" "oratos/telegraf-windows:$SINK_RESOURCES_VERSION"
-          # docker push "oratos/telegraf-windows:$SINK_RESOURCES_VERSION"
 
           docker pull "oratos/validator:$GIT_REF"
           docker tag "oratos/validator:$GIT_REF" "$vd_docker_name"
           docker tag "oratos/validator:$GIT_REF" "oratos/validator:latest"
-          docker tag "oratos/validator:$GIT_REF" "oratos/validator:$SINK_RESOURCES_VERSION"
           docker push "$vd_docker_name"
           docker push "oratos/validator:latest"
           docker tag "oratos/validator:$GIT_REF" "oratos/validator:$SINK_RESOURCES_VERSION"
+          docker tag "oratos/validator:$GIT_REF" "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/validator:$SINK_RESOURCES_VERSION"
+          docker push "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/validator:$SINK_RESOURCES_VERSION"
           docker push "oratos/validator:$SINK_RESOURCES_VERSION"
 
           docker pull "oratos/node-exporter:$GIT_REF"
@@ -1320,6 +1330,8 @@ jobs:
           docker push "$vd_docker_name"
           docker push "oratos/node-exporter:latest"
           docker tag "oratos/node-exporter:$GIT_REF" "oratos/node-exporter:$SINK_RESOURCES_VERSION"
+          docker tag "oratos/node-exporter:$GIT_REF" "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/node-exporter:$SINK_RESOURCES_VERSION"
+          docker push "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/node-exporter:$SINK_RESOURCES_VERSION"
           docker push "oratos/node-exporter:$SINK_RESOURCES_VERSION"
 
           docker pull "oratos/observability-manager:$GIT_REF"
@@ -1328,6 +1340,8 @@ jobs:
           docker push "$om_docker_name"
           docker push "oratos/observability-manager:latest"
           docker tag "oratos/observability-manager:$GIT_REF" "oratos/observability-manager:$OBSERVABILITY_MANAGER_VERSION"
+          docker tag "oratos/observability-manager:$GIT_REF" "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/observability-manager:$OBSERVABILITY_MANAGER_VERSION"
+          docker push "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/observability-manager:$OBSERVABILITY_MANAGER_VERSION"
           docker push "oratos/observability-manager:$OBSERVABILITY_MANAGER_VERSION"
 
           docker pull "$fb_docker_name"
