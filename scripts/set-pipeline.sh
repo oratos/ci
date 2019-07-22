@@ -3,14 +3,6 @@ set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
 function set_globals {
     pipeline="${1:-}"
-
-    DEFAULT_TARGET=oratos
-
-    if [[ ${pipeline} == denver-* ]]; then
-        DEFAULT_TARGET=denver
-    fi
-
-    TARGET="${TARGET:-${DEFAULT_TARGET}}"
 }
 
 function validate_args {
@@ -52,19 +44,18 @@ for s in json.load(sys.stdin):
 
 function set_pipeline {
     echo setting pipeline for "$1"
-    fly -t "$TARGET" set-pipeline -p "$1" \
+    fly -t oratos set-pipeline -p "$1" \
         -l pipelines/vars/global.yml \
         -c <(yq read "pipelines/$1.yml" --tojson)
 }
 
 function sync_fly {
-    fly -t "$TARGET" sync
+    fly -t oratos sync
 }
 
 function set_pipelines {
     if [ "$pipeline" = all ] || [ -z "$pipeline" ]; then
-        for pipeline_file in $(find pipelines -depth 1 -iname "*.yml" \
-                                | sed 's|^pipelines/||'); do
+        for pipeline_file in $(ls -1 pipelines | grep '\.yml$' | sed -e 's/\.yml$//'); do
             set_pipeline "${pipeline_file%.yml}"
         done
         exit 0
