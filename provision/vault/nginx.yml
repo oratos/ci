@@ -115,6 +115,7 @@ data:
         sendfile        on;
 
         keepalive_timeout  65;
+        client_max_body_size 100M;
 
         server {
             listen 443 ssl http2;
