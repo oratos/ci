@@ -8,7 +8,6 @@ groups:
   - build-cert-generator-image
   - build-ghostunnel-image
   - build-telegraf-image
-  - build-telegraf-windows-image
   - build-validator-image
   - build-node-exporter-image
   - build-observability-manager-image
@@ -376,73 +375,6 @@ jobs:
     get_params:
       skip_download: true
 
-- name: build-telegraf-windows-image
-  serial: true
-  plan:
-  - in_parallel:
-    - get: sink-resources
-      trigger: true
-      passed:
-      - unit-tests
-    - get: oratos-ci
-  - task: build-windows-image
-    input_mapping:
-      source-repo: sink-resources
-    config:
-      inputs:
-        - name: source-repo
-      outputs:
-        - name: build-image
-      platform: windows
-      params:
-        DOCKER_USERNAME: ((docker-hub.username))
-        DOCKER_PASSWORD: ((docker-hub.password))
-        DOCKERFILE: source-repo/cmd/telegraf/Dockerfile-Windows
-        EPHEMERAL_DISK_TEMP_PATH: "C:\\var\\vcap\\data\\tmp"
-        IMAGE_NAME: "oratos/telegraf-windows"
-      run:
-        path: powershell
-        args:
-          - -Command
-          - |
-            $ProgressPreference="SilentlyContinue"
-            $ErrorActionPreference = "Stop";
-            trap { $host.SetShouldExit(1) }
-
-            cd source-repo
-            $sha = git rev-parse HEAD
-            cd ..
-
-            Set-Content -Path build-image/tag -Value "$sha"
-
-            mkdir "$env:EPHEMERAL_DISK_TEMP_PATH" -ea 0
-            $env:TEMP = $env:TMP = $env:GOTMPDIR = $env:EPHEMERAL_DISK_TEMP_PATH
-            $env:GOCACHE = "$env:EPHEMERAL_DISK_TEMP_PATH\go-build"
-
-            function Run-Docker {
-              param([String[]] $cmd)
-
-              docker @cmd
-              if ($LASTEXITCODE -ne 0) {
-                Exit $LASTEXITCODE
-              }
-            }
-
-            restart-service docker
-
-            mkdir buildDir
-            cp $env:DOCKERFILE buildDir\Dockerfile
-
-            cd buildDir
-
-            Run-Docker "--version"
-            Run-Docker "build", "-t", "${env:IMAGE_NAME}:$sha", "--pull", "."
-            Run-Docker "images", "-a"
-            Run-Docker "login", "-u", "$env:DOCKER_USERNAME", "-p", "$env:DOCKER_PASSWORD"
-            Run-Docker "push", "${env:IMAGE_NAME}:$sha"
-
-            # Run-Docker "save", "-o", "../build-image/image.tar", "${env:IMAGE_NAME}:$sha"
-
 - name: build-validator-image
   serial: true
   plan:
@@ -551,7 +483,6 @@ jobs:
       - build-cert-generator-image
       - build-ghostunnel-image
       - build-telegraf-image
-      - build-telegraf-windows-image
       - build-validator-image
       - build-node-exporter-image
       - build-observability-manager-image
@@ -768,7 +699,6 @@ jobs:
       - build-cert-generator-image
       - build-ghostunnel-image
       - build-telegraf-image
-      - build-telegraf-windows-image
       - build-validator-image
       - build-node-exporter-image
       - build-observability-manager-image
@@ -1217,7 +1147,6 @@ jobs:
           - [oratos/cert-generator][cert-generator]:$SINK_RESOURCES_VERSION
           - [oratos/ghostunnel][ghostunnel]:$SINK_RESOURCES_VERSION
           - [oratos/telegraf][telegraf]:$SINK_RESOURCES_VERSION
-          - [oratos/telegraf-windows][telegraf-windows]:$SINK_RESOURCES_VERSION
           - [oratos/validator][validator]:$SINK_RESOURCES_VERSION
           - [oratos/node-exporter][node-exporter]:$SINK_RESOURCES_VERSION
           - [oratos/observability-manager][observability-manager]:$OBSERVABILITY_MANAGER_VERSION
@@ -1229,7 +1158,6 @@ jobs:
           [cert-generator]: https://hub.docker.com/r/oratos/cert-generator/
           [ghostunnel]: https://hub.docker.com/r/oratos/ghostunnel/
           [telegraf]: https://hub.docker.com/r/oratos/telegraf/
-          [telegraf-windows]: https://hub.docker.com/r/oratos/telegraf-windows/
           [validator]: https://hub.docker.com/r/oratos/validator/
           [node-exporter]: https://hub.docker.com/r/oratos/node-exporter/
           [observability-manager]: https://hub.docker.com/r/oratos/observability-manager/

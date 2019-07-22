@@ -56,13 +56,6 @@ resources:
     uri: https://github.com/cloudfoundry-incubator/kubo-deployment
     branch: v0.31.0
 
-- name: bosh-metric-sink
-  type: github-release
-  source:
-    owner: pivotal
-    repository: bosh-metric-sink
-    access_token: ((github.oratos-bot-release-access-token))
-
 - name: kubo-release-bosh-io
   type: bosh-io-release
   source:
@@ -139,7 +132,6 @@ jobs:
     - get: oratos-ci-testing-cfcr-gcp-vars
     - get: cf-deployment-concourse-tasks
     - get: oratos-ci
-    - get: bosh-metric-sink
     - get: kubo-deployment
       trigger: true
     - get: kubo-release-bosh-io
@@ -149,11 +141,6 @@ jobs:
       file: oratos-ci/tasks/cfcr-upload-stemcell/task.yml
       input_mapping:
         bbl-state: oratos-ci-testing-cfcr-bbl-state
-    - task: upload-bosh-release
-      file: oratos-ci/tasks/cfcr-upload-bosh-release/task.yml
-      input_mapping:
-        bbl-state: oratos-ci-testing-cfcr-bbl-state
-        bosh-release: bosh-metric-sink
     - task: upload-bosh-release
       file: oratos-ci/tasks/cfcr-upload-bosh-release/task.yml
       input_mapping:
@@ -206,29 +193,7 @@ jobs:
             set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
             cp -r kubo-deployment/. modified-kubo-deployment/
-            cat <<EOF > add-bosh-metric-sink.yml
-            - type: replace
-              path: /releases/-
-              value:
-                name: bosh-metric-sink
-                version: latest
-            - type: replace
-              path: /addons/-
-              value:
-                name: bosh-metric-sink
-                include:
-                  stemcell:
-                  - os: ubuntu-xenial
-                jobs:
-                - name: metric-sink
-                  release: bosh-metric-sink
-                  properties:
-                    cluster_name: testing
-                    outputs: |
-                      [[outputs.discard]]
-            EOF
             bosh interpolate kubo-deployment/manifests/cfcr.yml \
-              --ops-file add-bosh-metric-sink.yml \
               > modified-kubo-deployment/manifests/cfcr.yml
   - task: cfcr-deploy
     file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
@@ -351,7 +316,6 @@ jobs:
     - get: control-plane-test-gcp-vars
     - get: cf-deployment-concourse-tasks
     - get: oratos-ci
-    - get: bosh-metric-sink
     - get: kubo-deployment
       trigger: true
     - get: kubo-release-bosh-io
@@ -361,11 +325,6 @@ jobs:
       file: oratos-ci/tasks/cfcr-upload-stemcell/task.yml
       input_mapping:
         bbl-state: control-plane-test-bbl-state
-    - task: upload-bosh-release
-      file: oratos-ci/tasks/cfcr-upload-bosh-release/task.yml
-      input_mapping:
-        bbl-state: control-plane-test-bbl-state
-        bosh-release: bosh-metric-sink
     - task: upload-bosh-release
       file: oratos-ci/tasks/cfcr-upload-bosh-release/task.yml
       input_mapping:
@@ -418,29 +377,7 @@ jobs:
             set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
             cp -r kubo-deployment/. modified-kubo-deployment/
-            cat <<EOF > add-bosh-metric-sink.yml
-            - type: replace
-              path: /releases/-
-              value:
-                name: bosh-metric-sink
-                version: latest
-            - type: replace
-              path: /addons/-
-              value:
-                name: bosh-metric-sink
-                include:
-                  stemcell:
-                  - os: ubuntu-xenial
-                jobs:
-                - name: metric-sink
-                  release: bosh-metric-sink
-                  properties:
-                    cluster_name: control-plane
-                    outputs: |
-                      [[outputs.discard]]
-            EOF
             bosh interpolate kubo-deployment/manifests/cfcr.yml \
-              --ops-file add-bosh-metric-sink.yml \
               > modified-kubo-deployment/manifests/cfcr.yml
   - task: cfcr-deploy
     file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
