@@ -83,10 +83,7 @@ function deploy_concourse {
             --ops-file operations/vault.yml \
             --ops-file operations/github-auth.yml \
             --ops-file operations/worker-ephemeral-disk.yml \
-            --ops-file ../../worker_instances.yml \
-            --ops-file operations/windows-worker.yml \
-            --ops-file operations/windows-worker-ephemeral-disk.yml \
-            --ops-file ${HOME}/workspace/oratos-ci/provision/concourse/ops-files/windows-tools-2019.yml
+            --ops-file ../../worker_instances.yml
     popd > /dev/null
 
     cleanup_git_repo
