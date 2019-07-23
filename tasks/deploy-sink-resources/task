@@ -28,7 +28,7 @@ function apply_manifests {
 
 function verify_resources_are_running {
     # sleep to give time for resources to exist at all
-    sleep 5
+    sleep 20
 
     # Verify sink resources are healthy
     verify_labeled_pod_running "app=sink-controller"
