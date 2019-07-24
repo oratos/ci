@@ -171,36 +171,12 @@ jobs:
             popd > /dev/null
 
             credhub import --file oratos-ci-testing-cfcr-gcp-vars/vars.yml
-    - task: modify-kubo-deployment
-      config:
-        platform: linux
-        image_resource:
-          type: docker-image
-          source:
-            repository: oratos/ci-base
-        inputs:
-        - name: kubo-deployment
-        outputs:
-        - name: modified-kubo-deployment
-        params:
-          DEBUG:
-        run:
-          path: /bin/bash
-          args:
-          - "-c"
-          - |
-            #!/bin/bash
-            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-
-            cp -r kubo-deployment/. modified-kubo-deployment/
-            bosh interpolate kubo-deployment/manifests/cfcr.yml \
-              > modified-kubo-deployment/manifests/cfcr.yml
   - task: cfcr-deploy
     file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
     input_mapping:
       bbl-state: oratos-ci-testing-cfcr-bbl-state
-      cf-deployment: modified-kubo-deployment
-      ops-files: modified-kubo-deployment
+      cf-deployment: kubo-deployment
+      ops-files: kubo-deployment
       vars-files: kubo-deployment # this isn't used but is a required input
     params:
       SYSTEM_DOMAIN: example.com # this isn't used but is a required input
@@ -355,36 +331,12 @@ jobs:
             popd > /dev/null
 
             credhub import --file control-plane-test-gcp-vars/vars.yml
-    - task: modify-kubo-deployment
-      config:
-        platform: linux
-        image_resource:
-          type: docker-image
-          source:
-            repository: oratos/ci-base
-        inputs:
-        - name: kubo-deployment
-        outputs:
-        - name: modified-kubo-deployment
-        params:
-          DEBUG:
-        run:
-          path: /bin/bash
-          args:
-          - "-c"
-          - |
-            #!/bin/bash
-            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-
-            cp -r kubo-deployment/. modified-kubo-deployment/
-            bosh interpolate kubo-deployment/manifests/cfcr.yml \
-              > modified-kubo-deployment/manifests/cfcr.yml
   - task: cfcr-deploy
     file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
     input_mapping:
       bbl-state: control-plane-test-bbl-state
-      cf-deployment: modified-kubo-deployment
-      ops-files: modified-kubo-deployment
+      cf-deployment: kubo-deployment
+      ops-files: kubo-deployment
       vars-files: kubo-deployment # this isn't used but is a required input
     params:
       SYSTEM_DOMAIN: example.com # this isn't used but is a required input
