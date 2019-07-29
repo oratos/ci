@@ -13,10 +13,10 @@ import (
 )
 
 var (
-	namespacedCount              *expvar.Map
-	webhookNamespacedCount       *expvar.Map
-	clusterCount                 *expvar.Int
-	nonDnsCompliantHostnameCount *expvar.Int
+	namespacedCount           *expvar.Map
+	webhookNamespacedCount    *expvar.Map
+	clusterCount              *expvar.Int
+	dnsCompliantHostnameCount *expvar.Int
 )
 
 func init() {
