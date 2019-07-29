@@ -7,20 +7,23 @@ import (
 	"os"
 	"os/signal"
 
+	"code.cloudfoundry.org/rfc5424"
 	"github.com/pivotal-cf/oratos-ci/tools/syslog-receiver/pkg/handlers"
 	"github.com/pivotal-cf/oratos-ci/tools/syslog-receiver/pkg/tcpserver"
 )
 
 var (
-	namespacedCount        *expvar.Map
-	webhookNamespacedCount *expvar.Map
-	clusterCount           *expvar.Int
+	namespacedCount              *expvar.Map
+	webhookNamespacedCount       *expvar.Map
+	clusterCount                 *expvar.Int
+	nonDnsCompliantHostnameCount *expvar.Int
 )
 
 func init() {
 	namespacedCount = expvar.NewMap("namespaced")
 	clusterCount = expvar.NewInt("cluster")
 	webhookNamespacedCount = expvar.NewMap("webhookNamespaced")
+	dnsCompliantHostnameCount = expvar.NewInt("dnsCompliantHostname")
 }
 
 func main() {
@@ -45,7 +48,10 @@ func main() {
 		net.JoinHostPort("", syslogPort),
 		net.JoinHostPort("", httpPort),
 		net.JoinHostPort("", metricsPort),
-		handlers.NewCountMessageHandler(message, namespacedCount, clusterCount),
+		func(msg rfc5424.Message) {
+			handlers.NewCountMessageHandler(message, namespacedCount, clusterCount)(msg)
+			handlers.NewDnsCompliantHandler(message, dnsCompliantHostnameCount)(msg)
+		},
 		tcpserver.Handler{
 			Path:    "/metrics",
 			Handler: expvar.Handler(),
