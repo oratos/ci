@@ -1,11 +1,11 @@
 package handlers_test
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"expvar"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"time"
 
@@ -43,8 +43,7 @@ var _ = Describe("Crosstalk Receiver", func() {
 		)
 		defer s.Close()
 
-		writer, err := net.Dial("tcp", s.SyslogAddr())
-		Expect(err).ToNot(HaveOccurred())
+		writer := insecureTlsDial(s.SyslogAddr())
 		defer writer.Close()
 
 		rfcLog := rfc5424.Message{
@@ -68,7 +67,7 @@ var _ = Describe("Crosstalk Receiver", func() {
 			},
 		}
 
-		_, err = rfcLog.WriteTo(writer)
+		_, err := rfcLog.WriteTo(writer)
 		Expect(err).ToNot(HaveOccurred())
 		_, err = rfcLog.WriteTo(writer)
 		Expect(err).ToNot(HaveOccurred())
@@ -89,8 +88,7 @@ var _ = Describe("Crosstalk Receiver", func() {
 		)
 		defer s.Close()
 
-		writer, err := net.Dial("tcp", s.SyslogAddr())
-		Expect(err).ToNot(HaveOccurred())
+		writer := insecureTlsDial(s.SyslogAddr())
 		defer writer.Close()
 
 		rfcLog := rfc5424.Message{
@@ -134,7 +132,7 @@ var _ = Describe("Crosstalk Receiver", func() {
 				},
 			},
 		}
-		_, err = rfcLog.WriteTo(writer)
+		_, err := rfcLog.WriteTo(writer)
 		Expect(err).ToNot(HaveOccurred())
 		_, err = rfcLog.WriteTo(writer)
 		Expect(err).ToNot(HaveOccurred())
@@ -157,8 +155,8 @@ var _ = Describe("Crosstalk Receiver", func() {
 
 		defer s.Close()
 
-		writer, err := net.Dial("tcp4", s.SyslogAddr())
-		Expect(err).ToNot(HaveOccurred())
+		writer := insecureTlsDial(s.SyslogAddr())
+		defer writer.Close()
 
 		rfcLog := rfc5424.Message{
 			Priority:  rfc5424.Emergency,
@@ -170,7 +168,7 @@ var _ = Describe("Crosstalk Receiver", func() {
 			Message:   []byte("crosstalk-test: this is a message for namespace-b"),
 		}
 
-		_, err = rfcLog.WriteTo(writer)
+		_, err := rfcLog.WriteTo(writer)
 		Expect(err).ToNot(HaveOccurred())
 		_, err = rfcLog.WriteTo(writer)
 		Expect(err).ToNot(HaveOccurred())
@@ -198,15 +196,16 @@ var _ = Describe("Crosstalk Receiver", func() {
 			handlers.NewCountMessageHandler("crosstalk-test", testNamespacedCount, testClusterCount),
 			tcpserver.Handler{"/metrics", expvar.Handler()})
 
-		_, err := net.Dial("tcp", s.SyslogAddr())
-		Expect(err).ToNot(HaveOccurred())
+		insecureTlsDial(s.SyslogAddr())
 
-		_, err = http.Get(fmt.Sprintf("http://%s/metrics", s.ApiAddr()))
+		_, err := http.Get(fmt.Sprintf("http://%s/metrics", s.ApiAddr()))
 		Expect(err).ToNot(HaveOccurred())
 
 		s.Close()
 
-		_, err = net.Dial("tcp", s.SyslogAddr())
+		_, err = tls.Dial("tcp", s.SyslogAddr(), &tls.Config{
+			InsecureSkipVerify: true,
+		})
 		Expect(err).To(HaveOccurred())
 
 		_, err = http.Get(fmt.Sprintf("http://%s/metrics", s.ApiAddr()))

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"time"
 
@@ -257,8 +256,7 @@ func writeSyslog(syslogAddr string) {
 }
 
 func writeSyslogTimes(syslogAddr string, fluentTime, sinkTime time.Time) {
-	writer, err := net.Dial("tcp", syslogAddr)
-	Expect(err).ToNot(HaveOccurred())
+	writer := insecureTlsDial(syslogAddr)
 	defer writer.Close()
 
 	for i := 0; i < numLogsEmitted; i++ {
