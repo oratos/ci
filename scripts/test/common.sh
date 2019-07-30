@@ -58,7 +58,7 @@ function verify_labeled_pod_running {
     local namespace=${2:-"pks-system"}
 
     echo "Verify deployment $label is running"
-    kubectl wait --timeout=60s pod --namespace "$namespace" --for=condition=Ready -l "$label"
+    kubectl wait --timeout=2m pod --namespace "$namespace" --for=condition=Ready -l "$label"
 }
 
 function retry_command {
