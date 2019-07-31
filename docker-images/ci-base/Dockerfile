@@ -21,10 +21,8 @@ RUN cd /tmp \
   && wget https://github.com/cloudfoundry/bosh-bootloader/releases/download/v6.6.7/bbl-v6.6.7_linux_x86-64 -O /usr/local/bin/bbl \
   && chmod +x /usr/local/bin/bbl
 
-RUN cd /tmp \
-  && wget https://github.com/cloudfoundry-incubator/credhub-cli/releases/download/1.7.5/credhub-linux-1.7.5.tgz \
-  && tar xzvf credhub*.tgz ./credhub \
-  && cp ./credhub /usr/local/bin/
+ADD https://github.com/cloudfoundry-incubator/credhub-cli/releases/download/2.5.2/credhub-linux-2.5.2.tgz credhub.tgz
+RUN tar xzvf credhub.tgz credhub -C /usr/local/bin && rm credhub.tgz
 
 RUN curl -Lo ./bosh https://s3.amazonaws.com/bosh-cli-artifacts/bosh-cli-5.3.1-linux-amd64 \
   && chmod +x ./bosh \
