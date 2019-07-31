@@ -22,7 +22,7 @@ RUN cd /tmp \
   && chmod +x /usr/local/bin/bbl
 
 ADD https://github.com/cloudfoundry-incubator/credhub-cli/releases/download/2.5.2/credhub-linux-2.5.2.tgz credhub.tgz
-RUN tar xzvf credhub.tgz credhub -C /usr/local/bin && rm credhub.tgz
+RUN tar xzvf credhub.tgz ./credhub -C /usr/local/bin && rm credhub.tgz
 
 RUN curl -Lo ./bosh https://s3.amazonaws.com/bosh-cli-artifacts/bosh-cli-5.3.1-linux-amd64 \
   && chmod +x ./bosh \
