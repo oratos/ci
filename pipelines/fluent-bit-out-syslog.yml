@@ -3,7 +3,6 @@ groups:
   jobs:
   - unit-tests
   - build-fluent-bit-out-syslog-image
-  - bump-fluent-bit
 - name: release
   jobs:
   - release
@@ -36,89 +35,12 @@ resources:
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
-- name: fluent-bit-image
-  type: docker-image
-  source:
-    repository: fluent/fluent-bit
-    username: ((docker-hub.username))
-    password: ((docker-hub.password))
-
 - name: slack-alert
   type: slack-notification
   source:
     url: ((slack.notifications-url))
 
 jobs:
-- name: bump-fluent-bit
-  plan:
-  - in_parallel:
-    - get: fluent-bit-image
-      trigger: true
-      params:
-        skip_download: true
-    - get: out-syslog
-  - task: change-version
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: oratos/ci-base
-      inputs:
-        - name: out-syslog
-      outputs:
-        - name: update-out-syslog
-      run:
-        path: /bin/bash
-        args:
-        - "-c"
-        - |
-          #!/bin/bash
-          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-
-          new_version=$(curl "https://hub.docker.com/v2/repositories/fluent/fluent-bit/tags/?n=3" \
-            -H "Accept: application/json" | \
-            jq .results[].name -r | \
-            grep -v latest | \
-            sort -Vr | \
-            head -1)
-
-          go get github.com/oratos/semver-cli
-
-          # Ignore prerelease and metadata'd versions
-          prerelease=$(semver-cli get prerelease "$new_version")
-          metadata=$(semver-cli get metadata "$new_version")
-          if [ "$prerelease" != "" ] || [ "$metadata" != "" ]; then
-            echo "New version contains Prerelease or Metadata: $new_version"
-            echo "Skipping build..."
-          else
-            pushd out-syslog > /dev/null
-              current_version=$(grep 'ENV FLB_VERSION' < Dockerfile | awk '{print $3}')
-
-              if semver-cli greater "$new_version" "$current_version"; then
-                major=$(semver-cli get major "$new_version")
-                minor=$(semver-cli get minor "$new_version")
-                patch=$(semver-cli get patch "$new_version")
-                sed -i.bak "s/ENV FLB_VERSION .*$/ENV FLB_VERSION $major.$minor.$patch/g" Dockerfile
-                sed -i.bak "s/ENV FLB_MAJOR .*$/ENV FLB_MAJOR $major/g" Dockerfile
-                sed -i.bak "s/ENV FLB_MINOR .*$/ENV FLB_MINOR $minor/g" Dockerfile
-                sed -i.bak "s/ENV FLB_PATCH .*$/ENV FLB_PATCH $patch/g" Dockerfile
-
-                rm Dockerfile.bak
-
-                git add Dockerfile
-                git commit -m "Update fluent bit to version $new_version"
-              else
-                echo "New Version: $new_version; Current Version: $current_version"
-                echo "Skipping build..."
-              fi
-            popd
-          fi
-          rsync -ac out-syslog/ update-out-syslog
-  - put: out-syslog
-    params:
-      repository: update-out-syslog
-
 - name: unit-tests
   plan:
   - in_parallel:
