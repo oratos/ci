@@ -145,19 +145,19 @@ resources:
   type: git
   source:
     uri: https://github.com/cloudfoundry-incubator/kubo-deployment
-    branch: v0.31.0
+    branch: v0.34.0
 
 - name: kubo-release-bosh-io
   type: bosh-io-release
   source:
     repository: cloudfoundry-incubator/kubo-release
-    regexp: "0.31.*"
+    regexp: "0.34.*"
 
 - name: cf-deployment-concourse-tasks
   type: git
   source:
     uri: https://github.com/cloudfoundry/cf-deployment-concourse-tasks
-    branch: v7.5
+    branch: v9.5.0
 
 - name: oratos-ci
   type: git
@@ -186,9 +186,65 @@ jobs:
       BBL_GCP_REGION: us-central1
       BBL_ENV_NAME: bikepark
       SKIP_LB_CREATION: true
+      STORE_BBL_STATE_AS_TARBALL: true
+  - task: clean-up-bbl-state
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      inputs:
+      - name: updated-bbl-state
+      outputs:
+      - name: cleaned-bbl-state
+      params:
+        DEBUG:
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+
+          tar xvzf updated-bbl-state/bbl-state.tgz -C updated-bbl-state/
+          rm updated-bbl-state/bbl-state.tgz
+
+          pushd updated-bbl-state/bbl-state > /dev/null
+            # Delete all files ignored by git.
+            git init
+            git clean -ffdX
+          popd > /dev/null
+
+          cp -r updated-bbl-state/. cleaned-bbl-state
   - put: bikepark-bbl-state
     params:
-      data: updated-bbl-state
+      data: cleaned-bbl-state
+  - task: upload-bosh-stemcell
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      inputs:
+      - name: bikepark-bbl-state
+      params:
+        DEBUG:
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+
+          pushd bikepark-bbl-state/bbl-state > /dev/null
+            eval "$(bbl print-env)"
+          popd > /dev/null
+
+          bosh upload-stemcell --sha1 3148f41b46af04e23695d9c0a48e8d66b1c1c34e https://bosh.io/d/stemcells/bosh-google-kvm-ubuntu-xenial-go_agent?v=250.23
 
 - name: bikepark-bbl-destroy
   serial: true
@@ -279,8 +335,29 @@ jobs:
             #!/bin/bash
             set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
+            # Restricting zone to z1 (us-central1-a) because we are running out
+            # of quota in z2
+            cat <<EOF > extra-ops.yml
+            - type: replace
+              path: /instance_groups/name=master/azs
+              value: [ z1 ]
+            - type: replace
+              path: /instance_groups/name=worker/azs
+              value: [ z1 ]
+            - type: replace
+              path: /instance_groups/name=apply-addons/azs
+              value: [ z1 ]
+            - type: replace
+              path: /instance_groups/name=worker?/persistent_disk
+              value: 51200
+            - type: replace
+              path: /instance_groups/name=worker/jobs/name=docker/properties/store_dir
+              value: /var/vcap/store
+            EOF
+
             cp -r kubo-deployment/. modified-kubo-deployment/
             bosh interpolate kubo-deployment/manifests/cfcr.yml \
+              --ops-file extra-ops.yml \
               > modified-kubo-deployment/manifests/cfcr.yml
   - task: cfcr-deploy
     file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
