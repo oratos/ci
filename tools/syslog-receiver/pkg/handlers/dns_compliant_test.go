@@ -84,10 +84,14 @@ var _ = Describe("DNS Compliant Handler", func() {
 			Expect(err).ToNot(HaveOccurred())
 		}
 
+		Eventually(func() int {
+			c := readDnsCounters(s.ApiAddr())
+			return c.Cluster
+		}, "3s", "1s").Should(Equal(len(allHosts)), "did not receive all messages")
+
 		c := readDnsCounters(s.ApiAddr())
 
-		Expect(c.Cluster).To(Equal(len(allHosts)))
-		Expect(c.DNSCompliant).To(Equal(len(validHostNames)))
+		Expect(c.DNSCompliant).To(Equal(len(validHostNames)), "did not receive correct number of dns compliant hostnames")
 	})
 })
 
