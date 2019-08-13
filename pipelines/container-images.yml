@@ -2,11 +2,19 @@ groups:
 - name: ci
   jobs:
   - ci-base
+  - syslog-receiver-unit-tests
 - name: test-images
   jobs:
   - crosstalk-receiver
   - latency-receiver
   - prometheus-scrape-target
+
+resource_types:
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+    tag: latest
 
 resources:
 - name: base-image-docker-build-context
@@ -51,7 +59,30 @@ resources:
     uri: https://github.com/pivotal-cf/oratos-ci
     branch: master
 
+- name: slack-alert
+  type: slack-notification
+  source:
+    url: ((slack.notifications-url))
+
 jobs:
+- name: syslog-receiver-unit-tests
+  plan:
+  - get: oratos-ci
+    trigger: true
+  - task: run-tests
+    file: oratos-ci/tasks/go-test-mod/task.yml
+    privileged: true
+    input_mapping:
+      source-repo: oratos-ci
+    params:
+      DEBUG: true
+      PRE_TEST_HOOK: |
+        cd $PWD/tools/syslog-receiver && go mod download && unset GOFLAGS
+    on_failure:
+      put: slack-alert
+      params:
+        text: Syslog Receiver Unit Tests failed in oratos-ci repo
+
 - name: ci-base
   plan:
   - get: base-image-docker-build-context
