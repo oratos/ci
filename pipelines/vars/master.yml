@@ -25,12 +25,6 @@ sink_resource_release_params:
   #   https://hub.docker.com/r/oratos/observability-manager/tags/
   PKS_VERSION: v1.5
 
-  # This is the patch version of observability-manager. It should be monotonicially
-  # increasing.
-  # This will also be pushed as a tagged docker image to:
-  #   https://hub.docker.com/r/oratos/observability-manager/tags/
-  OBSERVABILITY_MANAGER_PATCH: 2
-
 fluent_bit_out_syslog_params:
 
   # This is the version of the fluent-bit-out-syslog image to be built. It

@@ -1,0 +1,1005 @@
+groups:
+- name: main
+  jobs:
+  - unit-tests
+  - build-sink-controller-image
+  - build-event-controller-image
+  - build-metric-controller-image
+  - build-cert-generator-image
+  - build-ghostunnel-image
+  - build-telegraf-image
+  - build-validator-image
+  - build-observability-manager-image
+  - deploy-gke
+  - gke-tests
+  - promote
+- name: release
+  jobs:
+  - release
+  - update-bosh-release
+
+resource_types:
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+    tag: latest
+
+- name: vault
+  type: docker-image
+  source:
+    repository: oratos/vault-resource
+    tag: latest
+
+- name: gcs-resource
+  type: docker-image
+  source:
+    repository: frodenas/gcs-resource
+
+resources:
+- name: oratos-ci
+  type: git
+  source:
+    uri: https://github.com/pivotal-cf/oratos-ci
+    branch: master
+
+- name: sink-resources
+  type: git
+  source:
+    uri: git@github.com:pivotal-cf/sink-resources
+    branch: v0.19.x
+    private_key: ((github.oratos-bot-private-key))
+
+- name: sink-controller-image
+  type: docker-image
+  source:
+    repository: oratos/sink-controller
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
+- name: event-controller-image
+  type: docker-image
+  source:
+    repository: oratos/event-controller
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
+- name: metric-controller-image
+  type: docker-image
+  source:
+    repository: oratos/metric-controller
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
+- name: fluent-bit-out-syslog-image
+  type: docker-image
+  source:
+    repository: oratos/fluent-bit-out-syslog
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+    tag: release-elect
+
+- name: cert-generator-image
+  type: docker-image
+  source:
+    repository: oratos/cert-generator
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
+- name: ghostunnel-image
+  type: docker-image
+  source:
+    repository: oratos/ghostunnel
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
+- name: telegraf-image
+  type: docker-image
+  source:
+    repository: oratos/telegraf
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
+- name: validator-image
+  type: docker-image
+  source:
+    repository: oratos/validator
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
+- name: observability-manager-image
+  type: docker-image
+  source:
+    repository: oratos/observability-manager
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
+
+- name: out-syslog
+  type: git
+  source:
+    uri: git@github.com:pivotal-cf/fluent-bit-out-syslog
+    branch: ((sink_resource_v0_19_x_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
+    private_key: ((github.oratos-bot-private-key))
+
+- name: slack-alert
+  type: slack-notification
+  source:
+    url: ((slack.notifications-url))
+
+- name: sink-resources-github-release
+  type: github-release
+  source:
+    owner: pivotal-cf
+    repository: sink-resources
+    access_token: ((github.oratos-bot-release-access-token))
+
+- name: sink-resources-release
+  type: git
+  source:
+    uri: git@github.com:pivotal-cf/sink-resources-release
+    branch: v0.1.x
+    private_key: ((github.oratos-bot-private-key))
+
+- name: sink-resources-release-github-release
+  type: github-release
+  source:
+    owner: pivotal-cf
+    repository: sink-resources-release
+    access_token: ((github.oratos-bot-release-access-token))
+
+- name: pks-releng-release-bucket
+  type: gcs-resource
+  source:
+    bucket: pks-releng-final-releases
+    json_key: ((pks-releng.gcp-json))
+    regexp: '.*\.tgz'
+
+jobs:
+- name: unit-tests
+  plan:
+  - in_parallel:
+    - get: sink-resources
+      trigger: true
+    - get: oratos-ci
+  - in_parallel:
+    - task: run-linter
+      file: oratos-ci/tasks/golangci-lint-modules/task.yml
+      input_mapping:
+        source-repo: sink-resources
+      on_failure:
+        put: slack-alert
+        params:
+          text: Sink Resources Linter failed
+    - task: run-tests
+      file: oratos-ci/tasks/go-test-mod/task.yml
+      privileged: true
+      input_mapping:
+        source-repo: sink-resources
+      params:
+        PKGS_HOOK: |
+          go list ./... | grep -v vendor | grep -v pkg/client
+      on_failure:
+        put: slack-alert
+        params:
+          text: Sink Resources Unit tests failed
+    - task: run-verify-codegen
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: oratos/ci-base
+        inputs:
+        - name: sink-resources
+          path: go/src/github.com/pivotal-cf/sink-resources
+        params:
+          DEBUG:
+        run:
+          path: /bin/bash
+          args:
+          - "-c"
+          - |
+            #!/bin/bash
+            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+
+            export GOPATH="$PWD/go"
+            pushd go/src/github.com/pivotal-cf/sink-resources/ > /dev/null
+              hack/verify-codegen.sh
+            popd > /dev/null
+      on_failure:
+        put: slack-alert
+        params:
+          text: Sink Resources Verify Codegen failed
+
+- name: build-sink-controller-image
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources
+      trigger: true
+      passed:
+      - unit-tests
+    - get: oratos-ci
+  - task: prepare-build
+    file: oratos-ci/tasks/build-docker-image/task.yml
+    input_mapping:
+      source-repo: sink-resources
+    params:
+      DOCKERFILE: source-repo/cmd/sink-controller/Dockerfile
+  - put: sink-controller-image
+    params:
+      build: build-image/build
+      tag: build-image/tag
+      cache: true
+      cache_tag: latest
+    get_params:
+      skip_download: true
+
+- name: build-event-controller-image
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources
+      trigger: true
+      passed:
+      - unit-tests
+    - get: oratos-ci
+  - task: prepare-build
+    file: oratos-ci/tasks/build-docker-image/task.yml
+    input_mapping:
+      source-repo: sink-resources
+    params:
+      DOCKERFILE: source-repo/cmd/event-controller/Dockerfile
+  - put: event-controller-image
+    params:
+      build: build-image/build
+      tag: build-image/tag
+      cache: true
+      cache_tag: latest
+    get_params:
+      skip_download: true
+
+- name: build-metric-controller-image
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources
+      trigger: true
+      passed:
+      - unit-tests
+    - get: oratos-ci
+  - task: prepare-build
+    file: oratos-ci/tasks/build-docker-image/task.yml
+    input_mapping:
+      source-repo: sink-resources
+    params:
+      DOCKERFILE: source-repo/cmd/metric-controller/Dockerfile
+  - put: metric-controller-image
+    params:
+      build_args_file: build-image/docker_build_args
+      build: build-image/build
+      tag: build-image/tag
+      cache: true
+      cache_tag: latest
+    get_params:
+      skip_download: true
+
+- name: build-cert-generator-image
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources
+      trigger: true
+      passed:
+      - unit-tests
+    - get: oratos-ci
+  - task: prepare-build
+    file: oratos-ci/tasks/build-docker-image/task.yml
+    input_mapping:
+      source-repo: sink-resources
+    params:
+      DOCKERFILE: source-repo/cmd/cert-generator/Dockerfile
+  - put: cert-generator-image
+    params:
+      build: build-image/build
+      tag: build-image/tag
+      cache: true
+      cache_tag: latest
+    get_params:
+      skip_download: true
+
+- name: build-ghostunnel-image
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources
+      trigger: true
+      passed:
+      - unit-tests
+    - get: oratos-ci
+  - task: prepare-build
+    file: oratos-ci/tasks/build-docker-image/task.yml
+    input_mapping:
+      source-repo: sink-resources
+    params:
+      SOURCE_PATH: cmd/ghostunnel
+  - put: ghostunnel-image
+    params:
+      build: build-image/build
+      tag: build-image/tag
+      cache: true
+      cache_tag: latest
+    get_params:
+      skip_download: true
+
+- name: build-telegraf-image
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources
+      trigger: true
+      passed:
+      - unit-tests
+    - get: oratos-ci
+  - task: prepare-build
+    file: oratos-ci/tasks/build-docker-image/task.yml
+    input_mapping:
+      source-repo: sink-resources
+    params:
+      DOCKERFILE: source-repo/cmd/telegraf/Dockerfile
+  - put: telegraf-image
+    params:
+      build: build-image/build
+      tag: build-image/tag
+      cache: true
+      cache_tag: latest
+    get_params:
+      skip_download: true
+
+- name: build-validator-image
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources
+      trigger: true
+      passed:
+      - unit-tests
+    - get: oratos-ci
+  - task: prepare-build
+    file: oratos-ci/tasks/build-docker-image/task.yml
+    input_mapping:
+      source-repo: sink-resources
+    params:
+      DOCKERFILE: source-repo/cmd/validator/Dockerfile
+  - put: validator-image
+    params:
+      build: build-image/build
+      tag: build-image/tag
+      cache: true
+      cache_tag: latest
+    get_params:
+      skip_download: true
+
+- name: build-observability-manager-image
+  plan:
+    - in_parallel:
+        - get: sink-resources
+          trigger: true
+          passed:
+            - unit-tests
+        - get: oratos-ci
+        - get: out-syslog
+    - task: prepare-image-with-manifest
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: oratos/ci-base
+        inputs:
+          - name: sink-resources
+          - name: out-syslog
+        outputs:
+          - name: sink-resources-with-manifest
+        run:
+          path: /bin/bash
+          args:
+            - "-c"
+            - |
+              #!/bin/bash
+              SR_SHA="$(cd sink-resources && git rev-parse @)"
+              FLUENT_SHA="$(cd out-syslog && git rev-parse @)"
+              ./sink-resources/hack/generate-pks-manifest.sh "$SR_SHA" "$FLUENT_SHA" > sink-resources/cmd/observability-manager/manifest.yml
+              rsync -avci sink-resources/ ./sink-resources-with-manifest/
+    - task: prepare-build
+      file: oratos-ci/tasks/build-docker-image/task.yml
+      input_mapping:
+        source-repo: sink-resources-with-manifest
+      params:
+        DOCKERFILE: source-repo/cmd/observability-manager/Dockerfile
+    - put: observability-manager-image
+      params:
+        build: build-image/build
+        tag: build-image/tag
+        tag_as_latest: true
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
+
+- name: deploy-gke
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources
+      trigger: true
+      passed:
+      - build-sink-controller-image
+      - build-event-controller-image
+      - build-metric-controller-image
+      - build-cert-generator-image
+      - build-ghostunnel-image
+      - build-telegraf-image
+      - build-validator-image
+      - build-observability-manager-image
+    - get: observability-manager-image
+      passed:
+        - build-observability-manager-image
+      params:
+        skip_download: true
+    - get: sink-controller-image
+      passed:
+      - build-sink-controller-image
+      params:
+        skip_download: true
+    - get: event-controller-image
+      passed:
+      - build-event-controller-image
+      params:
+        skip_download: true
+    - get: metric-controller-image
+      passed:
+      - build-metric-controller-image
+      params:
+        skip_download: true
+    - get: ghostunnel-image
+      passed:
+      - build-ghostunnel-image
+      params:
+        skip_download: true
+    - get: telegraf-image
+      passed:
+      - build-telegraf-image
+      params:
+        skip_download: true
+    - get: validator-image
+      passed:
+      - build-validator-image
+      params:
+        skip_download: true
+    - get: cert-generator-image
+      passed:
+      - build-cert-generator-image
+      params:
+        skip_download: true
+    - get: fluent-bit-out-syslog-image
+      params:
+        skip_download: true
+    - get: oratos-ci
+  - task: clean-up-environment
+    file: oratos-ci/tasks/clean-up-environment/task.yml
+    input_mapping:
+      # bbl-state is not needed for GKE, pass in oratos-ci as a NOOP
+      bbl-state: oratos-ci
+    params:
+      SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
+      GET_CREDENTIALS_HOOK: |
+        echo "$SERVICE_ACCOUNT" > sa.json
+        gcloud auth activate-service-account --key-file sa.json
+        rm sa.json
+        gcloud container clusters get-credentials oratos-ci-testing-0-19-x \
+          --zone us-central1-a
+  - task: deploy
+    file: oratos-ci/tasks/deploy-sink-resources/task.yml
+    input_mapping:
+      # bbl-state is not needed for GKE, pass in oratos-ci as a NOOP
+      bbl-state: oratos-ci
+    params:
+      SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
+      HAS_NODE_EXPORTER: false
+      GET_CREDENTIALS_HOOK: |
+        echo "$SERVICE_ACCOUNT" > sa.json
+        gcloud auth activate-service-account --key-file sa.json
+        rm sa.json
+        gcloud container clusters get-credentials oratos-ci-testing-0-19-x \
+          --zone us-central1-a
+
+- name: gke-tests
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources
+      trigger: true
+      passed:
+      - deploy-gke
+    - get: observability-manager-image
+      passed:
+        - deploy-gke
+      params:
+        skip_download: true
+    - get: sink-controller-image
+      passed:
+      - deploy-gke
+    - get: event-controller-image
+      passed:
+      - deploy-gke
+      params:
+        skip_download: true
+    - get: metric-controller-image
+      passed:
+      - deploy-gke
+      params:
+        skip_download: true
+    - get: cert-generator-image
+      passed:
+      - deploy-gke
+      params:
+        skip_download: true
+    - get: ghostunnel-image
+      passed:
+      - deploy-gke
+      params:
+        skip_download: true
+    - get: telegraf-image
+      passed:
+      - deploy-gke
+      params:
+        skip_download: true
+    - get: validator-image
+      passed:
+      - deploy-gke
+      params:
+        skip_download: true
+    - get: oratos-ci
+  - task: run-crd-tests
+    file: oratos-ci/tasks/run-crd-tests/task.yml
+    input_mapping:
+      # bbl-state is not needed for GKE, pass in oratos-ci as a NOOP
+      bbl-state: oratos-ci
+    params:
+      SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
+      GET_CREDENTIALS_HOOK: |
+          echo "$SERVICE_ACCOUNT" > sa.json
+          gcloud auth activate-service-account --key-file sa.json
+          rm sa.json
+          gcloud container clusters get-credentials oratos-ci-testing-0-19-x \
+            --zone us-central1-a
+  - task: e2e-test
+    file: oratos-ci/tasks/sink-e2e/task.yml
+    input_mapping:
+      # bbl-state is not needed for GKE, pass in oratos-ci as a NOOP
+      bbl-state: oratos-ci
+    params:
+      SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
+      GET_CREDENTIALS_HOOK: |
+          echo "$SERVICE_ACCOUNT" > sa.json
+          gcloud auth activate-service-account --key-file sa.json
+          rm sa.json
+          gcloud container clusters get-credentials oratos-ci-testing-0-19-x \
+            --zone us-central1-a
+  - task: empty-deployment-test
+    params:
+      SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
+      GET_CREDENTIALS_HOOK: |
+          echo "$SERVICE_ACCOUNT" > sa.json
+          gcloud auth activate-service-account --key-file sa.json
+          rm sa.json
+          gcloud container clusters get-credentials oratos-ci-testing-0-19-x \
+            --zone us-central1-a
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      inputs:
+        - name: observability-manager-image
+        - name: oratos-ci
+        - name: sink-resources
+      params:
+        DEBUG:
+        GET_CREDENTIALS_HOOK:
+        SERVICE_ACCOUNT:
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+
+          eval "$GET_CREDENTIALS_HOOK"
+
+          observability_manager_digest="$(cat observability-manager-image/digest)"
+          pushd sink-resources/manifests/observability-manager
+              kustomize edit set image "oratos/observability-manager@$observability_manager_digest"
+          popd
+
+          kubectl apply -k sink-resources/manifests/observability-manager-overlays/remove
+          trap "kubectl apply -k sink-resources/manifests/observability-manager" EXIT
+
+          kubectl -n pks-system rollout status --watch deployment/observability-manager
+
+          kubectl get namespace pks-system
+
+- name: promote
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources
+      trigger: true
+      passed:
+      - gke-tests
+    - get: sink-controller-image
+      passed:
+      - gke-tests
+      params:
+        save: true
+    - get: event-controller-image
+      passed:
+      - gke-tests
+      params:
+        save: true
+    - get: metric-controller-image
+      passed:
+      - gke-tests
+      params:
+        save: true
+    - get: cert-generator-image
+      passed:
+      - gke-tests
+      params:
+        save: true
+    - get: ghostunnel-image
+      passed:
+      - gke-tests
+      params:
+        save: true
+    - get: telegraf-image
+      passed:
+      - gke-tests
+      params:
+        save: true
+    - get: validator-image
+      passed:
+      - gke-tests
+      params:
+        save: true
+    - get: observability-manager-image
+      passed:
+      - gke-tests
+      params:
+        save: true
+    - task: write-promote-tag
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: oratos/ci-base
+        outputs:
+        - name: promote
+        params:
+          DEBUG:
+        run:
+          path: /bin/bash
+          args:
+          - "-c"
+          - |
+            #!/bin/bash
+            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+
+            echo "release-elect-0.19.x" > promote/tag
+  - in_parallel:
+    - put: sink-controller-image
+      params:
+        load: sink-controller-image
+        tag: promote/tag
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
+    - put: event-controller-image
+      params:
+        load: event-controller-image
+        tag: promote/tag
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
+    - put: metric-controller-image
+      params:
+        load: metric-controller-image
+        tag: promote/tag
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
+    - put: cert-generator-image
+      params:
+        load: cert-generator-image
+        tag: promote/tag
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
+    - put: ghostunnel-image
+      params:
+        load: ghostunnel-image
+        tag: promote/tag
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
+    - put: telegraf-image
+      params:
+        load: telegraf-image
+        tag: promote/tag
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
+    - put: validator-image
+      params:
+        load: validator-image
+        tag: promote/tag
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
+    - put: observability-manager-image
+      params:
+        load: observability-manager-image
+        tag: promote/tag
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
+
+- name: release
+  serial: true
+  plan:
+  - task: release
+    privileged: true
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      params:
+        GIT_REF: ((sink_resource_v0_19_x_release_params.GIT_REF))
+        SINK_RESOURCES_VERSION: ((sink_resource_v0_19_x_release_params.SINK_RESOURCES_VERSION))
+        FLUENT_BIT_OUT_SYSLOG_VERSION: ((sink_resource_v0_19_x_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
+        DOCKERHUB_USERNAME: ((docker-hub.username))
+        DOCKERHUB_PASSWORD: ((docker-hub.password))
+        GITHUB_PRIVATE_KEY: ((github.oratos-bot-private-key))
+        SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
+        DEBUG:
+      outputs:
+      - name: github-release
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+
+          if [ -z "$GIT_REF" ]; then
+            echo GIT_REF param required
+            exit 1
+          fi
+          if ! [[ "$SINK_RESOURCES_VERSION" =~ v ]]; then
+            echo VERSION param required to start with v
+            exit 1
+          fi
+          if ! [[ "$FLUENT_BIT_OUT_SYSLOG_VERSION" =~ v ]]; then
+            echo FLUENT_BIT_OUT_SYSLOG_VERSION param required to start with v
+            exit 1
+          fi
+
+          # Note: this was copied from the docker-image-resource
+          # https://github.com/concourse/docker-image-resource/blob/c725c6277ca2820016de1bfe2bdfabaad5fd5879/assets/common.sh#L4
+          sanitize_cgroups() {
+            mkdir -p /sys/fs/cgroup
+            mountpoint -q /sys/fs/cgroup || \
+              mount -t tmpfs -o uid=0,gid=0,mode=0755 cgroup /sys/fs/cgroup
+
+            mount -o remount,rw /sys/fs/cgroup
+
+            sed -e 1d /proc/cgroups | while read -r sys _ _ enabled; do
+              if [ "$enabled" != "1" ]; then
+                # subsystem disabled; skip
+                continue
+              fi
+
+              grouping="$(cut -d: -f2 /proc/self/cgroup | grep "\\<$sys\\>")" || true
+              if [ -z "$grouping" ]; then
+                # subsystem not mounted anywhere; mount it on its own
+                grouping="$sys"
+              fi
+
+              mountpoint="/sys/fs/cgroup/$grouping"
+
+              mkdir -p "$mountpoint"
+
+              # clear out existing mount to make sure new one is read-write
+              if mountpoint -q "$mountpoint"; then
+                umount "$mountpoint"
+              fi
+
+              mount -n -t cgroup -o "$grouping" cgroup "$mountpoint"
+
+              if [ "$grouping" != "$sys" ]; then
+                if [ -L "/sys/fs/cgroup/$sys" ]; then
+                  rm "/sys/fs/cgroup/$sys"
+                fi
+
+                ln -s "$mountpoint" "/sys/fs/cgroup/$sys"
+              fi
+            done
+
+            if ! test -e /sys/fs/cgroup/systemd ; then
+              mkdir /sys/fs/cgroup/systemd
+              mount -t cgroup -o none,name=systemd none /sys/fs/cgroup/systemd
+            fi
+          }
+          sanitize_cgroups
+          /usr/bin/dockerd &
+          docker_pid=$!
+          function cleanup {
+            set +e
+            kill -9 $docker_pid
+            killall ssh-agent
+          }
+          trap cleanup EXIT
+
+          echo "$SERVICE_ACCOUNT" > sa.json
+          gcloud auth activate-service-account --key-file sa.json
+          rm sa.json
+          gcloud auth configure-docker --quiet
+
+          echo waiting 10 seconds while docker starts up
+          sleep 10
+
+          mkdir -p ~/.ssh/
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2> /dev/null
+          eval "$(ssh-agent)"
+          [ -n "${DEBUG:-}" ] && set +x
+          echo "$GITHUB_PRIVATE_KEY" > key
+          [ -n "${DEBUG:-}" ] && set -x
+          chmod 0600 key
+          ssh-add key
+          rm key
+          git clone git@github.com:pivotal-cf/sink-resources
+          pushd sink-resources > /dev/null
+            git tag "$SINK_RESOURCES_VERSION" "$GIT_REF"
+          popd > /dev/null
+          git clone git@github.com:pivotal-cf/fluent-bit-out-syslog
+          pushd fluent-bit-out-syslog > /dev/null
+            FLUENT_BIT_REF="$(git rev-parse @)"
+          popd > /dev/null
+
+          echo "$SINK_RESOURCES_VERSION" > github-release/name
+          echo "$SINK_RESOURCES_VERSION" > github-release/tag
+
+          cat <<EOF > github-release/body
+          These are the versions of the docker images used in this release:
+          - [oratos/sink-controller][sink-controller]:$SINK_RESOURCES_VERSION
+          - [oratos/event-controller][event-controller]:$SINK_RESOURCES_VERSION
+          - [oratos/metric-controller][metric-controller]:$SINK_RESOURCES_VERSION
+          - [oratos/cert-generator][cert-generator]:$SINK_RESOURCES_VERSION
+          - [oratos/ghostunnel][ghostunnel]:$SINK_RESOURCES_VERSION
+          - [oratos/telegraf][telegraf]:$SINK_RESOURCES_VERSION
+          - [oratos/validator][validator]:$SINK_RESOURCES_VERSION
+          - [oratos/observability-manager][observability-manager]:$SINK_RESOURCES_VERSION
+          - [oratos/fluent-bit-out-syslog][fluent-bit-out-syslog]:$FLUENT_BIT_OUT_SYSLOG_VERSION
+
+          [sink-controller]: https://hub.docker.com/r/oratos/sink-controller/
+          [event-controller]: https://hub.docker.com/r/oratos/event-controller/
+          [metric-controller]: https://hub.docker.com/r/oratos/metric-controller/
+          [cert-generator]: https://hub.docker.com/r/oratos/cert-generator/
+          [ghostunnel]: https://hub.docker.com/r/oratos/ghostunnel/
+          [telegraf]: https://hub.docker.com/r/oratos/telegraf/
+          [validator]: https://hub.docker.com/r/oratos/validator/
+          [observability-manager]: https://hub.docker.com/r/oratos/observability-manager/
+          [fluent-bit-out-syslog]: https://hub.docker.com/r/oratos/fluent-bit-out-syslog/
+          EOF
+
+          [ -n "${DEBUG:-}" ] && set +x
+          echo "$DOCKERHUB_PASSWORD" \
+            | docker login \
+              --username "$DOCKERHUB_USERNAME" \
+              --password-stdin
+          [ -n "${DEBUG:-}" ] && set -x
+
+
+          for component in sink-controller event-controller metric-controller cert-generator ghostunnel telegraf validator; do
+            docker pull "oratos/$component:$GIT_REF"
+
+            docker tag "oratos/$component:$GIT_REF" "oratos/$component:latest"
+            docker push "oratos/$component:latest"
+
+            docker tag "oratos/$component:$GIT_REF" "oratos/$component:$SINK_RESOURCES_VERSION"
+            docker push "oratos/$component:$SINK_RESOURCES_VERSION"
+
+            docker tag "oratos/$component:$GIT_REF" "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/$component:$SINK_RESOURCES_VERSION"
+            docker push "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/$component:$SINK_RESOURCES_VERSION"
+
+            docker save "oratos/$component:$GIT_REF" | gzip > "github-release/oratos_$component:$SINK_RESOURCES_VERSION.tgz"
+          done
+          {
+            docker pull "oratos/observability-manager:$GIT_REF"
+
+            docker tag "oratos/observability-manager:$GIT_REF" "oratos/observability-manager:latest"
+            docker push "oratos/observability-manager:latest"
+
+            docker tag "oratos/observability-manager:$GIT_REF" "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/observability-manager:$SINK_RESOURCES_VERSION"
+            docker push "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/observability-manager:$SINK_RESOURCES_VERSION"
+
+            docker tag "oratos/observability-manager:$GIT_REF" "oratos/observability-manager:$SINK_RESOURCES_VERSION"
+            docker push "oratos/observability-manager:$SINK_RESOURCES_VERSION"
+
+            docker save "oratos/observability-manager:$SINK_RESOURCES_VERSION" | gzip > "github-release/oratos_observability-manager:$SINK_RESOURCES_VERSION.tgz"
+          }
+          {
+            docker pull "oratos/fluent-bit-out-syslog:$FLUENT_BIT_REF"
+
+            docker tag "oratos/fluent-bit-out-syslog:$FLUENT_BIT_REF" "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION"
+            docker push "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION"
+            docker save "oratos/fluent-bit-out-syslog:$FLUENT_BIT_REF" | gzip > "github-release/oratos_fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION.tgz"
+          }
+          pushd sink-resources > /dev/null
+            git push origin --tags
+          popd > /dev/null
+  - put: sink-resources-github-release
+    params:
+      name: github-release/name
+      body: github-release/body
+      tag: github-release/tag
+      globs:
+      - github-release/*.tgz
+
+- name: update-bosh-release
+  plan:
+  - do:
+    - get: sink-resources-github-release
+      trigger: true
+      passed:
+      - release
+      version:
+        tag: ((sink_resource_v0_19_x_release_params.SINK_RESOURCES_VERSION))
+    - get: sink-resources-release
+    - get: oratos-ci
+  - task: update-bosh-release
+    privileged: true
+    file: oratos-ci/tasks/update-bosh-release/task.yml
+    params:
+      PRIVATE_YML: ((release.private_yml))
+      SINK_RESOURCES_VERSION: ((sink_resource_v0_19_x_release_params.SINK_RESOURCES_VERSION))
+      FLUENT_BIT_OUT_SYSLOG_VERSION: ((sink_resource_v0_19_x_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
+  - do:
+    - put: pks-releng-release-bucket
+      params:
+        file: bosh-release/binaries/*.tgz
+    - put: sink-resources-release
+      params:
+        repository: put-sink-resources-release
+        name: bosh-release/name
+    - put: sink-resources-release-github-release
+      params:
+        name: bosh-release/name
+        tag: bosh-release/tag
+        globs:
+        - bosh-release/binaries/*.tgz

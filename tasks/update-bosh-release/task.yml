@@ -19,7 +19,8 @@ params:
   # - Required for OSL generation
   SINK_RESOURCES_VERSION:
   FLUENT_BIT_OUT_SYSLOG_VERSION:
-  OBSERVABILITY_MANAGER_VERSION:
+
+  HAS_NODE_EXPORTER: true
 
   # - Optional
   # - Set to true to output all commands that are ran.

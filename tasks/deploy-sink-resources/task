@@ -35,7 +35,9 @@ function verify_resources_are_running {
     verify_labeled_pod_running "app=event-controller"
     verify_labeled_pod_running "app=metric-controller"
     verify_labeled_pod_running "app=validator"
-    verify_labeled_pod_running "app=node-exporter"
+    if [[ $HAS_NODE_EXPORTER == "true" ]]; then
+        verify_labeled_pod_running "app=node-exporter"
+    fi
 
     verify_labeled_pod_running "app=fluent-bit"
     verify_labeled_pod_running "app=telegraf"

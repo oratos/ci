@@ -44,8 +44,14 @@ for s in json.load(sys.stdin):
 
 function set_pipeline {
     echo setting pipeline for "$1"
+    local vars_file
+    if [[ $1 == *"0.19.x"* ]]; then
+        vars_file="pipelines/vars/v0.19.x.yml"
+    else
+        vars_file="pipelines/vars/master.yml"
+    fi
     fly -t oratos set-pipeline -p "$1" \
-        -l pipelines/vars/global.yml \
+        -l "${vars_file}" \
         -c <(yq read "pipelines/$1.yml" --tojson)
 }
 
