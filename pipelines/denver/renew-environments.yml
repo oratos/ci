@@ -30,7 +30,7 @@ jobs:
           #!/bin/bash
           set -eu
 
-          for env in $(curl https://environments.toolsmiths.cf-app.com/v1/custom_gcp/pks/list -G -d "api_token=${TOOLSMITHS_API_TOKEN}" | jq -r '.[].name'); do
+          for env in $(curl https://environments.toolsmiths.cf-app.com/v1/custom_gcp/pks/list -G -d "api_token=${TOOLSMITHS_API_TOKEN}" | jq -r '.[] | select(.notes | contains("ahevenor")) | .name'); do
             curl --fail "https://environments.toolsmiths.cf-app.com/v1/custom_gcp/pks/renew" -H "Content-Type: application/json" -d @- <<JSON
             {
               "api_token": "${TOOLSMITHS_API_TOKEN}",
