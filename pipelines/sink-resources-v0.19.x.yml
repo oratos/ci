@@ -72,14 +72,6 @@ resources:
     username: ((docker-hub.username))
     password: ((docker-hub.password))
 
-- name: fluent-bit-out-syslog-image
-  type: docker-image
-  source:
-    repository: oratos/fluent-bit-out-syslog
-    username: ((docker-hub.username))
-    password: ((docker-hub.password))
-    tag: ((sink_resource_v0_19_x_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
-
 - name: sink-state-updater-image
   type: docker-image
   source:
@@ -440,7 +432,9 @@ jobs:
             - |
               #!/bin/bash
               SR_SHA="$(cd sink-resources && git rev-parse @)"
+              echo "Using sink-resources:${SR_SHA}"
               FLUENT_SHA="$(cd out-syslog && git rev-parse @)"
+              echo "Using fluent-bit-out-syslog:${FLUENT_SHA}"
               ./sink-resources/hack/generate-pks-manifest.sh "$SR_SHA" "$FLUENT_SHA" > sink-resources/cmd/observability-manager/manifest.yml
               rsync -avci sink-resources/ ./sink-resources-with-manifest/
     - task: prepare-build
@@ -454,7 +448,7 @@ jobs:
         build: build-image/build
         tag: build-image/tag
         tag_as_latest: true
-        cache: true
+        cache: false
         cache_tag: latest
       get_params:
         skip_download: true
@@ -518,9 +512,6 @@ jobs:
     - get: cert-generator-image
       passed:
       - build-cert-generator-image
-      params:
-        skip_download: true
-    - get: fluent-bit-out-syslog-image
       params:
         skip_download: true
     - get: oratos-ci
@@ -623,6 +614,7 @@ jobs:
       # bbl-state is not needed for GKE, pass in oratos-ci as a NOOP
       bbl-state: oratos-ci
     params:
+      GOFLAGS: ""
       SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
       GET_CREDENTIALS_HOOK: |
           echo "$SERVICE_ACCOUNT" > sa.json
@@ -630,50 +622,6 @@ jobs:
           rm sa.json
           gcloud container clusters get-credentials oratos-ci-testing-0-19-x \
             --zone us-central1-a
-  - task: empty-deployment-test
-    params:
-      SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
-      GET_CREDENTIALS_HOOK: |
-          echo "$SERVICE_ACCOUNT" > sa.json
-          gcloud auth activate-service-account --key-file sa.json
-          rm sa.json
-          gcloud container clusters get-credentials oratos-ci-testing-0-19-x \
-            --zone us-central1-a
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: oratos/ci-base
-      inputs:
-        - name: observability-manager-image
-        - name: oratos-ci
-        - name: sink-resources
-      params:
-        DEBUG:
-        GET_CREDENTIALS_HOOK:
-        SERVICE_ACCOUNT:
-      run:
-        path: /bin/bash
-        args:
-        - "-c"
-        - |
-          #!/bin/bash
-          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-
-          eval "$GET_CREDENTIALS_HOOK"
-
-          observability_manager_digest="$(cat observability-manager-image/digest)"
-          pushd sink-resources/manifests/observability-manager
-              kustomize edit set image "oratos/observability-manager@$observability_manager_digest"
-          popd
-
-          kubectl apply -k sink-resources/manifests/observability-manager-overlays/remove
-          trap "kubectl apply -k sink-resources/manifests/observability-manager" EXIT
-
-          kubectl -n pks-system rollout status --watch deployment/observability-manager
-
-          kubectl get namespace pks-system
 
 - name: promote
   serial: true
