@@ -3,21 +3,18 @@ sink_resource_v0_19_x_release_params:
   # This SHA needs to be a tag on the docker image on dockerhub here:
   #   https://hub.docker.com/r/oratos/sink-controller/tags/
   #   https://hub.docker.com/r/oratos/event-controller/tags/
-  GIT_REF: f4fcbaaaad429cfdc7fddb30c2ed91a65e4e1a79
+  GIT_REF: 4ee29595e3e4c636672df0fc8a3772927acbff87
 
-  # This is the version that you intend to release. This will be pushed as a
-  # git tag to:
-  #   https://github.com/pivotal-cf/sink-resources/releases
-  # This will also be pushed as a tagged docker image to:
-  #   https://hub.docker.com/r/oratos/sink-controller/tags/
-  #   https://hub.docker.com/r/oratos/event-controller/tags/
+  # This is the version that you intend to release.
   SINK_RESOURCES_VERSION: v0.19.9
 
   # This is the version of the fluent-bit-out-syslog image to be included in
-  # this release. This version needs to be a tag on the docker image on
+  # this release. The SHA needs to be a tag on the docker image on
   # dockerhhub here:
   #   https://hub.docker.com/r/oratos/fluent-bit-out-syslog/tags/
   FLUENT_BIT_OUT_SYSLOG_VERSION: v0.15.3 # version of the fluent-bit image to use
+  # SHA of the fluent-bit image coresponding to the version above
+  FLUENT_BIT_OUT_SYSLOG_SHA: 3093bb775a90b3d6822b990d6bd77471c6043d79
 
   # This is the major/minor version of pks this release will be intended to
   # end up in.
