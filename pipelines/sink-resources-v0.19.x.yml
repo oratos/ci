@@ -957,6 +957,7 @@ jobs:
     file: oratos-ci/tasks/update-bosh-release/task.yml
     params:
       PRIVATE_YML: ((release.private_yml))
+      SINK_RESOURCES_VERSION: ((sink_resource_v0_19_x_release_params.SINK_RESOURCES_VERSION))
       SINK_RESOURCES_SHA: ((sink_resource_v0_19_x_release_params.GIT_REF)) 
       FLUENT_BIT_OUT_SYSLOG_SHA: ((sink_resource_v0_19_x_release_params.FLUENT_BIT_OUT_SYSLOG_SHA))
   - do:

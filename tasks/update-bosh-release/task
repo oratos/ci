@@ -102,9 +102,9 @@ pushd put-sink-resources-release
   mkdir -p ../bosh-release/binaries
   mv "${release_file}" "../bosh-release/binaries/sink-resources-release-${SINK_RESOURCES_RELEASE_VERSION}.tgz"
 
-  echo "Copy OSL config sink-resources-${SINK_RESOURCES_RELEASE_VERSION}.yml to bosh-release/binaries"
-  cp "osl/${SINK_RESOURCES_RELEASE_VERSION}/sink-resources-${SINK_RESOURCES_RELEASE_VERSION}.yml" \
-      "../bosh-release/binaries/sink-resources-${SINK_RESOURCES_RELEASE_VERSION}.yml"
+  echo "Copy OSL config sink-resources-${SINK_RESOURCES_SHA}.yml to bosh-release/binaries"
+  cp "osl/${SINK_RESOURCES_RELEASE_VERSION}/sink-resources-${SINK_RESOURCES_SHA}.yml" \
+      "../bosh-release/binaries/sink-resources-${SINK_RESOURCES_SHA}.yml"
 
   git add .
   git commit -m"CI bump sink resource release to ${SINK_RESOURCES_RELEASE_VERSION}"
