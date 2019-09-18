@@ -14,8 +14,24 @@ func main() {
 
 	count := 0
 	for {
-		log.Printf("%s %d\n", msg, count)
+		log.Printf("%s %s %d\n", ponger(count), msg, count)
 		count++
 		time.Sleep(time.Second)
 	}
+}
+
+func ponger(i int) string {
+	text := []rune("[-----------------------------------------]")
+	if i%40+1 == 41-i%40 {
+		text[i%40+1] = 'X'
+		return string(text)
+	}
+	if i%40 == 0 {
+		text[i%40+1] = '|'
+		text[41-i%40] = '|'
+		return string(text)
+	}
+	text[i%40+1] = '\\'
+	text[41-i%40] = '/'
+	return string(text)
 }
