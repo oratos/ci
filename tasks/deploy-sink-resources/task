@@ -37,9 +37,11 @@ function verify_resources_are_running {
     verify_labeled_pod_running "app=validator"
     if [[ $HAS_NODE_EXPORTER == "true" ]]; then
         verify_labeled_pod_running "app=node-exporter"
+        verify_labeled_pod_running "app=fluent-bit"
+    else
+        verify_labeled_pod_running "app=fluent-bit-ds"
     fi
 
-    verify_labeled_pod_running "app=fluent-bit"
     verify_labeled_pod_running "app=telegraf"
 }
 

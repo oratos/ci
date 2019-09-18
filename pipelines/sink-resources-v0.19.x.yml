@@ -5,6 +5,7 @@ groups:
   - build-sink-controller-image
   - build-event-controller-image
   - build-metric-controller-image
+  - build-sink-state-updater-image
   - build-cert-generator-image
   - build-ghostunnel-image
   - build-telegraf-image
@@ -77,7 +78,14 @@ resources:
     repository: oratos/fluent-bit-out-syslog
     username: ((docker-hub.username))
     password: ((docker-hub.password))
-    tag: release-elect
+    tag: ((sink_resource_v0_19_x_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
+
+- name: sink-state-updater-image
+  type: docker-image
+  source:
+    repository: oratos/sink-state-updater
+    username: ((docker-hub.username))
+    password: ((docker-hub.password))
 
 - name: cert-generator-image
   type: docker-image
@@ -284,6 +292,30 @@ jobs:
     get_params:
       skip_download: true
 
+- name: build-sink-state-updater-image
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources
+      trigger: true
+      passed:
+      - unit-tests
+    - get: oratos-ci
+  - task: prepare-build
+    file: oratos-ci/tasks/build-docker-image/task.yml
+    input_mapping:
+      source-repo: sink-resources
+    params:
+      DOCKERFILE: source-repo/cmd/sink-state-updater/Dockerfile
+  - put: sink-state-updater-image
+    params:
+      build: build-image/build
+      tag: build-image/tag
+      cache: true
+      cache_tag: latest
+    get_params:
+      skip_download: true
+
 - name: build-cert-generator-image
   serial: true
   plan:
@@ -437,6 +469,7 @@ jobs:
       - build-sink-controller-image
       - build-event-controller-image
       - build-metric-controller-image
+      - build-sink-state-updater-image
       - build-cert-generator-image
       - build-ghostunnel-image
       - build-telegraf-image
@@ -475,6 +508,11 @@ jobs:
     - get: validator-image
       passed:
       - build-validator-image
+      params:
+        skip_download: true
+    - get: sink-state-updater-image
+      passed:
+      - build-sink-state-updater-image
       params:
         skip_download: true
     - get: cert-generator-image
@@ -536,6 +574,11 @@ jobs:
       params:
         skip_download: true
     - get: metric-controller-image
+      passed:
+      - deploy-gke
+      params:
+        skip_download: true
+    - get: sink-state-updater-image
       passed:
       - deploy-gke
       params:
@@ -655,6 +698,11 @@ jobs:
       - gke-tests
       params:
         save: true
+    - get: sink-state-updater-image
+      passed:
+      - gke-tests
+      params:
+        save: true
     - get: cert-generator-image
       passed:
       - gke-tests
@@ -720,6 +768,14 @@ jobs:
     - put: metric-controller-image
       params:
         load: metric-controller-image
+        tag: promote/tag
+        cache: true
+        cache_tag: latest
+      get_params:
+        skip_download: true
+    - put: sink-state-updater-image
+      params:
+        load: sink-state-updater-image
         tag: promote/tag
         cache: true
         cache_tag: latest
