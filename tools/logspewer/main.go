@@ -27,11 +27,11 @@ func ponger(i int) string {
 		return string(text)
 	}
 	if i%40 == 0 {
-		text[i%40+1] = '|'
-		text[41-i%40] = '|'
+		text[1] = '('
+		text[41] = ')'
 		return string(text)
 	}
-	text[i%40+1] = '\\'
-	text[41-i%40] = '/'
+	text[i%40+1] = '`'
+	text[41-i%40] = '\''
 	return string(text)
 }
