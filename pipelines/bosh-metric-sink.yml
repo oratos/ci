@@ -75,6 +75,7 @@ jobs:
         TELEGRAF_IP: 35.222.245.19 # telegraf deployed on GKE cluster bosh-metrics-sink-testing-cluster 
         CFCR_MANIFEST_DIR: ../../../kubo-deployment/manifests
         GCP_KEY: ((gcloud.oratos-ci-testing-cfcr-service-account))
+        PRIVATE_YML: ((release.private_yml))
       run:
         path: /bin/bash
         args:
@@ -82,13 +83,14 @@ jobs:
         - |
           #!/bin/bash
           set -e
-          export GO111MODULES=true
           pushd oratos-ci-testing-cfcr-bbl-state/bbl-state
             eval "$(bbl print-env)"
           popd
-          pushd bosh-metric-sink-repo/tests/e2e
-            go test . -v
+          pushd bosh-metric-sink-repo
+            echo "${PRIVATE_YML}" > config/private.yml
+            ./tests/e2e.sh
           popd
+
     on_failure:
       put: slack-alert
       params:
