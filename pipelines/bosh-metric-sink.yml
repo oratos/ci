@@ -1,0 +1,96 @@
+groups:
+- name: main
+  jobs:
+  - end-to-end-tests
+
+resource_types:
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+    tag: latest
+
+- name: vault
+  type: docker-image
+  source:
+    repository: oratos/vault-resource
+    tag: latest
+
+resources:
+# - name: oratos-ci
+#   type: git
+#   source:
+#     uri: https://github.com/pivotal-cf/oratos-ci
+#     branch: master
+
+- name: bosh-metric-sink-repo
+  type: git
+  source:
+    uri: git@github.com:pivotal/bosh-metric-sink
+    branch: master
+    private_key: ((github.oratos-bot-private-key))
+
+- name: kubo-deployment
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry-incubator/kubo-deployment
+    branch: v0.34.0
+
+- name: slack-alert
+  type: slack-notification
+  source:
+    url: ((slack.notifications-url))
+
+- name: oratos-ci-testing-cfcr-bbl-state
+  type: vault
+  source:
+    url: https://vault.oratos.ci.cf-app.com
+    role_id: ((vault.role_id))
+    secret_id: ((vault.secret_id))
+    path: secret/envs/oratos-ci-testing-cfcr-bbl-state
+    tarball: true
+
+jobs:
+- name: end-to-end-tests
+  plan:
+  - in_parallel:
+    - get: bosh-metric-sink-repo
+      trigger: true
+    - get: kubo-deployment
+    - get: oratos-ci-testing-cfcr-bbl-state
+  - task: run-tests
+    config:
+      inputs:
+      - name: bosh-metric-sink-repo
+      - name: kubo-deployment
+      - name: oratos-ci-testing-cfcr-bbl-state
+      # outputs:
+      # - name: cluster_name
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: oratos/ci-base
+      params:
+        TELEGRAF_IP: 35.222.245.19 # telegraf deployed on GKE cluster bosh-metrics-sink-testing-cluster 
+        CFCR_MANIFEST_DIR: ../../../kubo-deployment/manifests
+        GCP_KEY: ((gcloud.oratos-ci-testing-cfcr-service-account))
+      run:
+        path: /bin/bash
+        args:
+        - "-c"
+        - |
+          #!/bin/bash
+          set -e
+          export GO111MODULES=true
+          pushd oratos-ci-testing-cfcr-bbl-state/bbl-state
+            eval "$(bbl print-env)"
+          popd
+          pushd bosh-metric-sink-repo/tests/e2e
+            go test . -v
+          popd
+    on_failure:
+      put: slack-alert
+      params:
+        text: Bosh Metric Sink End-to-End tests failed
+  # - name: release-cluster
