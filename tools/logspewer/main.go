@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -16,22 +17,19 @@ func main() {
 	for {
 		log.Printf("%s %s %d\n", ponger(count), msg, count)
 		count++
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond * 100)
 	}
 }
 
+const width int = 41
+
 func ponger(i int) string {
-	text := []rune("[-----------------------------------------]")
-	if i%40+1 == 41-i%40 {
-		text[i%40+1] = 'X'
+	text := []rune("[" + strings.Repeat("-", width) + "]")
+	if i%width+1 == width-i%width {
+		text[i%width+1] = 'X'
 		return string(text)
 	}
-	if i%40 == 0 {
-		text[1] = '('
-		text[41] = ')'
-		return string(text)
-	}
-	text[i%40+1] = '`'
-	text[41-i%40] = '\''
+	text[i%width+1] = '>'
+	text[width-i%width] = '<'
 	return string(text)
 }
