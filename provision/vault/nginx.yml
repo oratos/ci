@@ -11,6 +11,8 @@ spec:
   - protocol: TCP
     port: 443
   loadBalancerSourceRanges:
+  # allow all ingress
+  - "0.0.0.0/32"
   # denver office
   - "0.0.0.0/1"
   - "50.232.79.0/30"
