@@ -50,13 +50,16 @@ function set_pipeline {
     else
         vars_file="pipelines/vars/master.yml"
     fi
-    fly -t oratos set-pipeline -p "$1" \
+    credentials_file=$(mktemp)
+    vault read -field=vars_file /secret/concourse/vcna/variables > $credentials_file
+    fly -t oratos-vmw set-pipeline -p "$1" \
         -l "${vars_file}" \
+        -l "${credentials_file}" \
         -c <(yq read "pipelines/$1.yml" --tojson)
 }
 
 function sync_fly {
-    fly -t oratos sync
+    fly -t oratos-vmw sync
 }
 
 function set_pipelines {
