@@ -52,6 +52,7 @@ resources:
 
 jobs:
 - name: end-to-end-tests
+  serial: true
   plan:
   - in_parallel:
     - get: bosh-metric-sink-repo
@@ -64,8 +65,6 @@ jobs:
       - name: bosh-metric-sink-repo
       - name: kubo-deployment
       - name: oratos-ci-testing-cfcr-bbl-state
-      # outputs:
-      # - name: cluster_name
       platform: linux
       image_resource:
         type: docker-image
