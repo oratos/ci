@@ -1245,5 +1245,6 @@ jobs:
       params:
         name: bosh-release/name
         tag: bosh-release/tag
+        commitish: bosh-release/commitish
         globs:
         - bosh-release/binaries/*.tgz
