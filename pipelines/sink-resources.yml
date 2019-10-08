@@ -56,73 +56,73 @@ resources:
 - name: sink-controller-image
   type: docker-image
   source:
-    repository: oratos/sink-controller
-    username: ((docker-hub.username))
-    password: ((docker-hub.password))
+    repository: ((docker_image_repository))/sink-controller
+    username: ((artifactory.username))
+    password: ((artifactory.password))
 
 - name: event-controller-image
   type: docker-image
   source:
-    repository: oratos/event-controller
-    username: ((docker-hub.username))
-    password: ((docker-hub.password))
+    repository: ((docker_image_repository))/event-controller
+    username: ((artifactory.username))
+    password: ((artifactory.password))
 
 - name: metric-controller-image
   type: docker-image
   source:
-    repository: oratos/metric-controller
-    username: ((docker-hub.username))
-    password: ((docker-hub.password))
+    repository: ((docker_image_repository))/metric-controller
+    username: ((artifactory.username))
+    password: ((artifactory.password))
 
 - name: fluent-bit-out-syslog-image
   type: docker-image
   source:
-    repository: oratos/fluent-bit-out-syslog
-    username: ((docker-hub.username))
-    password: ((docker-hub.password))
+    repository: ((docker_image_repository))/fluent-bit-out-syslog
+    username: ((artifactory.username))
+    password: ((artifactory.password))
     tag: release-elect
 
 - name: cert-generator-image
   type: docker-image
   source:
-    repository: oratos/cert-generator
-    username: ((docker-hub.username))
-    password: ((docker-hub.password))
+    repository: ((docker_image_repository))/cert-generator
+    username: ((artifactory.username))
+    password: ((artifactory.password))
 
 - name: ghostunnel-image
   type: docker-image
   source:
-    repository: oratos/ghostunnel
-    username: ((docker-hub.username))
-    password: ((docker-hub.password))
+    repository: ((docker_image_repository))/ghostunnel
+    username: ((artifactory.username))
+    password: ((artifactory.password))
 
 - name: telegraf-image
   type: docker-image
   source:
-    repository: oratos/telegraf
-    username: ((docker-hub.username))
-    password: ((docker-hub.password))
+    repository: ((docker_image_repository))/telegraf
+    username: ((artifactory.username))
+    password: ((artifactory.password))
 
 - name: validator-image
   type: docker-image
   source:
-    repository: oratos/validator
-    username: ((docker-hub.username))
-    password: ((docker-hub.password))
+    repository: ((docker_image_repository))/validator
+    username: ((artifactory.username))
+    password: ((artifactory.password))
 
 - name: node-exporter-image
   type: docker-image
   source:
-    repository: oratos/node-exporter
-    username: ((docker-hub.username))
-    password: ((docker-hub.password))
+    repository: ((docker_image_repository))/node-exporter
+    username: ((artifactory.username))
+    password: ((artifactory.password))
 
 - name: observability-manager-image
   type: docker-image
   source:
-    repository: oratos/observability-manager
-    username: ((docker-hub.username))
-    password: ((docker-hub.password))
+    repository: ((docker_image_repository))/observability-manager
+    username: ((artifactory.username))
+    password: ((artifactory.password))
 
 - name: out-syslog
   type: git
@@ -1023,8 +1023,9 @@ jobs:
         GIT_REF: ((sink_resource_release_params.GIT_REF))
         SINK_RESOURCES_VERSION: ((sink_resource_release_params.SINK_RESOURCES_VERSION))
         FLUENT_BIT_OUT_SYSLOG_VERSION: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
-        DOCKERHUB_USERNAME: ((docker-hub.username))
-        DOCKERHUB_PASSWORD: ((docker-hub.password))
+        CONTAINER_REPOSITORY: ((docker_image_repository))
+        DOCKERHUB_USERNAME: ((artifactory.username))
+        DOCKERHUB_PASSWORD: ((artifactory.password))
         GITHUB_PRIVATE_KEY: ((github.oratos-bot-private-key))
         SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
         DEBUG:
@@ -1138,27 +1139,16 @@ jobs:
 
           cat <<EOF > github-release/body
           These are the versions of the docker images used in this release:
-          - [oratos/sink-controller][sink-controller]:$SINK_RESOURCES_VERSION
-          - [oratos/event-controller][event-controller]:$SINK_RESOURCES_VERSION
-          - [oratos/metric-controller][metric-controller]:$SINK_RESOURCES_VERSION
-          - [oratos/cert-generator][cert-generator]:$SINK_RESOURCES_VERSION
-          - [oratos/ghostunnel][ghostunnel]:$SINK_RESOURCES_VERSION
-          - [oratos/telegraf][telegraf]:$SINK_RESOURCES_VERSION
-          - [oratos/validator][validator]:$SINK_RESOURCES_VERSION
-          - [oratos/node-exporter][node-exporter]:$SINK_RESOURCES_VERSION
-          - [oratos/observability-manager][observability-manager]:$SINK_RESOURCES_VERSION
-          - [oratos/fluent-bit-out-syslog][fluent-bit-out-syslog]:$FLUENT_BIT_OUT_SYSLOG_VERSION
-
-          [sink-controller]: https://hub.docker.com/r/oratos/sink-controller/
-          [event-controller]: https://hub.docker.com/r/oratos/event-controller/
-          [metric-controller]: https://hub.docker.com/r/oratos/metric-controller/
-          [cert-generator]: https://hub.docker.com/r/oratos/cert-generator/
-          [ghostunnel]: https://hub.docker.com/r/oratos/ghostunnel/
-          [telegraf]: https://hub.docker.com/r/oratos/telegraf/
-          [validator]: https://hub.docker.com/r/oratos/validator/
-          [node-exporter]: https://hub.docker.com/r/oratos/node-exporter/
-          [observability-manager]: https://hub.docker.com/r/oratos/observability-manager/
-          [fluent-bit-out-syslog]: https://hub.docker.com/r/oratos/fluent-bit-out-syslog/
+          - [$CONTAINER_REPOSITORY/sink-controller][sink-controller]:$GIT_REF
+          - [$CONTAINER_REPOSITORY/event-controller][event-controller]:$GIT_REF
+          - [$CONTAINER_REPOSITORY/metric-controller][metric-controller]:$GIT_REF
+          - [$CONTAINER_REPOSITORY/cert-generator][cert-generator]:$GIT_REF
+          - [$CONTAINER_REPOSITORY/ghostunnel][ghostunnel]:$GIT_REF
+          - [$CONTAINER_REPOSITORY/telegraf][telegraf]:$GIT_REF
+          - [$CONTAINER_REPOSITORY/validator][validator]:$GIT_REF
+          - [$CONTAINER_REPOSITORY/node-exporter][node-exporter]:$GIT_REF
+          - [$CONTAINER_REPOSITORY/observability-manager][observability-manager]:$GIT_REF
+          - [$CONTAINER_REPOSITORY/fluent-bit-out-syslog][fluent-bit-out-syslog]:$FLUENT_BIT_REF
           EOF
 
           [ -n "${DEBUG:-}" ] && set +x
@@ -1168,42 +1158,16 @@ jobs:
               --password-stdin
           [ -n "${DEBUG:-}" ] && set -x
 
-
-          for component in sink-controller event-controller metric-controller cert-generator ghostunnel telegraf validator node-exporter; do
-            docker pull "oratos/$component:$GIT_REF"
-
-            docker tag "oratos/$component:$GIT_REF" "oratos/$component:latest"
-            docker push "oratos/$component:latest"
-
-            docker tag "oratos/$component:$GIT_REF" "oratos/$component:$SINK_RESOURCES_VERSION"
-            docker push "oratos/$component:$SINK_RESOURCES_VERSION"
-
-            docker tag "oratos/$component:$GIT_REF" "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/$component:$SINK_RESOURCES_VERSION"
-            docker push "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/$component:$SINK_RESOURCES_VERSION"
-
-            docker save "oratos/$component:$GIT_REF" | gzip > "github-release/oratos_$component:$SINK_RESOURCES_VERSION.tgz"
+          DOCKER_IMAGES="$(for component in sink-controller node-exporter event-controller metric-controller cert-generator ghostunnel telegraf validator observability-manager; do
+            echo "$CONTAINER_REPOSITORY/$component:$GIT_REF"
+          done) $CONTAINER_REPOSITORY/fluent-bit-out-syslog:$FLUENT_BIT_REF"
+          echo "Saving docker images: $DOCKER_IMAGES"
+          for image in $DOCKER_IMAGES; do
+            docker pull "$image"
           done
-          {
-            docker pull "oratos/observability-manager:$GIT_REF"
+          # shellcheck disable=SC2086
+          docker save $DOCKER_IMAGES | gzip > "github-release/sink-resources-images-$SINK_RESOURCES_VERSION.tgz"
 
-            docker tag "oratos/observability-manager:$GIT_REF" "oratos/observability-manager:latest"
-            docker push "oratos/observability-manager:latest"
-
-            docker tag "oratos/observability-manager:$GIT_REF" "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/observability-manager:$SINK_RESOURCES_VERSION"
-            docker push "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/observability-manager:$SINK_RESOURCES_VERSION"
-
-            docker tag "oratos/observability-manager:$GIT_REF" "oratos/observability-manager:$SINK_RESOURCES_VERSION"
-            docker push "oratos/observability-manager:$SINK_RESOURCES_VERSION"
-
-            docker save "oratos/observability-manager:$SINK_RESOURCES_VERSION" | gzip > "github-release/oratos_observability-manager:$SINK_RESOURCES_VERSION.tgz"
-          }
-          {
-            docker pull "oratos/fluent-bit-out-syslog:$FLUENT_BIT_REF"
-
-            docker tag "oratos/fluent-bit-out-syslog:$FLUENT_BIT_REF" "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION"
-            docker push "gcr.io/cf-pks-observability1/released-images/$SINK_RESOURCES_VERSION/fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION"
-            docker save "oratos/fluent-bit-out-syslog:$FLUENT_BIT_REF" | gzip > "github-release/oratos_fluent-bit-out-syslog:$FLUENT_BIT_OUT_SYSLOG_VERSION.tgz"
-          }
           pushd sink-resources > /dev/null
             git push origin --tags
           popd > /dev/null
@@ -1232,7 +1196,8 @@ jobs:
     params:
       PRIVATE_YML: ((release.private_yml))
       SINK_RESOURCES_VERSION: ((sink_resource_release_params.SINK_RESOURCES_VERSION))
-      FLUENT_BIT_OUT_SYSLOG_VERSION: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
+      SINK_RESOURCES_SHA: ((sink_resource_release_params.GIT_REF)) 
+      FLUENT_BIT_OUT_SYSLOG_SHA: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_SHA))
   - do:
     - put: pks-releng-release-bucket
       params:
