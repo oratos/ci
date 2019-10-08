@@ -108,7 +108,7 @@ pushd put-sink-resources-release
 
   git add .
   git commit -m"CI bump sink resource release to ${SINK_RESOURCES_RELEASE_VERSION}"
-  SINK_RESOURCESES_RELEASE_SHA=$(git rev-parse @)
+  SINK_RESOURCES_RELEASE_SHA=$(git rev-parse @)
 popd
 
 echo "$SINK_RESOURCES_RELEASE_VERSION" > bosh-release/name
