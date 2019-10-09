@@ -166,13 +166,6 @@ resources:
     repository: sink-resources-release
     access_token: ((github.oratos-bot-release-access-token))
 
-- name: pks-releng-release-bucket
-  type: gcs-resource
-  source:
-    bucket: pks-releng-final-releases
-    json_key: ((pks-releng.gcp-json))
-    regexp: '.*\.tgz'
-
 jobs:
 - name: unit-tests
   plan:
@@ -1163,9 +1156,6 @@ jobs:
       SINK_RESOURCES_SHA: ((sink_resource_release_params.GIT_REF)) 
       FLUENT_BIT_OUT_SYSLOG_SHA: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_SHA))
   - do:
-    - put: pks-releng-release-bucket
-      params:
-        file: bosh-release/binaries/*.tgz
     - put: sink-resources-release
       params:
         repository: put-sink-resources-release
