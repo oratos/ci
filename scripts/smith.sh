@@ -1,6 +1,10 @@
-API_KEY=$(vault read -format json "secret/toolsmith-api-key" | jq .data.key -r )
+API_KEY=$(vault read -format json "secret/toolsmith" | jq .data.api_key -r )
+GCP_KEY="$(vault read --field=gcp_key "secret/toolsmith" )"
 cmd=${1:-}
 case "$cmd" in
+    create)
+        curl "https://environments.toolsmiths.cf-app.com/v1/custom_gcp/pks/create" -d "{\"api_token\": \"${API_KEY}\", \"sa_gcp_key\": ${GCP_KEY}, \"version\": \"us_1_5\"}" -H "Content-Type: application/json" -v | jq .
+        ;;
     list)
         curl "https://environments.toolsmiths.cf-app.com/v1/custom_gcp/pks/list?api_token=${API_KEY}" | jq .
         ;;
