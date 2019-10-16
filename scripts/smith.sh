@@ -3,7 +3,8 @@ GCP_KEY="$(vault read --field=gcp_key "secret/toolsmith" )"
 cmd=${1:-}
 case "$cmd" in
     create)
-        curl "https://environments.toolsmiths.cf-app.com/v1/custom_gcp/pks/create" -d "{\"api_token\": \"${API_KEY}\", \"sa_gcp_key\": ${GCP_KEY}, \"version\": \"us_1_5\"}" -H "Content-Type: application/json" -v | jq .
+        VERSION=${2:-1_5}
+        curl "https://environments.toolsmiths.cf-app.com/v1/custom_gcp/pks/create" -d "{\"api_token\": \"${API_KEY}\", \"sa_gcp_key\": ${GCP_KEY}, \"version\": \"us_${VERSION}\"}" -H "Content-Type: application/json" -v | jq .
         ;;
     list)
         curl "https://environments.toolsmiths.cf-app.com/v1/custom_gcp/pks/list?api_token=${API_KEY}" | jq .
