@@ -601,6 +601,7 @@ jobs:
       GET_CREDENTIALS_HOOK: |
           echo "$SERVICE_ACCOUNT" > sa.json
           gcloud auth activate-service-account --key-file sa.json
+          gcloud config set project cf-pks-observability1
           rm sa.json
           gcloud container clusters get-credentials oratos-ci-testing-0-19-x \
             --zone us-central1-a
@@ -615,6 +616,7 @@ jobs:
       GET_CREDENTIALS_HOOK: |
           echo "$SERVICE_ACCOUNT" > sa.json
           gcloud auth activate-service-account --key-file sa.json
+          gcloud config set project cf-pks-observability1
           rm sa.json
           gcloud container clusters get-credentials oratos-ci-testing-0-19-x \
             --zone us-central1-a
