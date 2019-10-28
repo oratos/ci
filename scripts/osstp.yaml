@@ -1,0 +1,21 @@
+ definitions:
+  - name: "Gopkg GitHub vanity URL v1"
+    prefix: "gopkg.in"
+    regex: 'gopkg\.in\/fsnotify\.v[0-9]{1,}(?P<restofpath>\/\S+?)?\|(?P<version>.*)$'
+    url_template: 'https://codeload.github.com/fsnotify/fsnotify/tar.gz/${version}'
+    file_template: 'go_fsnotify-fsnotify-${version}.tar.gz'
+  - name: "Gopkg GitHub vanity URL v1 re-map from fsnotify"
+    prefix: "gopkg.in"
+    regex: 'gopkg\.in\/(?P<repo>\w+)\.v[0-9]{1,}(?P<restofpath>\/\S+?)?\|(?P<version>.*)$'
+    url_template: 'https://codeload.github.com/go-${repo}/${repo}/tar.gz/${version}'
+    file_template: 'go_${repo}-${repo}-${version}.tar.gz'
+  - name: "rfc 5424"
+    prefix: "code.cloudfoundry.org/rfc5424"
+    regex: 'code\.cloudfoundry\.org\/rfc5424\|(?P<version>.*)$'
+    url_template: 'https://codeload.github.com/cloudfoundry-incubator/rfc5424/tar.gz/${version}'
+    file_template: 'go_rfc5424-${version}.tar.gz'
+  - name: "go-envstruct"
+    prefix: "code.cloudfoundry.org/go-envstruct"
+    regex: 'code\.cloudfoundry\.org\/go-envstruct\|(?P<version>.*)$'
+    url_template: 'https://codeload.github.com/cloudfoundry/go-envstruct/tar.gz/${version}'
+    file_template: 'go_go-envstruct-${version}.tar.gz'
