@@ -326,7 +326,7 @@ jobs:
     input_mapping:
       source-repo: sink-resources
     params:
-      SOURCE_PATH: cmd/ghostunnel
+      DOCKERFILE: source-repo/cmd/ghostunnel/Dockerfile
   - put: ghostunnel-image
     params:
       build: build-image/build
