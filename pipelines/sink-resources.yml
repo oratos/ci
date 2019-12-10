@@ -683,7 +683,8 @@ jobs:
     params:
       PRIVATE_YML: ((release.private_yml))
       SINK_RESOURCES_VERSION: ((sink_resource_release_params.SINK_RESOURCES_VERSION))
-      SINK_RESOURCES_SHA: ((sink_resource_release_params.GIT_REF)) 
+      SINK_RESOURCES_SHA: ((sink_resource_release_params.GIT_REF))
+      FLUENT_BIT_OUT_SYSLOG_VERSION: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
       FLUENT_BIT_OUT_SYSLOG_SHA: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_SHA))
   - do:
     - put: sink-resources-release

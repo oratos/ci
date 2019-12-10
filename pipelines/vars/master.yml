@@ -17,9 +17,9 @@ sink_resource_release_params:
   # this release. This version needs to be a tag on the docker image on
   # dockerhhub here:
   #   https://hub.docker.com/r/oratos/fluent-bit-out-syslog/tags/
-  FLUENT_BIT_OUT_SYSLOG_VERSION: v0.20.1 # version of the fluent-bit image to use
+  FLUENT_BIT_OUT_SYSLOG_VERSION: v0.20.2 # version of the fluent-bit image to use
   # SHA of the fluent-bit image coresponding to the version above
-  FLUENT_BIT_OUT_SYSLOG_SHA: 3fe0279ac5537332a2e9be94198d5b0d3193e494
+  FLUENT_BIT_OUT_SYSLOG_SHA: fe490d50ca76b907bc9bb53698546bffb932c46f
 
   # This is the major/minor version of pks this release will be intended to
   # end up in.
