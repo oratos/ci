@@ -31,9 +31,9 @@ resources:
 - name: fluent-bit-out-syslog-image
   type: docker-image
   source:
-    repository: oratos/fluent-bit-out-syslog
-    username: ((docker-hub.username))
-    password: ((docker-hub.password))
+    repository: ((docker_image_repository))/fluent-bit-out-syslog
+    username: ((artifactory.username))
+    password: ((artifactory.password))
 
 - name: slack-alert
   type: slack-notification
@@ -106,8 +106,6 @@ jobs:
       build: build-image/build
       tag: build-image/tag
       additional_tags: promote/tag
-      cache: true
-      cache_tag: latest
     get_params:
       skip_download: true
 
@@ -125,8 +123,9 @@ jobs:
       params:
         GIT_REF: ((fluent_bit_out_syslog_params.GIT_REF))
         VERSION: ((fluent_bit_out_syslog_params.VERSION))
-        DOCKERHUB_USERNAME: ((docker-hub.username))
-        DOCKERHUB_PASSWORD: ((docker-hub.password))
+        CONTAINER_REPOSITORY: ((docker_image_repository))
+        DOCKERHUB_USERNAME: ((artifactory.username))
+        DOCKERHUB_PASSWORD: ((artifactory.password))
         GITHUB_PRIVATE_KEY: ((github.oratos-bot-private-key))
         DEBUG:
       run:
@@ -222,16 +221,17 @@ jobs:
           echo "$DOCKERHUB_PASSWORD" \
             | docker login \
               --username "$DOCKERHUB_USERNAME" \
-              --password-stdin
+              --password-stdin \
+              "$CONTAINER_REPOSITORY"
           [ -n "${DEBUG:-}" ] && set -x
 
-          docker pull "oratos/fluent-bit-out-syslog:$GIT_REF"
-          docker tag "oratos/fluent-bit-out-syslog:$GIT_REF" \
-            "oratos/fluent-bit-out-syslog:$VERSION"
-          docker tag "oratos/fluent-bit-out-syslog:$GIT_REF" \
-            "oratos/fluent-bit-out-syslog:latest"
-          docker push "oratos/fluent-bit-out-syslog:$VERSION"
-          docker push "oratos/fluent-bit-out-syslog:latest"
+          docker pull "$CONTAINER_REPOSITORY/fluent-bit-out-syslog:$GIT_REF"
+          docker tag "$CONTAINER_REPOSITORY/fluent-bit-out-syslog:$GIT_REF" \
+            "$CONTAINER_REPOSITORY/fluent-bit-out-syslog:$VERSION"
+          docker tag "$CONTAINER_REPOSITORY/fluent-bit-out-syslog:$GIT_REF" \
+            "$CONTAINER_REPOSITORY/fluent-bit-out-syslog:latest"
+          docker push "$CONTAINER_REPOSITORY/fluent-bit-out-syslog:$VERSION"
+          docker push "$CONTAINER_REPOSITORY/fluent-bit-out-syslog:latest"
 
           pushd fluent-bit-out-syslog > /dev/null
             git push origin --tags
