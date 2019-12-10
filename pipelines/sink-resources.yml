@@ -14,7 +14,7 @@ groups:
   - deploy-cfcr
   - cfcr-tests
   - create-release-candidate
-  - update-bosh-release
+  - create-bosh-release
 
 resource_types:
 - name: slack-notification
@@ -146,6 +146,8 @@ resources:
     owner: pivotal-cf
     repository: sink-resources
     access_token: ((github.oratos-bot-release-access-token))
+    release: false
+    pre_release: true
 
 - name: sink-resources-release
   type: git
@@ -160,6 +162,8 @@ resources:
     owner: pivotal-cf
     repository: sink-resources-release
     access_token: ((github.oratos-bot-release-access-token))
+    release: false
+    pre_release: true
 
 jobs:
 - name: unit-tests
@@ -633,19 +637,7 @@ jobs:
           echo "$SINK_RESOURCES_VERSION" > github-release/name
           echo "$SINK_RESOURCES_VERSION" > github-release/tag
 
-          cat <<EOF > github-release/body
-          These are the versions of the docker images used in this release:
-          - [$CONTAINER_REPOSITORY/sink-controller][sink-controller]:$GIT_REF
-          - [$CONTAINER_REPOSITORY/event-controller][event-controller]:$GIT_REF
-          - [$CONTAINER_REPOSITORY/metric-controller][metric-controller]:$GIT_REF
-          - [$CONTAINER_REPOSITORY/cert-generator][cert-generator]:$GIT_REF
-          - [$CONTAINER_REPOSITORY/ghostunnel][ghostunnel]:$GIT_REF
-          - [$CONTAINER_REPOSITORY/telegraf][telegraf]:$GIT_REF
-          - [$CONTAINER_REPOSITORY/validator][validator]:$GIT_REF
-          - [$CONTAINER_REPOSITORY/node-exporter][node-exporter]:$GIT_REF
-          - [$CONTAINER_REPOSITORY/observability-manager][observability-manager]:$GIT_REF
-          - [$CONTAINER_REPOSITORY/fluent-bit-out-syslog][fluent-bit-out-syslog]:$FLUENT_BIT_REF
-          EOF
+          cat "RELEASE NOTES HERE" > github-release/body
 
           [ -n "${DEBUG:-}" ] && set +x
           echo "$DOCKERHUB_PASSWORD" \
@@ -676,15 +668,13 @@ jobs:
       globs:
       - github-release/*.tgz
 
-- name: update-bosh-release
+- name: create-bosh-release
   plan:
   - do:
     - get: sink-resources-github-release
       trigger: true
       passed:
       - create-release-candidate
-      version:
-        tag: ((sink_resource_release_params.SINK_RESOURCES_VERSION))
     - get: sink-resources-release
     - get: oratos-ci
   - task: update-bosh-release
@@ -716,9 +706,7 @@ jobs:
     - get: sink-resources-release-github-release
       trigger: true
       passed:
-      - update-bosh-release
-      version:
-        tag: ((sink_resource_release_params.SINK_RESOURCES_VERSION))
+      - create-bosh-release
     - get: oratos-ci-testing-cfcr-bbl-state
     - get: oratos-ci
   - task: clean-up-environment

@@ -20,6 +20,10 @@ params:
   SINK_RESOURCES_SHA:
   FLUENT_BIT_OUT_SYSLOG_SHA:
 
+  # - Required
+  # - Required for OSL generation
+  SINK_RESOURCES_VERSION:
+
   HAS_NODE_EXPORTER: true
 
   # - Optional
