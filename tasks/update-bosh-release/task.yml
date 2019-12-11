@@ -17,12 +17,10 @@ params:
 
   # - Required
   # - Required for OSL generation
+  IMAGE_REPOSITORY:
   SINK_RESOURCES_SHA:
-  FLUENT_BIT_OUT_SYSLOG_SHA:
-
-  # - Required
-  # - Required for OSL generation
   SINK_RESOURCES_VERSION:
+  FLUENT_BIT_OUT_SYSLOG_SHA:
   FLUENT_BIT_OUT_SYSLOG_VERSION:
 
   HAS_NODE_EXPORTER: true
