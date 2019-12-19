@@ -98,20 +98,20 @@ pushd put-sink-resources-release
   done
   ./scripts/generate-osl-deps.sh
 
-  echo "Move build ${release_file} - ${SINK_RESOURCES_RELEASE_VERSION} to bosh-release/binaries"
+  echo "Move build ${release_file} - ${SINK_RESOURCES_VERSION} to bosh-release/binaries"
   mkdir -p ../bosh-release/binaries
-  mv "${release_file}" "../bosh-release/binaries/sink-resources-release-${SINK_RESOURCES_RELEASE_VERSION}.tgz"
+  mv "${release_file}" "../bosh-release/binaries/sink-resources-release-${SINK_RESOURCES_VERSION}.tgz"
 
   echo "Copy OSL config sink-resources-${SINK_RESOURCES_SHA}.yml to bosh-release/binaries"
-  cp "osl/${SINK_RESOURCES_RELEASE_VERSION}/sink-resources-${SINK_RESOURCES_SHA}.yml" \
+  cp "osl/${SINK_RESOURCES_VERSION}/sink-resources-${SINK_RESOURCES_SHA}.yml" \
       "../bosh-release/binaries/sink-resources-${SINK_RESOURCES_SHA}.yml"
 
   git add .
-  git commit -m"CI bump sink resource release to ${SINK_RESOURCES_RELEASE_VERSION}"
+  git commit -m"CI bump sink resource release to ${SINK_RESOURCES_VERSION}"
   SINK_RESOURCES_RELEASE_SHA=$(git rev-parse @)
 popd
 
-echo "$SINK_RESOURCES_RELEASE_VERSION" > bosh-release/name
-echo "$SINK_RESOURCES_RELEASE_VERSION" > bosh-release/tag
+echo "$SINK_RESOURCES_VERSION" > bosh-release/name
+echo "$SINK_RESOURCES_VERSION" > bosh-release/tag
 echo "$SINK_RESOURCES_RELEASE_SHA" > bosh-release/commitish
 ls -alth bosh-release/binaries
