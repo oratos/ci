@@ -636,7 +636,7 @@ jobs:
           echo "$SINK_RESOURCES_VERSION" > github-release/name
           echo "$SINK_RESOURCES_VERSION" > github-release/tag
 
-          cat "RELEASE NOTES HERE" > github-release/body
+          echo "RELEASE NOTES HERE" > github-release/body
 
           [ -n "${DEBUG:-}" ] && set +x
           echo "$DOCKERHUB_PASSWORD" \
@@ -714,19 +714,12 @@ jobs:
     file: oratos-ci/tasks/clean-up-environment/task.yml
     input_mapping:
       bbl-state: oratos-ci-testing-cfcr-bbl-state
-    params:
-      GET_CREDENTIALS_HOOK: |
-        BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/cfcr.sh get-credentials testing
   - task: deploy
     file: oratos-ci/tasks/deploy-sink-resources/task.yml
     input_mapping:
       bbl-state: oratos-ci-testing-cfcr-bbl-state
     params:
       HAS_NODE_EXPORTER: true
-      GET_CREDENTIALS_HOOK: |
-          BBL_STATE_DIR=bbl-state \
-              oratos-ci/scripts/cfcr.sh get-credentials testing
 
 
 - name: cfcr-tests

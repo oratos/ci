@@ -7,10 +7,6 @@ inputs:
 - name: oratos-ci
 - name: bbl-state
 params:
-  # - Required
-  # - Code to run to setup kubectl to point to the cluster.
-  GET_CREDENTIALS_HOOK:
-
   # - Optional
   # - gcloud service account details
   SERVICE_ACCOUNT:

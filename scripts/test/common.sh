@@ -96,6 +96,15 @@ function login_to_cluster_as_admin {
     return "$ret"
 }
 
+function eval_bbl_state {
+    # set bosh env vars
+  [ -n "${DEBUG:-}" ] && set +x
+  pushd bbl-state/bbl-state > /dev/null
+    eval "$(bbl print-env)"
+  popd > /dev/null
+  [ -n "${DEBUG:-}" ] && set -x
+}
+
 function apply_crosstalk_receiver {
     local drain_namespace=${1?}
     local message=${2:-"crosstalk-test"}

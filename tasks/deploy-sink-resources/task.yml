@@ -4,15 +4,9 @@ image_resource:
   source:
     repository: oratos/ci-base
 inputs:
-- name: sink-resources
-- name: observability-manager-image
 - name: oratos-ci
 - name: bbl-state # only needed for cfcr clusters
 params:
-  # - Required
-  # - Code to run to setup kubectl to point to the cluster.
-  GET_CREDENTIALS_HOOK:
-
   # - Optional
   # - gcloud service account details
   SERVICE_ACCOUNT:
