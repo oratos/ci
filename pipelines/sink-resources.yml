@@ -442,7 +442,6 @@ jobs:
       params:
         build: build-image/build
         tag: build-image/tag
-        tag_as_latest: true
       get_params:
         skip_download: true
 
