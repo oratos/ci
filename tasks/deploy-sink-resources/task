@@ -19,7 +19,7 @@ function roll {
 }
 
 function apply_manifests {
-    image_sha="$(cat sink-resources-sha/digest)"
+    image_sha="$(cat sink-resources/digest)"
     pushd sink-resources/manifests/observability-manager
         kustomize edit set image "$IMAGE_REPOSITORY/observability-manager@$image_sha"
         kubectl apply -k .
