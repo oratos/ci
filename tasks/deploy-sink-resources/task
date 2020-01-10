@@ -5,6 +5,7 @@ source "oratos-ci/scripts/test/common.sh"
 
 function validate {
     ensure_variable_isset "$GET_CREDENTIALS_HOOK" "GET_CREDENTIALS_HOOK"
+    ensure_variable_isset "$IMAGE_REPOSITORY" "IMAGE_REPOSITORY"
 }
 
 function delete_old_jobs {
@@ -18,9 +19,9 @@ function roll {
 }
 
 function apply_manifests {
-    observability_manager_digest="$(cat observability-manager-image/digest)"
+    image_sha="$(cat sink-resources-sha/digest)"
     pushd sink-resources/manifests/observability-manager
-        kustomize edit set image "oratos/observability-manager@$observability_manager_digest"
+        kustomize edit set image "$IMAGE_REPOSITORY/observability-manager@$image_sha"
         kubectl apply -k .
         echo "Completed applying the manifests for sink-resources/pks"
     popd

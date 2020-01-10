@@ -4,7 +4,7 @@ set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 source "oratos-ci/scripts/test/common.sh"
 
 function clean_up_environment {
-    bosh -d cfcr delete-deployment
+    bosh --deployment cfcr delete-deployment --non-interactive
 }
 
 function main {
