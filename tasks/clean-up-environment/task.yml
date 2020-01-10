@@ -4,7 +4,6 @@ image_resource:
   source:
     repository: oratos/ci-base
 inputs:
-- name: sink-resources
 - name: oratos-ci
 - name: bbl-state
 params:
