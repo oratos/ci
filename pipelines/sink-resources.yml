@@ -15,6 +15,7 @@ groups:
   - cfcr-tests
   - create-release-candidate
   - create-bosh-release
+  - deploy-sink-resources-in-cluster
 
 resource_types:
 - name: slack-notification
@@ -164,6 +165,12 @@ resources:
     access_token: ((github.oratos-bot-release-access-token))
     release: false
     pre_release: true
+
+- name: cf-deployment-concourse-tasks
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry/cf-deployment-concourse-tasks
+    branch: v10.16.0
 
 - name: oratos-ci-testing-cfcr-gcp-vars
   type: vault
@@ -731,20 +738,21 @@ jobs:
       trigger: true
       passed:
       - create-bosh-release
-    - get: oratos-ci-testing-cfcr-bbl-state
-    - get: oratos-ci
     - get: sink-resources
-      passed:
-      - create-bosh-release
+      # passed:
+      # - create-bosh-release
+    - get: oratos-ci-testing-cfcr-bbl-state
+    - get: oratos-ci-testing-cfcr-gcp-vars
+    - get: oratos-ci
+    - get: cf-deployment-concourse-tasks
+    - get: kubo-deployment
+    - get: kubo-release-bosh-io
   - task: clean-up-environment
     file: oratos-ci/tasks/clean-up-environment/task.yml
     input_mapping:
       bbl-state: oratos-ci-testing-cfcr-bbl-state
-  - in_parallel:
-    - get: oratos-ci-testing-cfcr-gcp-vars
-    - get: cf-deployment-concourse-tasks
-    - get: kubo-deployment
-    - get: kubo-release-bosh-io
+    params:
+      DEBUG:
   - in_parallel:
     - task: upload-stemcell
       file: oratos-ci/tasks/cfcr-upload-stemcell/task.yml
@@ -755,11 +763,15 @@ jobs:
       input_mapping:
         bbl-state: oratos-ci-testing-cfcr-bbl-state
         bosh-release: kubo-release-bosh-io
+      params:
+        DEBUG:
     - task: upload-sink-resources-release
       file: oratos-ci/tasks/cfcr-upload-bosh-release/task.yml
       input_mapping:
         bbl-state: oratos-ci-testing-cfcr-bbl-state
         bosh-release: sink-resources-release-github-release
+      params:
+        DEBUG:
     - task: upload-vars-to-credhub
       config:
         platform: linux
@@ -825,6 +837,26 @@ jobs:
               path: /instance_groups/name=worker/jobs/name=docker/properties/store_dir
               value: /var/vcap/store
             - type: replace
+              path: /releases/name=bpm?
+              value:
+                name: bpm
+                version: 1.0.4
+                url: https://bosh.io/d/github.com/cloudfoundry/bpm-release?v=1.0.4
+                sha1: c2cceb2d1e271a2f7c5e7c563a7b26f919ebc17a
+                stemcell:
+                  os: ubuntu-xenial
+                  version: 456.3
+            - type: replace
+              path: /releases/name=cfcr-etcd?
+              value:
+                name: cfcr-etcd
+                version: 1.11.1
+                url: https://bosh.io/d/github.com/cloudfoundry-incubator/cfcr-etcd-release?v=1.11.1
+                sha1: 5ff0104783202a287b7877883d9ff95f22e18eef
+                stemcell:
+                  os: ubuntu-xenial
+                  version: 456.3
+            - type: replace
               path: /releases/name=sink-resources-release?
               value:
                 name: sink-resources-release
@@ -886,6 +918,21 @@ jobs:
       AWS_ACCESS_KEY_ID: ((aws.dev_dns_access_key_id))
       AWS_SECRET_ACCESS_KEY: ((aws.dev_dns_secret_access_key))
       ENV_DNS_NAME: testing-cfcr.oratos.ci.cf-app.com.
+
+
+- name: deploy-sink-resources-in-cluster
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources-release-github-release
+      trigger: true
+      passed:
+      - deploy-cfcr
+    - get: sink-resources
+      # passed:
+      # - deploy-cfcr
+    - get: oratos-ci-testing-cfcr-bbl-state
+    - get: oratos-ci
   - task: deploy-sink-resources-in-cluster
     file: oratos-ci/tasks/deploy-sink-resources/task.yml
     input_mapping:
@@ -905,9 +952,12 @@ jobs:
     - get: sink-resources-release-github-release
       trigger: true
       passed:
-      - deploy-cfcr
+      - deploy-sink-resources-in-cluster
       version:
         tag: ((sink_resource_release_params.SINK_RESOURCES_VERSION))
+    - get: sink-resources
+      # passed:
+      # - deploy-sink-resources-in-cluster
     - get: oratos-ci-testing-cfcr-bbl-state
     - get: oratos-ci
   - task: run-crd-tests
