@@ -3,16 +3,11 @@ set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
 source "oratos-ci/scripts/test/common.sh"
 
-function validate {
-    ensure_variable_isset "$GET_CREDENTIALS_HOOK" "GET_CREDENTIALS_HOOK"
-}
-
 function clean_up_environment {
     bosh -d cfcr delete-deployment
 }
 
 function main {
-    validate
     eval_bbl_state
     clean_up_environment
 }
