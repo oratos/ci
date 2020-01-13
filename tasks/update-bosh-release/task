@@ -61,6 +61,11 @@ trap cleanup EXIT
 echo waiting 10 seconds while docker starts up
 sleep 10
 
+SINK_RESOURCES_SHA=""
+pushd sink-resources
+  SINK_RESOURCES_SHA="$(git rev-parse @)"
+popd
+
 release_file="sink-resources-release.tgz"
 
 git clone sink-resources-release put-sink-resources-release

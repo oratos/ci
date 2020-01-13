@@ -546,7 +546,6 @@ jobs:
         source:
           repository: oratos/ci-base
       params:
-        GIT_REF: ((sink_resource_release_params.GIT_REF))
         SINK_RESOURCES_VERSION: ((sink_resource_release_params.SINK_RESOURCES_VERSION))
         FLUENT_BIT_OUT_SYSLOG_VERSION: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
         CONTAINER_REPOSITORY: ((docker_image_repository))
@@ -565,10 +564,6 @@ jobs:
           #!/bin/bash
           set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
-          if [ -z "$GIT_REF" ]; then
-            echo GIT_REF param required
-            exit 1
-          fi
           if ! [[ "$SINK_RESOURCES_VERSION" =~ v ]]; then
             echo VERSION param required to start with v
             exit 1
@@ -652,7 +647,9 @@ jobs:
           ssh-add key
           rm key
           git clone git@github.com:pivotal-cf/sink-resources
+          GIT_REF=""
           pushd sink-resources > /dev/null
+            GIT_REF="$(git rev-parse @)"
             git tag "$SINK_RESOURCES_VERSION" "$GIT_REF"
           popd > /dev/null
           git clone git@github.com:pivotal-cf/fluent-bit-out-syslog
@@ -713,7 +710,6 @@ jobs:
       PRIVATE_YML: ((release.private_yml))
       IMAGE_REPOSITORY: ((docker_image_repository))
       SINK_RESOURCES_VERSION: ((sink_resource_release_params.SINK_RESOURCES_VERSION))
-      SINK_RESOURCES_SHA: ((sink_resource_release_params.GIT_REF))
       FLUENT_BIT_OUT_SYSLOG_VERSION: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
       FLUENT_BIT_OUT_SYSLOG_SHA: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_SHA))
   - do:
@@ -739,8 +735,8 @@ jobs:
       passed:
       - create-bosh-release
     - get: sink-resources
-      # passed:
-      # - create-bosh-release
+      passed:
+      - create-bosh-release
     - get: oratos-ci-testing-cfcr-bbl-state
     - get: oratos-ci-testing-cfcr-gcp-vars
     - get: oratos-ci
@@ -929,8 +925,8 @@ jobs:
       passed:
       - deploy-cfcr
     - get: sink-resources
-      # passed:
-      # - deploy-cfcr
+      passed:
+      - deploy-cfcr
     - get: oratos-ci-testing-cfcr-bbl-state
     - get: oratos-ci
   - task: deploy-sink-resources-in-cluster
@@ -956,8 +952,8 @@ jobs:
       version:
         tag: ((sink_resource_release_params.SINK_RESOURCES_VERSION))
     - get: sink-resources
-      # passed:
-      # - deploy-sink-resources-in-cluster
+      passed:
+      - deploy-sink-resources-in-cluster
     - get: oratos-ci-testing-cfcr-bbl-state
     - get: oratos-ci
   - task: run-crd-tests
