@@ -21,7 +21,7 @@ function roll {
 function apply_manifests {
     pushd sink-resources/manifests/observability-manager
         image_sha="$(git rev-parse @)"
-        kustomize edit set image oratos/observability-manager="$IMAGE_REPOSITORY/observability-manager@$image_sha"
+        kustomize edit set image oratos/observability-manager="$IMAGE_REPOSITORY/observability-manager:$image_sha"
         kubectl apply -k .
         echo "Completed applying the manifests for sink-resources/pks"
     popd
