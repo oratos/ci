@@ -456,6 +456,7 @@ jobs:
               #!/bin/bash
               SR_SHA="$(cd sink-resources && git rev-parse @)"
               FLUENT_SHA="$(cd out-syslog && git rev-parse @)"
+              export PKS_RELEASE=true
               ./sink-resources/hack/generate-pks-manifest.sh "$SR_SHA" "$FLUENT_SHA" > sink-resources/cmd/observability-manager/manifest.yaml
               rsync -avci sink-resources/ ./sink-resources-with-manifest/
     - task: prepare-build
