@@ -63,8 +63,12 @@ sleep 10
 
 SINK_RESOURCES_SHA=""
 pushd sink-resources
-  export SINK_RESOURCES_SHA="$(git rev-parse @)"
+  sha="$(git rev-parse @)"
+  export SINK_RESOURCES_SHA=$sha
 popd
+
+version="$(cat sink-resources-version/version)"
+export SINK_RESOURCES_VERSION="$version"
 
 release_file="sink-resources-release.tgz"
 

@@ -6,6 +6,7 @@ image_resource:
 inputs:
 - name: sink-resources-github-release
 - name: oratos-ci
+- name: sink-resources-version
 - name: sink-resources-release
 - name: sink-resources
 outputs:
@@ -19,7 +20,6 @@ params:
   # - Required
   # - Required for OSL generation
   IMAGE_REPOSITORY:
-  SINK_RESOURCES_VERSION:
   FLUENT_BIT_OUT_SYSLOG_SHA:
   FLUENT_BIT_OUT_SYSLOG_VERSION:
 
