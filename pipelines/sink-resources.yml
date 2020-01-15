@@ -16,7 +16,11 @@ groups:
   - create-release-candidate
   - create-bosh-release
   - deploy-sink-resources-in-cluster
+  - bump-major
   - bump-minor
+  - bump-patch
+  - cut-final
+  - cut-release
 
 resource_types:
 - name: slack-notification
@@ -482,11 +486,49 @@ jobs:
       get_params:
         skip_download: true
 
+- name: bump-major
+  plan:
+  - put: sink-resources-version
+    params:
+      bump: major
+
 - name: bump-minor
   plan:
   - put: sink-resources-version
     params:
       bump: minor
+
+- name: bump-patch
+  plan:
+  - put: sink-resources-version
+    params:
+      bump: patch
+
+- name: cut-final
+  plan:
+  - put: sink-resources-version
+    params:
+      bump: final
+
+
+- name: cut-release
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources-release-github-release
+    - get: sink-resources-version
+      passed:
+      - cut-final
+  - put: sink-resources-release-github-release
+    params:
+      name: sink-resources-version/version
+      tag: sink-resources-version/version
+      commitish: sink-resources-release-github-release/commitish
+      globs:
+      - sink-resources-release-github-release/*.tgz
+  - put: sink-resources-version
+    params: {file: sink-resources-version/version}
+
 
 - name: create-release-candidate
   serial: true
@@ -494,7 +536,6 @@ jobs:
   - in_parallel:
     - get: sink-resources-version
       params:
-        bump: patch
         pre: rc
     - get: sink-resources
       trigger: true
