@@ -16,6 +16,7 @@ groups:
   - create-release-candidate
   - create-bosh-release
   - deploy-sink-resources-in-cluster
+  - bump-minor
 
 resource_types:
 - name: slack-notification
@@ -480,6 +481,12 @@ jobs:
         tag: build-image/tag
       get_params:
         skip_download: true
+
+- name: bump-minor
+  plan:
+  - put: sink-resources-version
+    params:
+      bump: minor
 
 - name: create-release-candidate
   serial: true
@@ -991,6 +998,3 @@ jobs:
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh get-credentials testing
-  - put: sink-resources-version
-    params:
-      bump: final
