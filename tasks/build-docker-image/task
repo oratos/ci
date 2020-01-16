@@ -16,4 +16,11 @@ fi
 echo "$sha" > "$ciroot/build-image/tag"
 # we need to specify this build arg for metric controller for namespaced
 # telegraf deployments
-echo "{\"TELEGRAF_IMAGE\": \"$CONTAINER_REPOSITORY/telegraf:$sha\"}" > "$ciroot/build-image/docker_build_args"
+cat << EOF > "$ciroot/build-image/docker_build_args"
+{
+    "TELEGRAF_IMAGE": "$CONTAINER_REPOSITORY/telegraf:$sha",
+    "BASE_IMAGE": "$BASE_IMAGE",
+    "GOLANG_SOURCE": "$GOLANG_SOURCE",
+    "KUBECTL_SOURCE": "$KUBECTL_SOURCE"
+}
+EOF

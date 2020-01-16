@@ -9,6 +9,12 @@ inputs:
 outputs:
 - name: build-image # the place to store the build context and tag
 params:
+  # - Required
+  # - Override default args with private artifacts in all docker builds
+  BASE_IMAGE:
+  GOLANG_SOURCE:
+  KUBECTL_SOURCE:
+
   # - Optional
   # - Provide a path to inside the source repo where the docker context lives.
   SOURCE_PATH:
