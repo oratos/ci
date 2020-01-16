@@ -51,11 +51,19 @@ function set_pipeline {
         vars_file="pipelines/vars/master.yml"
     fi
     credentials_file=$(mktemp)
+
+    pipeline_file="pipelines/${1}.yml"
+    erb_file="${pipeline_file}.erb"
+    if [[ -f "${erb_file}" ]]; then
+      erb ${erb_file} > /dev/null #this way if the erb fails the script bails
+      pipeline_file=$(mktemp)
+      erb ${erb_file} > ${pipeline_file}
+    fi
     vault read -field=vars_file /secret/concourse/vcna/variables > $credentials_file
     fly -t oratos-vmw set-pipeline -p "$1" \
         -l "${vars_file}" \
         -l "${credentials_file}" \
-        -c <(yq read "pipelines/$1.yml" --tojson)
+        -c "${pipeline_file}"
 }
 
 function sync_fly {
