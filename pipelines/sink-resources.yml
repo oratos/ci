@@ -19,8 +19,7 @@ groups:
   - bump-major
   - bump-minor
   - bump-patch
-  - cut-final
-  - cut-release
+  - cut-final-release
 
 resource_types:
 - name: slack-notification
@@ -486,6 +485,7 @@ jobs:
       get_params:
         skip_download: true
 
+
 - name: bump-major
   plan:
   - put: sink-resources-version
@@ -503,31 +503,6 @@ jobs:
   - put: sink-resources-version
     params:
       bump: patch
-
-- name: cut-final
-  plan:
-  - put: sink-resources-version
-    params:
-      bump: final
-
-
-- name: cut-release
-  serial: true
-  plan:
-  - in_parallel:
-    - get: sink-resources-release-github-release
-    - get: sink-resources-version
-      passed:
-      - cut-final
-  - put: sink-resources-release-github-release
-    params:
-      name: sink-resources-version/version
-      tag: sink-resources-version/version
-      commitish: sink-resources-release-github-release/commitish
-      globs:
-      - sink-resources-release-github-release/*.tgz
-  - put: sink-resources-version
-    params: {file: sink-resources-version/version}
 
 
 - name: create-release-candidate
@@ -765,9 +740,6 @@ jobs:
       - create-release-candidate
     - get: sink-resources-release
     - get: oratos-ci
-    - get: sink-resources
-      passed:
-      - create-release-candidate
   - task: update-bosh-release
     privileged: true
     file: oratos-ci/tasks/update-bosh-release/task.yml
@@ -803,7 +775,7 @@ jobs:
       - create-bosh-release
     - get: sink-resources
       passed:
-      - create-bosh-release
+      - create-release-candidate
     - get: oratos-ci-testing-cfcr-bbl-state
     - get: oratos-ci-testing-cfcr-gcp-vars
     - get: oratos-ci
@@ -1039,3 +1011,42 @@ jobs:
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
             oratos-ci/scripts/cfcr.sh get-credentials testing
+
+
+- name: cut-final-release
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources-version
+      params:
+        bump: final
+    - get: sink-resources-release-github-release
+      passed:
+      - cfcr-tests
+    - get: sink-resources-github-release
+      passed:
+      - create-bosh-release
+    - get: sink-resources-release
+    - get: oratos-ci
+  - task: update-bosh-release
+    privileged: true
+    file: oratos-ci/tasks/update-bosh-release/task.yml
+    params:
+      PRIVATE_YML: ((release.private_yml))
+      IMAGE_REPOSITORY: ((docker_image_repository))
+      FLUENT_BIT_OUT_SYSLOG_VERSION: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
+      FLUENT_BIT_OUT_SYSLOG_SHA: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_SHA))
+  - do:
+    - put: sink-resources-release
+      params:
+        repository: put-sink-resources-release
+        name: bosh-release/name
+    - put: sink-resources-release-github-release
+      params:
+        name: bosh-release/name
+        tag: bosh-release/tag
+        commitish: bosh-release/commitish
+        globs:
+        - bosh-release/binaries/*.tgz
+  - put: sink-resources-version
+    params: {file: sink-resources-version/version}
