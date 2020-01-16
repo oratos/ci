@@ -5,10 +5,9 @@ image_resource:
     repository: oratos/ci-base
 inputs:
 - name: sink-resources-github-release
-- name: oratos-ci
-- name: sink-resources-version
 - name: sink-resources-release
-- name: sink-resources
+- name: sink-resources-version
+- name: oratos-ci
 outputs:
 - name: bosh-release
 - name: put-sink-resources-release

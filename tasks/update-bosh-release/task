@@ -61,11 +61,8 @@ trap cleanup EXIT
 echo waiting 10 seconds while docker starts up
 sleep 10
 
-SINK_RESOURCES_SHA=""
-pushd sink-resources
-  sha="$(git rev-parse @)"
-  export SINK_RESOURCES_SHA=$sha
-popd
+sha="$(cat sink-resources-github-release/commit_sha)"
+export SINK_RESOURCES_SHA="$sha"
 
 version="$(cat sink-resources-version/version)"
 export SINK_RESOURCES_VERSION="$version"
