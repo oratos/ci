@@ -5,6 +5,7 @@ image_resource:
     repository: oratos/ci-base
 inputs:
 - name: oratos-ci
+- name: sink-resources
 params:
   # - Optional
   # - gcloud service account details
