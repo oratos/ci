@@ -527,6 +527,7 @@ jobs:
       bbl-state: oratos-ci
     params:
       SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
+      IMAGE_REPOSITORY: oratos
       HAS_NODE_EXPORTER: false
       GET_CREDENTIALS_HOOK: |
         echo "$SERVICE_ACCOUNT" > sa.json
