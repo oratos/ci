@@ -439,7 +439,7 @@ jobs:
           rm key
 
           GIT_REF=""
-          GIT_TAG="$(cat sink-resources-version/version)"
+          GIT_TAG="v$(cat sink-resources-version/version)"
           pushd sink-resources > /dev/null
             GIT_REF="$(git rev-parse @)"
             git tag "$GIT_TAG" "$GIT_REF"
@@ -449,8 +449,8 @@ jobs:
             FLUENT_BIT_REF="$(git rev-parse @)"
           popd > /dev/null
 
-          cp sink-resources-version/version github-release/name
-          cp sink-resources-version/version github-release/tag
+          echo $GIT_TAG > github-release/name
+          echo $GIT_TAG > github-release/tag
 
           echo "RELEASE NOTES HERE" > github-release/body
 
@@ -470,7 +470,7 @@ jobs:
             docker pull "$image"
           done
           # shellcheck disable=SC2086
-          docker save $DOCKER_IMAGES | gzip > "github-release/sink-resources-images-$(cat sink-resources-version/version).tgz"
+          docker save $DOCKER_IMAGES | gzip > "github-release/sink-resources-images-v$(cat sink-resources-version/version).tgz"
 
           pushd sink-resources > /dev/null
             git push origin --tags
@@ -745,8 +745,6 @@ jobs:
       trigger: true
       passed:
       - deploy-sink-resources-in-cluster
-      # version:
-      #   tag: ((sink_resource_release_params.SINK_RESOURCES_VERSION))
     - get: sink-resources
       passed:
       - deploy-sink-resources-in-cluster
