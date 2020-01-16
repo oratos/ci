@@ -510,10 +510,7 @@ jobs:
         skip_download: true
     - get: oratos-ci
   - task: clean-up-environment
-    file: oratos-ci/tasks/clean-up-environment/task.yml
-    input_mapping:
-      # bbl-state is not needed for GKE, pass in oratos-ci as a NOOP
-      bbl-state: oratos-ci
+    file: oratos-ci/tasks/clean-up-gke/task.yml
     params:
       SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
       GET_CREDENTIALS_HOOK: |
