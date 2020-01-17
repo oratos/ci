@@ -15,9 +15,3 @@ sink_resource_v0_19_x_release_params:
   FLUENT_BIT_OUT_SYSLOG_VERSION: v0.15.4 # version of the fluent-bit image to use
   # SHA of the fluent-bit image coresponding to the version above
   FLUENT_BIT_OUT_SYSLOG_SHA: 6cab4ceb80f03f94a1ecd50d008adf238adbd0fa
-
-  # This is the major/minor version of pks this release will be intended to
-  # end up in.
-  # This will also be pushed as a tagged docker image to:
-  #   https://hub.docker.com/r/oratos/observability-manager/tags/
-  PKS_VERSION: v1.4

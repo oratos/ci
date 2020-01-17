@@ -1,18 +1,3 @@
-sink_resource_release_params:
-  # This is the version of the fluent-bit-out-syslog image to be included in
-  # this release. This version needs to be a tag on the docker image on
-  # dockerhhub here:
-  #   https://hub.docker.com/r/oratos/fluent-bit-out-syslog/tags/
-  FLUENT_BIT_OUT_SYSLOG_VERSION: v0.20.2 # version of the fluent-bit image to use
-  # SHA of the fluent-bit image coresponding to the version above
-  FLUENT_BIT_OUT_SYSLOG_SHA: fe490d50ca76b907bc9bb53698546bffb932c46f
-
-  # This is the major/minor version of pks this release will be intended to
-  # end up in.
-  # This will also be pushed as a tagged docker image to:
-  #   https://hub.docker.com/r/oratos/observability-manager/tags/
-  PKS_VERSION: v1.7
-
 docker_image_repository: epks-docker-local.artifactory.eng.vmware.com/oratos
 base_image: cnabu-docker-local.artifactory.eng.vmware.com/base/ubuntu:bionic-vmware-2019-11-01-21-34-33
 golang_source: https://artifactory.eng.vmware.com:443/golang-dist/go1.13.6.linux-amd64.tar.gz

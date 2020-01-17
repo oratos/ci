@@ -74,14 +74,6 @@ resources:
     password: ((artifactory.password))
 <% end %>
 
-- name: fluent-bit-out-syslog-image
-  type: docker-image
-  source:
-    repository: ((docker_image_repository))/fluent-bit-out-syslog
-    username: ((artifactory.username))
-    password: ((artifactory.password))
-    tag: release-elect
-
 - name: observability-manager-image
   type: docker-image
   source:
@@ -89,12 +81,14 @@ resources:
     username: ((artifactory.username))
     password: ((artifactory.password))
 
-- name: out-syslog
-  type: git
+- name: fluent-bit-out-syslog-github-release
+  type: github-release
   source:
-    uri: git@github.com:pivotal-cf/fluent-bit-out-syslog
-    branch: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
-    private_key: ((github.oratos-bot-private-key))
+    owner: pivotal-cf
+    repository: fluent-bit-out-syslog
+    access_token: ((github.oratos-bot-release-access-token))
+    release: false
+    pre_release: true
 
 - name: slack-alert
   type: slack-notification
@@ -238,7 +232,7 @@ jobs:
           passed:
             - unit-tests
         - get: oratos-ci
-        - get: out-syslog
+        - get: fluent-bit-out-syslog-github-release
     - task: prepare-image-with-manifest
       config:
         platform: linux
@@ -248,7 +242,7 @@ jobs:
             repository: oratos/ci-base
         inputs:
           - name: sink-resources
-          - name: out-syslog
+          - name: fluent-bit-out-syslog-github-release
         outputs:
           - name: sink-resources-with-manifest
         run:
@@ -258,7 +252,7 @@ jobs:
             - |
               #!/bin/bash
               SR_SHA="$(cd sink-resources && git rev-parse @)"
-              FLUENT_SHA="$(cd out-syslog && git rev-parse @)"
+              FLUENT_SHA="$(cat fluent-bit-out-syslog-github-release/commit_sha)"
               export PKS_RELEASE=true
               ./sink-resources/hack/generate-pks-manifest.sh "$SR_SHA" "$FLUENT_SHA" > sink-resources/cmd/observability-manager/manifest.yaml
               rsync -avci sink-resources/ ./sink-resources-with-manifest/
@@ -321,15 +315,13 @@ jobs:
       params:
         skip_download: true
 <% end %>
-    - get: fluent-bit-out-syslog-image
-      params:
-        skip_download: true
     - get: observability-manager-image
       passed:
         - build-observability-manager-image
       params:
         skip_download: true
     - get: oratos-ci
+    - get: fluent-bit-out-syslog-github-release
   - task: release
     privileged: true
     config:
@@ -339,7 +331,6 @@ jobs:
         source:
           repository: oratos/ci-base
       params:
-        FLUENT_BIT_OUT_SYSLOG_VERSION: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
         CONTAINER_REPOSITORY: ((docker_image_repository))
         DOCKERHUB_USERNAME: ((artifactory.username))
         DOCKERHUB_PASSWORD: ((artifactory.password))
@@ -347,6 +338,7 @@ jobs:
         SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
         DEBUG:
       inputs:
+      - name: fluent-bit-out-syslog-github-release
       - name: sink-resources-version
       - name: sink-resources
       outputs:
@@ -358,11 +350,6 @@ jobs:
         - |
           #!/bin/bash
           set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-
-          if ! [[ "$FLUENT_BIT_OUT_SYSLOG_VERSION" =~ v ]]; then
-            echo FLUENT_BIT_OUT_SYSLOG_VERSION param required to start with v
-            exit 1
-          fi
 
           # Note: this was copied from the docker-image-resource
           # https://github.com/concourse/docker-image-resource/blob/c725c6277ca2820016de1bfe2bdfabaad5fd5879/assets/common.sh#L4
@@ -444,10 +431,7 @@ jobs:
             GIT_REF="$(git rev-parse @)"
             git tag "$GIT_TAG" "$GIT_REF"
           popd > /dev/null
-          git clone git@github.com:pivotal-cf/fluent-bit-out-syslog
-          pushd fluent-bit-out-syslog > /dev/null
-            FLUENT_BIT_REF="$(git rev-parse @)"
-          popd > /dev/null
+          FLUENT_SHA="$(cat fluent-bit-out-syslog-github-release/commit_sha)"
 
           echo $GIT_TAG > github-release/name
           echo $GIT_TAG > github-release/tag
@@ -464,7 +448,7 @@ jobs:
 
           DOCKER_IMAGES="$(for component in sink-controller node-exporter event-controller metric-controller cert-generator ghostunnel telegraf validator observability-manager; do
             echo "$CONTAINER_REPOSITORY/$component:$GIT_REF"
-          done) $CONTAINER_REPOSITORY/fluent-bit-out-syslog:$FLUENT_BIT_REF"
+          done) $CONTAINER_REPOSITORY/fluent-bit-out-syslog:$FLUENT_SHA"
           echo "Saving docker images: $DOCKER_IMAGES"
           for image in $DOCKER_IMAGES; do
             docker pull "$image"
@@ -487,7 +471,7 @@ jobs:
 
 - name: create-bosh-release
   plan:
-  - do:
+  - in_parallel:
     - get: sink-resources-version
       passed:
       - create-release-candidate
@@ -497,26 +481,24 @@ jobs:
       - create-release-candidate
     - get: sink-resources-release
     - get: oratos-ci
+    - get: fluent-bit-out-syslog-github-release
   - task: update-bosh-release
     privileged: true
     file: oratos-ci/tasks/update-bosh-release/task.yml
     params:
       PRIVATE_YML: ((release.private_yml))
       IMAGE_REPOSITORY: ((docker_image_repository))
-      FLUENT_BIT_OUT_SYSLOG_VERSION: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
-      FLUENT_BIT_OUT_SYSLOG_SHA: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_SHA))
-  - do:
-    - put: sink-resources-release
-      params:
-        repository: put-sink-resources-release
-        name: bosh-release/name
-    - put: sink-resources-release-github-release
-      params:
-        name: bosh-release/name
-        tag: bosh-release/tag
-        commitish: bosh-release/commitish
-        globs:
-        - bosh-release/binaries/*.tgz
+  - put: sink-resources-release
+    params:
+      repository: put-sink-resources-release
+      name: bosh-release/name
+  - put: sink-resources-release-github-release
+    params:
+      name: bosh-release/name
+      tag: bosh-release/tag
+      commitish: bosh-release/commitish
+      globs:
+      - bosh-release/binaries/*.tgz
 
 
 - name: deploy-cfcr
@@ -783,25 +765,23 @@ jobs:
       - create-bosh-release
     - get: sink-resources-release
     - get: oratos-ci
+    - get: fluent-bit-out-syslog-github-release
   - task: update-bosh-release
     privileged: true
     file: oratos-ci/tasks/update-bosh-release/task.yml
     params:
       PRIVATE_YML: ((release.private_yml))
       IMAGE_REPOSITORY: ((docker_image_repository))
-      FLUENT_BIT_OUT_SYSLOG_VERSION: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_VERSION))
-      FLUENT_BIT_OUT_SYSLOG_SHA: ((sink_resource_release_params.FLUENT_BIT_OUT_SYSLOG_SHA))
-  - do:
-    - put: sink-resources-release
-      params:
-        repository: put-sink-resources-release
-        name: bosh-release/name
-    - put: sink-resources-release-github-release
-      params:
-        name: bosh-release/name
-        tag: bosh-release/tag
-        commitish: bosh-release/commitish
-        globs:
-        - bosh-release/binaries/*.tgz
+  - put: sink-resources-release
+    params:
+      repository: put-sink-resources-release
+      name: bosh-release/name
+  - put: sink-resources-release-github-release
+    params:
+      name: bosh-release/name
+      tag: bosh-release/tag
+      commitish: bosh-release/commitish
+      globs:
+      - bosh-release/binaries/*.tgz
   - put: sink-resources-version
     params: {file: sink-resources-version/version}

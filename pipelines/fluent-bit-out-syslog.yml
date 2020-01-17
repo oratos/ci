@@ -86,32 +86,11 @@ jobs:
         BASE_IMAGE: ((base_image))
         GOLANG_SOURCE: ((golang_source))
         KUBECTL_SOURCE: ((kubectl_source))
-    - task: write-promote-tag
-      config:
-        platform: linux
-        image_resource:
-          type: docker-image
-          source:
-            repository: oratos/ci-base
-        outputs:
-        - name: promote
-        params:
-          DEBUG:
-        run:
-          path: /bin/bash
-          args:
-          - "-c"
-          - |
-            #!/bin/bash
-            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
-
-            echo "release-elect" > promote/tag
   - put: fluent-bit-out-syslog-image
     params:
       build_args_file: build-image/docker_build_args
       build: build-image/build
       tag: build-image/tag
-      additional_tags: promote/tag
     get_params:
       skip_download: true
 
