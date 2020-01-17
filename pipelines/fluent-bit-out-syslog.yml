@@ -81,6 +81,11 @@ jobs:
       file: oratos-ci/tasks/build-docker-image/task.yml
       input_mapping:
         source-repo: out-syslog
+      params:
+        CONTAINER_REPOSITORY: ((docker_image_repository))
+        BASE_IMAGE: ((base_image))
+        GOLANG_SOURCE: ((golang_source))
+        KUBECTL_SOURCE: ((kubectl_source))
     - task: write-promote-tag
       config:
         platform: linux
@@ -103,6 +108,7 @@ jobs:
             echo "release-elect" > promote/tag
   - put: fluent-bit-out-syslog-image
     params:
+      build_args_file: build-image/docker_build_args
       build: build-image/build
       tag: build-image/tag
       additional_tags: promote/tag
