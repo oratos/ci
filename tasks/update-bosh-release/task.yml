@@ -4,6 +4,7 @@ image_resource:
   source:
     repository: oratos/ci-base
 inputs:
+- name: fluent-bit-out-syslog-github-release
 - name: sink-resources-github-release
 - name: sink-resources-release
 - name: sink-resources-version
@@ -19,8 +20,6 @@ params:
   # - Required
   # - Required for OSL generation
   IMAGE_REPOSITORY:
-  FLUENT_BIT_OUT_SYSLOG_SHA:
-  FLUENT_BIT_OUT_SYSLOG_VERSION:
 
   HAS_NODE_EXPORTER: true
 
