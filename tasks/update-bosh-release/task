@@ -69,6 +69,12 @@ export SINK_RESOURCES_VERSION="$version"
 
 release_file="sink-resources-release.tgz"
 
+# get fluent-bit-out-syslog sha and version for OSL
+fluent_version="$(cat fluent-bit-out-syslog-github-release/version)"
+export FLUENT_BIT_OUT_SYSLOG_VERSION="$fluent_version"
+fluent_sha="$(cat fluent-bit-out-syslog-github-release/commit_sha)"
+export FLUENT_BIT_OUT_SYSLOG_SHA="$fluent_sha"
+
 git clone sink-resources-release put-sink-resources-release
 pushd put-sink-resources-release
   echo "$PRIVATE_YML" > config/private.yml
@@ -98,12 +104,6 @@ pushd put-sink-resources-release
 
   # Generate OSL config
   echo "Generating OSL config"
-
-  # get fluent-bit-out-syslog sha and version
-  fluent_version="$(cat fluent-bit-out-syslog-github-release/version)"
-  export FLUENT_BIT_OUT_SYSLOG_VERSION="$fluent_version"
-  fluent_sha="$(cat fluent-bit-out-syslog-github-release/commit_sha)"
-  export FLUENT_BIT_OUT_SYSLOG_SHA="$fluent_sha"
 
   for f in blobs/container-images/*.tgz; do
     docker load --input "$f"
