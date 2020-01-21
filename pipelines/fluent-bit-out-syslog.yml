@@ -3,8 +3,6 @@ groups:
   jobs:
   - unit-tests
   - build-fluent-bit-out-syslog-image
-- name: release
-  jobs:
   - release
 
 resource_types:
@@ -27,6 +25,15 @@ resources:
     uri: git@github.com:pivotal-cf/fluent-bit-out-syslog
     branch: master
     private_key: ((github.oratos-bot-private-key))
+
+- name: out-syslog-github-release
+  type: github-release
+  source:
+    owner: pivotal-cf
+    repository: fluent-bit-out-syslog
+    access_token: ((github.oratos-bot-release-access-token))
+    release: false
+    pre_release: true
 
 - name: fluent-bit-out-syslog-image
   type: docker-image
@@ -97,8 +104,10 @@ jobs:
 - name: release
   serial: true
   plan:
-  - task: release
-    privileged: true
+  - get: out-syslog
+    passed:
+    - build-fluent-bit-out-syslog-image
+  - task: prepare-out-syslog-release
     config:
       platform: linux
       image_resource:
@@ -106,119 +115,24 @@ jobs:
         source:
           repository: oratos/ci-base
       params:
-        GIT_REF: ((fluent_bit_out_syslog_params.GIT_REF))
         VERSION: ((fluent_bit_out_syslog_params.VERSION))
-        CONTAINER_REPOSITORY: ((docker_image_repository))
-        DOCKERHUB_USERNAME: ((artifactory.username))
-        DOCKERHUB_PASSWORD: ((artifactory.password))
-        GITHUB_PRIVATE_KEY: ((github.oratos-bot-private-key))
-        DEBUG:
+      inputs:
+      - name: out-syslog
+      outputs:
+      - name: github-release
       run:
         path: /bin/bash
         args:
         - "-c"
         - |
           #!/bin/bash
-          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+          echo "$VERSION" > github-release/name
+          echo "$VERSION" > github-release/tag
 
-          if [ -z "$GIT_REF" ]; then
-            echo GIT_REF param required
-            exit 1
-          fi
-          if ! [[ "$VERSION" =~ v ]]; then
-            echo VERSION param required to start with v
-            exit 1
-          fi
-
-          # Note: this was copied from the docker-image-resource
-          # https://github.com/concourse/docker-image-resource/blob/c725c6277ca2820016de1bfe2bdfabaad5fd5879/assets/common.sh#L4
-          sanitize_cgroups() {
-            mkdir -p /sys/fs/cgroup
-            mountpoint -q /sys/fs/cgroup || \
-              mount -t tmpfs -o uid=0,gid=0,mode=0755 cgroup /sys/fs/cgroup
-
-            mount -o remount,rw /sys/fs/cgroup
-
-            sed -e 1d /proc/cgroups | while read -r sys _ _ enabled; do
-              if [ "$enabled" != "1" ]; then
-                # subsystem disabled; skip
-                continue
-              fi
-
-              grouping="$(cut -d: -f2 /proc/self/cgroup | grep "\\<$sys\\>")" || true
-              if [ -z "$grouping" ]; then
-                # subsystem not mounted anywhere; mount it on its own
-                grouping="$sys"
-              fi
-
-              mountpoint="/sys/fs/cgroup/$grouping"
-
-              mkdir -p "$mountpoint"
-
-              # clear out existing mount to make sure new one is read-write
-              if mountpoint -q "$mountpoint"; then
-                umount "$mountpoint"
-              fi
-
-              mount -n -t cgroup -o "$grouping" cgroup "$mountpoint"
-
-              if [ "$grouping" != "$sys" ]; then
-                if [ -L "/sys/fs/cgroup/$sys" ]; then
-                  rm "/sys/fs/cgroup/$sys"
-                fi
-
-                ln -s "$mountpoint" "/sys/fs/cgroup/$sys"
-              fi
-            done
-
-            if ! test -e /sys/fs/cgroup/systemd ; then
-              mkdir /sys/fs/cgroup/systemd
-              mount -t cgroup -o none,name=systemd none /sys/fs/cgroup/systemd
-            fi
-          }
-          sanitize_cgroups
-          /usr/bin/dockerd &
-          docker_pid=$!
-          function cleanup {
-            kill -9 $docker_pid
-          }
-          trap cleanup EXIT
-
-          echo waiting 10 seconds while docker starts up
-          sleep 10
-
-          mkdir -p ~/.ssh/
-          ssh-keyscan github.com >> ~/.ssh/known_hosts 2> /dev/null
-          eval "$(ssh-agent)"
-          [ -n "${DEBUG:-}" ] && set +x
-          echo "$GITHUB_PRIVATE_KEY" > key
-          [ -n "${DEBUG:-}" ] && set -x
-          chmod 0600 key
-          ssh-add key
-          rm key
-          git clone git@github.com:pivotal-cf/fluent-bit-out-syslog
-          pushd fluent-bit-out-syslog > /dev/null
-            git checkout "$GIT_REF"
-            git tag "$VERSION"
-          popd > /dev/null
-
-          [ -n "${DEBUG:-}" ] && set +x
-          echo "$DOCKERHUB_PASSWORD" \
-            | docker login \
-              --username "$DOCKERHUB_USERNAME" \
-              --password-stdin \
-              "$CONTAINER_REPOSITORY"
-          [ -n "${DEBUG:-}" ] && set -x
-
-          docker pull "$CONTAINER_REPOSITORY/fluent-bit-out-syslog:$GIT_REF"
-          docker tag "$CONTAINER_REPOSITORY/fluent-bit-out-syslog:$GIT_REF" \
-            "$CONTAINER_REPOSITORY/fluent-bit-out-syslog:$VERSION"
-          docker tag "$CONTAINER_REPOSITORY/fluent-bit-out-syslog:$GIT_REF" \
-            "$CONTAINER_REPOSITORY/fluent-bit-out-syslog:latest"
-          docker push "$CONTAINER_REPOSITORY/fluent-bit-out-syslog:$VERSION"
-          docker push "$CONTAINER_REPOSITORY/fluent-bit-out-syslog:latest"
-
-          pushd fluent-bit-out-syslog > /dev/null
-            git push origin --tags
-          popd > /dev/null
-
+          SHA="$(cd out-syslog && git rev-parse @)"
+          echo "$SHA" > github-release/sha
+  - put: out-syslog-github-release
+    params:
+      name: github-release/name
+      tag: github-release/tag
+      commitish: github-release/sha
