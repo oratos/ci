@@ -85,7 +85,7 @@ jobs:
     - get: oratos-ci
   - in_parallel:
     - task: prepare-build
-      file: oratos-ci/tasks/build-docker-image/task.yml
+      file: oratos-ci/tasks/prepare-docker-image/task.yml
       input_mapping:
         source-repo: out-syslog
       params:

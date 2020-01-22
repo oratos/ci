@@ -11,10 +11,6 @@ groups:
   - bump-minor
   - bump-patch
   - unit-tests
-<% sink_resources_components.each do |component| %>
-  - build-<%= component %>-image
-<% end %>
-  - build-observability-manager-image
   - create-release-candidate
   - create-bosh-release
   - deploy-cfcr
@@ -64,22 +60,6 @@ resources:
     release: false
     pre_release: true
 <% end %>
-
-<% sink_resources_components.each do |component| %>
-- name: <%= component %>-image
-  type: docker-image
-  source:
-    repository: ((docker_image_repository))/<%= component %>
-    username: ((artifactory.username))
-    password: ((artifactory.password))
-<% end %>
-
-- name: observability-manager-image
-  type: docker-image
-  source:
-    repository: ((docker_image_repository))/observability-manager
-    username: ((artifactory.username))
-    password: ((artifactory.password))
 
 - name: fluent-bit-out-syslog-github-release
   type: github-release
@@ -195,86 +175,6 @@ jobs:
         params:
           text: Sink Resources Verify Codegen failed
 
-<% sink_resources_components.each do |component| %>
-- name: build-<%= component %>-image
-  serial: true
-  plan:
-  - in_parallel:
-    - get: sink-resources
-      trigger: true
-      passed:
-      - unit-tests
-    - get: oratos-ci
-  - task: prepare-build
-    file: oratos-ci/tasks/build-docker-image/task.yml
-    input_mapping:
-      source-repo: sink-resources
-    params:
-      DOCKERFILE: source-repo/cmd/<%= component %>/Dockerfile
-      CONTAINER_REPOSITORY: ((docker_image_repository))
-      BASE_IMAGE: ((base_image))
-      GOLANG_SOURCE: ((golang_source))
-      KUBECTL_SOURCE: ((kubectl_source))
-  - put: <%= component %>-image
-    params:
-      build_args_file: build-image/docker_build_args
-      build: build-image/build
-      tag: build-image/tag
-    get_params:
-      skip_download: true
-<% end %>
-
-- name: build-observability-manager-image
-  plan:
-    - in_parallel:
-        - get: sink-resources
-          trigger: true
-          passed:
-            - unit-tests
-        - get: oratos-ci
-        - get: fluent-bit-out-syslog-github-release
-    - task: prepare-image-with-manifest
-      config:
-        platform: linux
-        image_resource:
-          type: docker-image
-          source:
-            repository: oratos/ci-base
-        inputs:
-          - name: sink-resources
-          - name: fluent-bit-out-syslog-github-release
-        outputs:
-          - name: sink-resources-with-manifest
-        run:
-          path: /bin/bash
-          args:
-            - "-c"
-            - |
-              #!/bin/bash
-              SR_SHA="$(cd sink-resources && git rev-parse @)"
-              FLUENT_SHA="$(cat fluent-bit-out-syslog-github-release/commit_sha)"
-              export PKS_RELEASE=true
-              ./sink-resources/hack/generate-pks-manifest.sh "$SR_SHA" "$FLUENT_SHA" > sink-resources/cmd/observability-manager/manifest.yaml
-              rsync -avci sink-resources/ ./sink-resources-with-manifest/
-    - task: prepare-build
-      file: oratos-ci/tasks/build-docker-image/task.yml
-      input_mapping:
-        source-repo: sink-resources-with-manifest
-      params:
-        DOCKERFILE: source-repo/cmd/observability-manager/Dockerfile
-        CONTAINER_REPOSITORY: ((docker_image_repository))
-        BASE_IMAGE: ((base_image))
-        GOLANG_SOURCE: ((golang_source))
-        KUBECTL_SOURCE: ((kubectl_source))
-    - put: observability-manager-image
-      params:
-        build_args_file: build-image/docker_build_args
-        build: build-image/build
-        tag: build-image/tag
-      get_params:
-        skip_download: true
-
-
 - name: bump-major
   plan:
   - put: sink-resources-version
@@ -304,26 +204,54 @@ jobs:
     - get: sink-resources
       trigger: true
       passed:
-<% sink_resources_components.each do |component| %>
-      - build-<%= component %>-image
-<% end %>
-      - build-observability-manager-image
-<% sink_resources_components.each do |component| %>
-    - get: <%= component %>-image
-      passed:
-      - build-<%= component %>-image
-      params:
-        skip_download: true
-<% end %>
-    - get: observability-manager-image
-      passed:
-        - build-observability-manager-image
-      params:
-        skip_download: true
+      - unit-tests
     - get: oratos-ci
     - get: fluent-bit-out-syslog-github-release
-      passed:
-      - build-observability-manager-image
+  - in_parallel:
+<% sink_resources_components.each do |component| %>
+    - task: build-<%= component %>-image
+      file: oratos-ci/tasks/build-docker-image/task.yml
+      params:
+        COMPONENT: <%= component %>
+        CONTAINER_REPOSITORY: ((docker_image_repository))
+        BASE_IMAGE: ((base_image))
+        GOLANG_SOURCE: ((golang_source))
+        KUBECTL_SOURCE: ((kubectl_source))
+<% end %>
+    - do: 
+      - task: prepare-observability-manager-image
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: oratos/ci-base
+          inputs:
+            - name: sink-resources
+            - name: fluent-bit-out-syslog-github-release
+          outputs:
+            - name: sink-resources-with-manifest
+          run:
+            path: /bin/bash
+            args:
+              - "-c"
+              - |
+                #!/bin/bash
+                SR_SHA="$(cd sink-resources && git rev-parse @)"
+                FLUENT_SHA="$(cat fluent-bit-out-syslog-github-release/commit_sha)"
+                export PKS_RELEASE=true
+                ./sink-resources/hack/generate-pks-manifest.sh "$SR_SHA" "$FLUENT_SHA" > sink-resources/cmd/observability-manager/manifest.yaml
+                rsync -avci sink-resources/ ./sink-resources-with-manifest/
+      - task: build-observability-manager-image
+        file: oratos-ci/tasks/build-docker-image/task.yml
+        input_mapping:
+          sink-resources: sink-resources-with-manifest
+        params:
+          COMPONENT: observability-manager
+          CONTAINER_REPOSITORY: ((docker_image_repository))
+          BASE_IMAGE: ((base_image))
+          GOLANG_SOURCE: ((golang_source))
+          KUBECTL_SOURCE: ((kubectl_source))
   - task: release
     privileged: true
     config:
@@ -343,6 +271,7 @@ jobs:
       - name: fluent-bit-out-syslog-github-release
       - name: sink-resources-version
       - name: sink-resources
+      - name: oratos-ci-images
       outputs:
       - name: github-release
       run:
@@ -447,6 +376,8 @@ jobs:
               --password-stdin \
               "$CONTAINER_REPOSITORY"
           [ -n "${DEBUG:-}" ] && set -x
+
+          docker load oratos-ci-images/*
 
           DOCKER_IMAGES="$(for component in sink-controller node-exporter event-controller metric-controller cert-generator ghostunnel telegraf validator observability-manager; do
             echo "$CONTAINER_REPOSITORY/$component:$GIT_REF"

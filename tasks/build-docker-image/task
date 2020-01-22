@@ -1,26 +1,19 @@
 #!/bin/bash
 set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
-# record ci root for later use
-ciroot="$PWD"
-
 # compute sha for tagging the docker image
-sha="$(cd source-repo && git rev-parse @)"
+sha="$(git rev-parse @)"
+image_name="$CONTAINER_REPOSITORY/$COMPONENT:$sha"
 
-# copy over build context and tag
-mkdir -p "$ciroot/build-image/build"
-cp -r "source-repo/$SOURCE_PATH/." "$ciroot/build-image/build/"
-if [ -n "$DOCKERFILE" ]; then
-    cp "$DOCKERFILE" "$ciroot/build-image/build/Dockerfile"
-fi
-echo "$sha" > "$ciroot/build-image/tag"
-# we need to specify this build arg for metric controller for namespaced
-# telegraf deployments
-cat << EOF > "$ciroot/build-image/docker_build_args"
-{
-    "TELEGRAF_IMAGE": "$CONTAINER_REPOSITORY/telegraf:$sha",
-    "BASE_IMAGE": "$BASE_IMAGE",
-    "GOLANG_SOURCE": "$GOLANG_SOURCE",
-    "KUBECTL_SOURCE": "$KUBECTL_SOURCE"
-}
-EOF
+pushd sink-resources
+  docker build \
+    --build-arg BASE_IMAGE="$BASE_IMAGE" \
+    --build-arg TELEGRAF_IMAGE="$CONTAINER_REPOSITORY/telegraf:$sha" \
+    --build-arg GOLANG_SOURCE="$GOLANG_SOURCE" \
+    --build-arg KUBECTL_SOURCE="$KUBECTL_SOURCE" \
+    -f "cmd/$COMPONENT/Dockerfile" \
+    . \
+    -t "$image_name"
+popd
+
+docker save "$image_name" | gzip > "image-tarball/$COMPONENT-$sha.tgz"

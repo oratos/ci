@@ -215,7 +215,7 @@ jobs:
       - unit-tests
     - get: oratos-ci
   - task: prepare-build
-    file: oratos-ci/tasks/build-docker-image/task.yml
+    file: oratos-ci/tasks/prepare-docker-image/task.yml
     input_mapping:
       source-repo: sink-resources
     params:
@@ -239,7 +239,7 @@ jobs:
       - unit-tests
     - get: oratos-ci
   - task: prepare-build
-    file: oratos-ci/tasks/build-docker-image/task.yml
+    file: oratos-ci/tasks/prepare-docker-image/task.yml
     input_mapping:
       source-repo: sink-resources
     params:
@@ -263,7 +263,7 @@ jobs:
       - unit-tests
     - get: oratos-ci
   - task: prepare-build
-    file: oratos-ci/tasks/build-docker-image/task.yml
+    file: oratos-ci/tasks/prepare-docker-image/task.yml
     input_mapping:
       source-repo: sink-resources
     params:
@@ -288,7 +288,7 @@ jobs:
       - unit-tests
     - get: oratos-ci
   - task: prepare-build
-    file: oratos-ci/tasks/build-docker-image/task.yml
+    file: oratos-ci/tasks/prepare-docker-image/task.yml
     input_mapping:
       source-repo: sink-resources
     params:
@@ -312,7 +312,7 @@ jobs:
       - unit-tests
     - get: oratos-ci
   - task: prepare-build
-    file: oratos-ci/tasks/build-docker-image/task.yml
+    file: oratos-ci/tasks/prepare-docker-image/task.yml
     input_mapping:
       source-repo: sink-resources
     params:
@@ -336,7 +336,7 @@ jobs:
       - unit-tests
     - get: oratos-ci
   - task: prepare-build
-    file: oratos-ci/tasks/build-docker-image/task.yml
+    file: oratos-ci/tasks/prepare-docker-image/task.yml
     input_mapping:
       source-repo: sink-resources
     params:
@@ -360,7 +360,7 @@ jobs:
       - unit-tests
     - get: oratos-ci
   - task: prepare-build
-    file: oratos-ci/tasks/build-docker-image/task.yml
+    file: oratos-ci/tasks/prepare-docker-image/task.yml
     input_mapping:
       source-repo: sink-resources
     params:
@@ -384,7 +384,7 @@ jobs:
       - unit-tests
     - get: oratos-ci
   - task: prepare-build
-    file: oratos-ci/tasks/build-docker-image/task.yml
+    file: oratos-ci/tasks/prepare-docker-image/task.yml
     input_mapping:
       source-repo: sink-resources
     params:
@@ -432,7 +432,7 @@ jobs:
               ./sink-resources/hack/generate-pks-manifest.sh "$SR_SHA" "$FLUENT_SHA" > sink-resources/cmd/observability-manager/manifest.yml
               rsync -avci sink-resources/ ./sink-resources-with-manifest/
     - task: prepare-build
-      file: oratos-ci/tasks/build-docker-image/task.yml
+      file: oratos-ci/tasks/prepare-docker-image/task.yml
       input_mapping:
         source-repo: sink-resources-with-manifest
       params:
