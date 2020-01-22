@@ -2,7 +2,7 @@
 set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
 # compute sha for tagging the docker image
-sha="$(git rev-parse @)"
+sha="$(cd sink-resources && git rev-parse @)"
 image_name="$CONTAINER_REPOSITORY/$COMPONENT:$sha"
 
 pushd sink-resources
