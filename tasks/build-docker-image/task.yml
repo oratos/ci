@@ -20,8 +20,10 @@ params:
   # - Set to true to output all commands that are run.
   DEBUG:
 
-  # - Optional
-  # - Set to the docker repository for telegraf image
+  # - Required
+  # - Set to the docker repository
   CONTAINER_REPOSITORY: oratos
+  DOCKERHUB_USERNAME:
+  DOCKERHUB_PASSWORD:
 run:
   path: oratos-ci/tasks/build-docker-image/task

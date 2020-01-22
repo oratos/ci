@@ -214,6 +214,8 @@ jobs:
       params:
         COMPONENT: <%= component %>
         CONTAINER_REPOSITORY: ((docker_image_repository))
+        DOCKERHUB_USERNAME: ((artifactory.username))
+        DOCKERHUB_PASSWORD: ((artifactory.password))
         BASE_IMAGE: ((base_image))
         GOLANG_SOURCE: ((golang_source))
         KUBECTL_SOURCE: ((kubectl_source))
@@ -249,6 +251,8 @@ jobs:
         params:
           COMPONENT: observability-manager
           CONTAINER_REPOSITORY: ((docker_image_repository))
+          DOCKERHUB_USERNAME: ((artifactory.username))
+          DOCKERHUB_PASSWORD: ((artifactory.password))
           BASE_IMAGE: ((base_image))
           GOLANG_SOURCE: ((golang_source))
           KUBECTL_SOURCE: ((kubectl_source))
