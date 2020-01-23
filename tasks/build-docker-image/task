@@ -5,6 +5,15 @@ set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 sha="$(cd sink-resources && git rev-parse @)"
 image_name="$CONTAINER_REPOSITORY/$COMPONENT:$sha"
 
+/usr/bin/dockerd &
+docker_pid=$!
+function cleanup {
+set +e
+kill -9 $docker_pid
+killall ssh-agent
+}
+trap cleanup EXIT
+
 pushd sink-resources
   docker build \
     --build-arg BASE_IMAGE="$BASE_IMAGE" \
