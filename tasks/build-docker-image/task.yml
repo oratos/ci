@@ -16,10 +16,6 @@ params:
   KUBECTL_SOURCE:
   COMPONENT:
 
-  # - Optional
-  # - Set to true to output all commands that are run.
-  DEBUG:
-
   # - Required
   # - Set to the docker repository
   CONTAINER_REPOSITORY: oratos
