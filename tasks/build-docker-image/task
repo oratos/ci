@@ -5,7 +5,7 @@ start_docker 3 3
 log_in $DOCKERHUB_USERNAME $DOCKERHUB_PASSWORD $CONTAINER_REPOSITORY
 
 # compute sha for tagging the docker image
-sha="$(cd sink-resources && git rev-parse @)"
+sha="$(cat sink-resources/.git/ref)"
 image_name="$CONTAINER_REPOSITORY/$COMPONENT:$sha"
 
 pushd sink-resources
