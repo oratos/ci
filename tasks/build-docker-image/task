@@ -2,7 +2,7 @@
 set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
 source "/opt/resource/common.sh"
-start_docker 3 3 $CONTAINER_REPOSITORY
+start_docker 3 3 $CONTAINER_REPOSITORY ""
 log_in $DOCKERHUB_USERNAME $DOCKERHUB_PASSWORD $CONTAINER_REPOSITORY
 
 # compute sha for tagging the docker image
