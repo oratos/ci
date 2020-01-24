@@ -210,6 +210,7 @@ jobs:
   - in_parallel:
 <% sink_resources_components.each do |component| %>
     - task: build-<%= component %>-image
+      privileged: true
       file: oratos-ci/tasks/build-docker-image/task.yml
       params:
         COMPONENT: <%= component %>
@@ -222,6 +223,7 @@ jobs:
 <% end %>
     - do: 
       - task: prepare-observability-manager-image
+        privileged: true
         config:
           platform: linux
           image_resource:
@@ -245,6 +247,7 @@ jobs:
                 ./sink-resources/hack/generate-pks-manifest.sh "$SR_SHA" "$FLUENT_SHA" > sink-resources/cmd/observability-manager/manifest.yaml
                 rsync -avci sink-resources/ ./sink-resources-with-manifest/
       - task: build-observability-manager-image
+        privileged: true
         file: oratos-ci/tasks/build-docker-image/task.yml
         input_mapping:
           sink-resources: sink-resources-with-manifest
