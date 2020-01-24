@@ -1,8 +1,9 @@
 platform: linux
+privileged: true
 image_resource:
   type: docker-image
   source:
-    repository: oratos/ci-base
+    repository: concourse/docker-image-resource
 inputs:
 - name: sink-resources # repo to build static binaries from
 - name: oratos-ci # repo for task file
