@@ -212,6 +212,8 @@ jobs:
     - task: build-<%= component %>-image
       privileged: true
       file: oratos-ci/tasks/build-docker-image/task.yml
+      output_mapping:
+        image-tarball: <%= component %>-image-tarball
       params:
         COMPONENT: <%= component %>
         CONTAINER_REPOSITORY: ((docker_image_repository))
@@ -251,6 +253,8 @@ jobs:
         file: oratos-ci/tasks/build-docker-image/task.yml
         input_mapping:
           sink-resources: sink-resources-with-manifest
+        output_mapping:
+          image-tarball: observability-manager-image-tarball
         params:
           COMPONENT: observability-manager
           CONTAINER_REPOSITORY: ((docker_image_repository))
@@ -278,7 +282,10 @@ jobs:
       - name: fluent-bit-out-syslog-github-release
       - name: sink-resources-version
       - name: sink-resources
-      - name: oratos-ci-images
+      - name: observability-manager-image-tarball
+<% sink_resources_components.each do |component| %>
+      - name: <%= component %>-image-tarball
+<% end %>
       outputs:
       - name: github-release
       run:
@@ -384,15 +391,15 @@ jobs:
               "$CONTAINER_REPOSITORY"
           [ -n "${DEBUG:-}" ] && set -x
 
-          docker load oratos-ci-images/*
+          for f in *-image-tarball/*; do
+            docker load --input "$f"
+          done
 
           DOCKER_IMAGES="$(for component in sink-controller node-exporter event-controller metric-controller cert-generator ghostunnel telegraf validator observability-manager; do
             echo "$CONTAINER_REPOSITORY/$component:$GIT_REF"
           done) $CONTAINER_REPOSITORY/fluent-bit-out-syslog:$FLUENT_SHA"
+
           echo "Saving docker images: $DOCKER_IMAGES"
-          for image in $DOCKER_IMAGES; do
-            docker pull "$image"
-          done
           # shellcheck disable=SC2086
           docker save $DOCKER_IMAGES | gzip > "github-release/sink-resources-images-v$(cat sink-resources-version/version).tgz"
 
