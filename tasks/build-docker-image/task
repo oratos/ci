@@ -6,16 +6,16 @@ start_docker 3 3
 log_in "$DOCKERHUB_USERNAME" "$DOCKERHUB_PASSWORD" "$CONTAINER_REPOSITORY"
 
 # compute sha for tagging the docker image
-sha="$(cat sink-resources/.git/ref)"
+sha="$(cat image-repo/.git/ref)"
 image_name="$CONTAINER_REPOSITORY/$COMPONENT:$sha"
 
-pushd sink-resources
+pushd image-repo
   docker build \
     --build-arg BASE_IMAGE="$BASE_IMAGE" \
     --build-arg TELEGRAF_IMAGE="$CONTAINER_REPOSITORY/telegraf:$sha" \
     --build-arg GOLANG_SOURCE="$GOLANG_SOURCE" \
     --build-arg KUBECTL_SOURCE="$KUBECTL_SOURCE" \
-    -f "cmd/$COMPONENT/Dockerfile" \
+    -f "$DOCKER_FILE_PATH" \
     . \
     -t "$image_name"
 popd
