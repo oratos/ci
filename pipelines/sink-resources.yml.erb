@@ -43,7 +43,7 @@ resources:
     uri: https://github.com/pivotal-cf/oratos-ci
     branch: master
 
-<% %w(sink-resources sink-resources-release).each do |repo| %>
+<% %w(sink-resources sink-resources-release fluent-bit-out-syslog).each do |repo| %>
 - name: <%= repo %>
   type: git
   source:
@@ -60,15 +60,6 @@ resources:
     release: false
     pre_release: true
 <% end %>
-
-- name: fluent-bit-out-syslog-github-release
-  type: github-release
-  source:
-    owner: pivotal-cf
-    repository: fluent-bit-out-syslog
-    access_token: ((github.oratos-bot-release-access-token))
-    release: false
-    pre_release: true
 
 - name: slack-alert
   type: slack-notification
@@ -207,11 +198,14 @@ jobs:
       - unit-tests
     - get: oratos-ci
     - get: fluent-bit-out-syslog-github-release
+    - get: fluent-bit-out-syslog
   - in_parallel:
 <% sink_resources_components.each do |component| %>
     - task: build-<%= component %>-image
       privileged: true
       file: oratos-ci/tasks/build-docker-image/task.yml
+      input_mapping:
+        image-repo: sink-resources
       output_mapping:
         image-tarball: <%= component %>-image-tarball
       params:
@@ -222,7 +216,24 @@ jobs:
         BASE_IMAGE: ((base_image))
         GOLANG_SOURCE: ((golang_source))
         KUBECTL_SOURCE: ((kubectl_source))
+        DOCKER_FILE_PATH: "cmd/<%= component %>/Dockerfile"
 <% end %>
+    - task: build-fluent-bit-image
+      privileged: true
+      file: oratos-ci/tasks/build-docker-image/task.yml
+      input_mapping:
+        image-repo: fluent-bit-out-syslog
+      output_mapping:
+        image-tarball: fluent-bit-out-syslog-image-tarball
+      params:
+        COMPONENT: fluent-bit-out-syslog
+        CONTAINER_REPOSITORY: ((docker_image_repository))
+        DOCKERHUB_USERNAME: ((artifactory.username))
+        DOCKERHUB_PASSWORD: ((artifactory.password))
+        BASE_IMAGE: ((base_image))
+        GOLANG_SOURCE: ((golang_source))
+        KUBECTL_SOURCE: ((kubectl_source))
+        DOCKER_FILE_PATH: "Dockerfile"    
     - do: 
       - task: prepare-observability-manager-image
         privileged: true
@@ -234,17 +245,18 @@ jobs:
               repository: oratos/ci-base
           inputs:
             - name: sink-resources
-            - name: fluent-bit-out-syslog-github-release
+            - name: fluent-bit-out-syslog
           outputs:
             - name: sink-resources-with-manifest
           run:
             path: /bin/bash
             args:
-              - "-c"
+              - "-ceo"
+              - "pipefail"
               - |
                 #!/bin/bash
                 SR_SHA="$(cd sink-resources && git rev-parse @)"
-                FLUENT_SHA="$(cat fluent-bit-out-syslog-github-release/commit_sha)"
+                FLUENT_SHA="$(cd fluent-bit-out-syslog && git rev-parse @)"
                 export PKS_RELEASE=true
                 ./sink-resources/hack/generate-pks-manifest.sh "$SR_SHA" "$FLUENT_SHA" > sink-resources/cmd/observability-manager/manifest.yaml
                 rsync -avci sink-resources/ ./sink-resources-with-manifest/
@@ -252,7 +264,7 @@ jobs:
         privileged: true
         file: oratos-ci/tasks/build-docker-image/task.yml
         input_mapping:
-          sink-resources: sink-resources-with-manifest
+          image-repo: sink-resources-with-manifest
         output_mapping:
           image-tarball: observability-manager-image-tarball
         params:
@@ -263,6 +275,8 @@ jobs:
           BASE_IMAGE: ((base_image))
           GOLANG_SOURCE: ((golang_source))
           KUBECTL_SOURCE: ((kubectl_source))
+          DOCKER_FILE_PATH: "cmd/observability-manager/Dockerfile"
+      
   - task: release
     privileged: true
     config:
@@ -270,7 +284,7 @@ jobs:
       image_resource:
         type: docker-image
         source:
-          repository: oratos/ci-base
+          repository: concourse/docker-image-resource
       params:
         CONTAINER_REPOSITORY: ((docker_image_repository))
         DOCKERHUB_USERNAME: ((artifactory.username))
@@ -283,6 +297,7 @@ jobs:
       - name: sink-resources-version
       - name: sink-resources
       - name: observability-manager-image-tarball
+      - name: fluent-bit-out-syslog-image-tarball
 <% sink_resources_components.each do |component| %>
       - name: <%= component %>-image-tarball
 <% end %>
@@ -291,84 +306,14 @@ jobs:
       run:
         path: /bin/bash
         args:
-        - "-c"
+        - "-ceo"
+        - "pipefail"
         - |
           #!/bin/bash
-          set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+          source "/opt/resource/common.sh"
+          start_docker 3 3
 
-          # Note: this was copied from the docker-image-resource
-          # https://github.com/concourse/docker-image-resource/blob/c725c6277ca2820016de1bfe2bdfabaad5fd5879/assets/common.sh#L4
-          sanitize_cgroups() {
-            mkdir -p /sys/fs/cgroup
-            mountpoint -q /sys/fs/cgroup || \
-              mount -t tmpfs -o uid=0,gid=0,mode=0755 cgroup /sys/fs/cgroup
-
-            mount -o remount,rw /sys/fs/cgroup
-
-            sed -e 1d /proc/cgroups | while read -r sys _ _ enabled; do
-              if [ "$enabled" != "1" ]; then
-                # subsystem disabled; skip
-                continue
-              fi
-
-              grouping="$(cut -d: -f2 /proc/self/cgroup | grep "\\<$sys\\>")" || true
-              if [ -z "$grouping" ]; then
-                # subsystem not mounted anywhere; mount it on its own
-                grouping="$sys"
-              fi
-
-              mountpoint="/sys/fs/cgroup/$grouping"
-
-              mkdir -p "$mountpoint"
-
-              # clear out existing mount to make sure new one is read-write
-              if mountpoint -q "$mountpoint"; then
-                umount "$mountpoint"
-              fi
-
-              mount -n -t cgroup -o "$grouping" cgroup "$mountpoint"
-
-              if [ "$grouping" != "$sys" ]; then
-                if [ -L "/sys/fs/cgroup/$sys" ]; then
-                  rm "/sys/fs/cgroup/$sys"
-                fi
-
-                ln -s "$mountpoint" "/sys/fs/cgroup/$sys"
-              fi
-            done
-
-            if ! test -e /sys/fs/cgroup/systemd ; then
-              mkdir /sys/fs/cgroup/systemd
-              mount -t cgroup -o none,name=systemd none /sys/fs/cgroup/systemd
-            fi
-          }
-          sanitize_cgroups
-          /usr/bin/dockerd &
-          docker_pid=$!
-          function cleanup {
-            set +e
-            kill -9 $docker_pid
-            killall ssh-agent
-          }
-          trap cleanup EXIT
-
-          echo "$SERVICE_ACCOUNT" > sa.json
-          gcloud auth activate-service-account --key-file sa.json
-          rm sa.json
-          gcloud auth configure-docker --quiet
-
-          echo waiting 10 seconds while docker starts up
-          sleep 10
-
-          mkdir -p ~/.ssh/
-          ssh-keyscan github.com >> ~/.ssh/known_hosts 2> /dev/null
-          eval "$(ssh-agent)"
-          [ -n "${DEBUG:-}" ] && set +x
-          echo "$GITHUB_PRIVATE_KEY" > key
-          [ -n "${DEBUG:-}" ] && set -x
-          chmod 0600 key
-          ssh-add key
-          rm key
+          apk add git openssh-client
 
           GIT_REF=""
           GIT_TAG="v$(cat sink-resources-version/version)"
@@ -382,15 +327,7 @@ jobs:
           echo $GIT_TAG > github-release/tag
 
           echo "RELEASE NOTES HERE" > github-release/body
-
-          [ -n "${DEBUG:-}" ] && set +x
-          echo "$DOCKERHUB_PASSWORD" \
-            | docker login \
-              --username "$DOCKERHUB_USERNAME" \
-              --password-stdin \
-              "$CONTAINER_REPOSITORY"
-          [ -n "${DEBUG:-}" ] && set -x
-
+   
           for f in *-image-tarball/*; do
             docker load --input "$f"
           done
@@ -402,6 +339,16 @@ jobs:
           echo "Saving docker images: $DOCKER_IMAGES"
           # shellcheck disable=SC2086
           docker save $DOCKER_IMAGES | gzip > "github-release/sink-resources-images-v$(cat sink-resources-version/version).tgz"
+
+          mkdir -p ~/.ssh/
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2> /dev/null
+          eval "$(ssh-agent)"
+          [ -n "${DEBUG:-}" ] && set +x
+            echo "$GITHUB_PRIVATE_KEY" > key
+          [ -n "${DEBUG:-}" ] && set -x
+          chmod 0600 key
+          ssh-add key
+          rm key
 
           pushd sink-resources > /dev/null
             git push origin --tags
