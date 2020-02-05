@@ -1,0 +1,686 @@
+<%
+sink_resources_components = %w(sink-controller event-controller metric-controller cert-generator ghostunnel telegraf validator node-exporter)
+
+#releases = %w( sink-resources sink-resources-release)
+%>
+
+groups:
+- name: main
+  jobs:
+  - bump-patch
+  - unit-tests
+  - create-release-candidate
+  - create-bosh-release
+  - deploy-cfcr
+  - deploy-sink-resources-in-cluster
+  - cfcr-tests
+  - cut-final-release
+
+resource_types:
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+    tag: latest
+
+- name: vault
+  type: docker-image
+  source:
+    repository: oratos/vault-resource
+    tag: latest
+
+- name: gcs-resource
+  type: docker-image
+  source:
+    repository: frodenas/gcs-resource
+
+resources:
+- name: oratos-ci
+  type: git
+  source:
+    uri: https://github.com/pivotal-cf/oratos-ci
+    branch: master
+
+<% %w(sink-resources sink-resources-release).each do |repo| %>
+- name: <%= repo %>
+  type: git
+  source:
+    uri: git@github.com:pivotal-cf/<%= repo %>
+    branch: v0.23.x
+    private_key: ((github.oratos-bot-private-key))
+
+- name: <%= repo %>-github-release
+  type: github-release
+  source:
+    owner: pivotal-cf
+    repository: <%= repo %>
+    access_token: ((github.oratos-bot-release-access-token))
+    release: false
+    pre_release: true
+<% end %>
+
+- name: fluent-bit-out-syslog
+  type: git
+  source:
+    uri: git@github.com:pivotal-cf/fluent-bit-out-syslog
+    branch: v0.15.x
+    tag_filter: v0.15.*
+    private_key: ((github.oratos-bot-private-key))
+
+- name: fluent-bit-out-syslog-github-release
+  type: github-release
+  source:
+    owner: pivotal-cf
+    repository: fluent-bit-out-syslog
+    access_token: ((github.oratos-bot-release-access-token))
+    tag_filter: v0.15.*
+
+- name: slack-alert
+  type: slack-notification
+  source:
+    url: ((slack.notifications-url))
+
+- name: oratos-ci-testing-cfcr-bbl-state
+  type: vault
+  source:
+    url: https://vault.oratos.ci.cf-app.com
+    role_id: ((vault.role_id))
+    secret_id: ((vault.secret_id))
+    path: secret/envs/oratos-ci-testing-cfcr-pks-1-5-bbl-state
+    tarball: true
+
+- name: cf-deployment-concourse-tasks
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry/cf-deployment-concourse-tasks
+    branch: v10.16.0
+
+- name: oratos-ci-testing-cfcr-gcp-vars
+  type: vault
+  source:
+    url: https://vault.oratos.ci.cf-app.com
+    role_id: ((vault.role_id))
+    secret_id: ((vault.secret_id))
+    path: secret/envs/oratos-ci-testing-cfcr-gcp-vars
+
+- name: kubo-deployment
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry-incubator/kubo-deployment
+    branch: v0.41.0
+
+- name: kubo-release-bosh-io
+  type: bosh-io-release
+  source:
+    repository: cloudfoundry-incubator/kubo-release
+    regexp: "0.41.*"
+
+- name: sink-resources-version
+  type: semver
+  source:
+    bucket: sink-resources-version-0.23.x-pks-1.5.x
+    key: version
+    access_key_id: ((aws.s3_access_key_id))
+    secret_access_key: ((aws.s3_secret_access_key))
+
+jobs:
+- name: unit-tests
+  plan:
+  - in_parallel:
+    - get: sink-resources
+      trigger: true
+    - get: oratos-ci
+  - in_parallel:
+    - task: run-linter
+      file: oratos-ci/tasks/golangci-lint-modules/task.yml
+      input_mapping:
+        source-repo: sink-resources
+      on_failure:
+        put: slack-alert
+        params:
+          text: Sink Resources Linter failed
+    - task: run-tests
+      file: oratos-ci/tasks/go-test-mod/task.yml
+      privileged: true
+      input_mapping:
+        source-repo: sink-resources
+      params:
+        PKGS_HOOK: |
+          go list ./... | grep -v vendor | grep -v pkg/client
+      on_failure:
+        put: slack-alert
+        params:
+          text: Sink Resources Unit tests failed
+    - task: run-verify-codegen
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: oratos/ci-base
+        inputs:
+        - name: sink-resources
+          path: go/src/github.com/pivotal-cf/sink-resources
+        params:
+          DEBUG:
+        run:
+          path: /bin/bash
+          args:
+          - "-c"
+          - |
+            #!/bin/bash
+            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+
+            export GOPATH="$PWD/go"
+            pushd go/src/github.com/pivotal-cf/sink-resources/ > /dev/null
+              hack/verify-codegen.sh
+            popd > /dev/null
+      on_failure:
+        put: slack-alert
+        params:
+          text: Sink Resources Verify Codegen failed
+
+
+- name: bump-patch
+  plan:
+  - put: sink-resources-version
+    params:
+      bump: patch
+
+
+- name: create-release-candidate
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources-version
+      params:
+        pre: rc
+    - get: sink-resources
+      trigger: true
+      passed:
+      - unit-tests
+    - get: oratos-ci
+    - get: fluent-bit-out-syslog-github-release
+    - get: fluent-bit-out-syslog
+  - in_parallel:
+<% sink_resources_components.each do |component| %>
+    - task: build-<%= component %>-image
+      privileged: true
+      file: oratos-ci/tasks/build-docker-image/task.yml
+      input_mapping:
+        image-repo: sink-resources
+      output_mapping:
+        image-tarball: <%= component %>-image-tarball
+      params:
+        COMPONENT: <%= component %>
+        CONTAINER_REPOSITORY: ((docker_image_repository))
+        DOCKERHUB_USERNAME: ((artifactory.username))
+        DOCKERHUB_PASSWORD: ((artifactory.password))
+        BASE_IMAGE: ((base_image))
+        GOLANG_SOURCE: ((golang_source))
+        KUBECTL_SOURCE: ((kubectl_source))
+        DOCKER_FILE_PATH: "cmd/<%= component %>/Dockerfile"
+<% end %>
+    - task: build-fluent-bit-image
+      privileged: true
+      file: oratos-ci/tasks/build-docker-image/task.yml
+      input_mapping:
+        image-repo: fluent-bit-out-syslog
+      output_mapping:
+        image-tarball: fluent-bit-out-syslog-image-tarball
+      params:
+        COMPONENT: fluent-bit-out-syslog
+        CONTAINER_REPOSITORY: ((docker_image_repository))
+        DOCKERHUB_USERNAME: ((artifactory.username))
+        DOCKERHUB_PASSWORD: ((artifactory.password))
+        BASE_IMAGE: ((base_image))
+        GOLANG_SOURCE: ((golang_source))
+        KUBECTL_SOURCE: ((kubectl_source))
+        DOCKER_FILE_PATH: "Dockerfile"
+    - do:
+      - task: prepare-observability-manager-image
+        privileged: true
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: oratos/ci-base
+          inputs:
+            - name: sink-resources
+            - name: fluent-bit-out-syslog
+          outputs:
+            - name: sink-resources-with-manifest
+          run:
+            path: /bin/bash
+            args:
+              - "-ceo"
+              - "pipefail"
+              - |
+                #!/bin/bash
+                SR_SHA="$(cd sink-resources && git rev-parse @)"
+                FLUENT_SHA="$(cd fluent-bit-out-syslog && git rev-parse @)"
+                export PKS_RELEASE=true
+                ./sink-resources/hack/generate-pks-manifest.sh "$SR_SHA" "$FLUENT_SHA" > sink-resources/cmd/observability-manager/manifest.yaml
+                rsync -avci sink-resources/ ./sink-resources-with-manifest/
+      - task: build-observability-manager-image
+        privileged: true
+        file: oratos-ci/tasks/build-docker-image/task.yml
+        input_mapping:
+          image-repo: sink-resources-with-manifest
+        output_mapping:
+          image-tarball: observability-manager-image-tarball
+        params:
+          COMPONENT: observability-manager
+          CONTAINER_REPOSITORY: ((docker_image_repository))
+          DOCKERHUB_USERNAME: ((artifactory.username))
+          DOCKERHUB_PASSWORD: ((artifactory.password))
+          BASE_IMAGE: ((base_image))
+          GOLANG_SOURCE: ((golang_source))
+          KUBECTL_SOURCE: ((kubectl_source))
+          DOCKER_FILE_PATH: "cmd/observability-manager/Dockerfile"
+
+  - task: release
+    privileged: true
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: concourse/docker-image-resource
+      params:
+        CONTAINER_REPOSITORY: ((docker_image_repository))
+        DOCKERHUB_USERNAME: ((artifactory.username))
+        DOCKERHUB_PASSWORD: ((artifactory.password))
+        GITHUB_PRIVATE_KEY: ((github.oratos-bot-private-key))
+        SERVICE_ACCOUNT: ((gcloud.oratos-ci-testing-gke-service-account))
+        DEBUG:
+      inputs:
+      - name: fluent-bit-out-syslog-github-release
+      - name: sink-resources-version
+      - name: sink-resources
+      - name: observability-manager-image-tarball
+      - name: fluent-bit-out-syslog-image-tarball
+<% sink_resources_components.each do |component| %>
+      - name: <%= component %>-image-tarball
+<% end %>
+      outputs:
+      - name: github-release
+      run:
+        path: /bin/bash
+        args:
+        - "-ceo"
+        - "pipefail"
+        - |
+          #!/bin/bash
+          source "/opt/resource/common.sh"
+          start_docker 3 3
+
+          apk add git openssh-client
+
+          GIT_REF=""
+          GIT_TAG="v$(cat sink-resources-version/version)"
+          pushd sink-resources > /dev/null
+            GIT_REF="$(git rev-parse @)"
+            git tag "$GIT_TAG" "$GIT_REF"
+          popd > /dev/null
+          FLUENT_SHA="$(cat fluent-bit-out-syslog-github-release/commit_sha)"
+
+          echo $GIT_TAG > github-release/name
+          echo $GIT_TAG > github-release/tag
+
+          echo "RELEASE NOTES HERE" > github-release/body
+
+          for f in *-image-tarball/*; do
+            docker load --input "$f"
+          done
+
+          DOCKER_IMAGES="$(for component in sink-controller node-exporter event-controller metric-controller cert-generator ghostunnel telegraf validator observability-manager; do
+            echo "$CONTAINER_REPOSITORY/$component:$GIT_REF"
+          done) $CONTAINER_REPOSITORY/fluent-bit-out-syslog:$FLUENT_SHA"
+
+          echo "Saving docker images: $DOCKER_IMAGES"
+          # shellcheck disable=SC2086
+          docker save $DOCKER_IMAGES | gzip > "github-release/sink-resources-images-v$(cat sink-resources-version/version).tgz"
+
+          mkdir -p ~/.ssh/
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2> /dev/null
+          eval "$(ssh-agent)"
+          [ -n "${DEBUG:-}" ] && set +x
+            echo "$GITHUB_PRIVATE_KEY" > key
+          [ -n "${DEBUG:-}" ] && set -x
+          chmod 0600 key
+          ssh-add key
+          rm key
+
+          pushd sink-resources > /dev/null
+            git push origin --tags
+          popd > /dev/null
+  - put: sink-resources-github-release
+    params:
+      name: github-release/name
+      body: github-release/body
+      tag: github-release/tag
+      globs:
+      - github-release/*.tgz
+  - put: sink-resources-version
+    params: {file: sink-resources-version/version}
+
+- name: create-bosh-release
+  plan:
+  - in_parallel:
+    - get: sink-resources-version
+      passed:
+      - create-release-candidate
+    - get: sink-resources-github-release
+      trigger: true
+      passed:
+      - create-release-candidate
+    - get: sink-resources-release
+    - get: oratos-ci
+    - get: fluent-bit-out-syslog-github-release
+      passed:
+      - create-release-candidate
+  - task: update-bosh-release
+    privileged: true
+    file: oratos-ci/tasks/update-bosh-release/task.yml
+    params:
+      PRIVATE_YML: ((release.private_yml))
+      IMAGE_REPOSITORY: ((docker_image_repository))
+  - put: sink-resources-release
+    params:
+      repository: put-sink-resources-release
+      name: bosh-release/name
+  - put: sink-resources-release-github-release
+    params:
+      name: bosh-release/name
+      tag: bosh-release/tag
+      commitish: bosh-release/commitish
+      globs:
+      - bosh-release/binaries/*.tgz
+
+
+- name: deploy-cfcr
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources-version
+      passed:
+      - create-bosh-release
+    - get: sink-resources-release-github-release
+      trigger: true
+      passed:
+      - create-bosh-release
+    - get: sink-resources
+      passed:
+      - create-release-candidate
+    - get: oratos-ci-testing-cfcr-bbl-state
+    - get: oratos-ci-testing-cfcr-gcp-vars
+    - get: oratos-ci
+    - get: cf-deployment-concourse-tasks
+    - get: kubo-deployment
+    - get: kubo-release-bosh-io
+  - task: clean-up-environment
+    file: oratos-ci/tasks/clean-up-environment/task.yml
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+    params:
+      DEBUG:
+  - in_parallel:
+    - task: upload-stemcell
+      file: oratos-ci/tasks/cfcr-upload-stemcell/task.yml
+      input_mapping:
+        bbl-state: oratos-ci-testing-cfcr-bbl-state
+    - task: upload-kubo-bosh-release
+      file: oratos-ci/tasks/cfcr-upload-bosh-release/task.yml
+      input_mapping:
+        bbl-state: oratos-ci-testing-cfcr-bbl-state
+        bosh-release: kubo-release-bosh-io
+      params:
+        DEBUG:
+    - task: upload-sink-resources-release
+      file: oratos-ci/tasks/cfcr-upload-bosh-release/task.yml
+      input_mapping:
+        bbl-state: oratos-ci-testing-cfcr-bbl-state
+        bosh-release: sink-resources-release-github-release
+      params:
+        DEBUG:
+    - task: upload-vars-to-credhub
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: oratos/ci-base
+        inputs:
+        - name: oratos-ci-testing-cfcr-bbl-state
+        - name: oratos-ci-testing-cfcr-gcp-vars
+        params:
+          DEBUG:
+        run:
+          path: /bin/bash
+          args:
+          - "-c"
+          - |
+            #!/bin/bash
+            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+
+            pushd oratos-ci-testing-cfcr-bbl-state/bbl-state > /dev/null
+              eval "$(bbl print-env)"
+            popd > /dev/null
+
+            credhub import --file oratos-ci-testing-cfcr-gcp-vars/vars.yml
+    - task: modify-kubo-deployment
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: oratos/ci-base
+        inputs:
+        - name: kubo-deployment
+        outputs:
+        - name: modified-kubo-deployment
+        params:
+          DEBUG:
+        run:
+          path: /bin/bash
+          args:
+          - "-c"
+          - |
+            #!/bin/bash
+            set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
+
+            # Restricting zone to z1 (us-central1-a) because we are running out
+            # of quota in z2
+            cat <<EOF > extra-ops.yml
+            - type: replace
+              path: /instance_groups/name=master/azs
+              value: [ z1 ]
+            - type: replace
+              path: /instance_groups/name=worker/azs
+              value: [ z1 ]
+            - type: replace
+              path: /instance_groups/name=apply-addons/azs
+              value: [ z1 ]
+            - type: replace
+              path: /instance_groups/name=worker?/persistent_disk
+              value: 51200
+            - type: replace
+              path: /instance_groups/name=worker/jobs/name=docker/properties/store_dir
+              value: /var/vcap/store
+            - type: replace
+              path: /releases/name=bpm?
+              value:
+                name: bpm
+                version: 1.0.4
+                url: https://bosh.io/d/github.com/cloudfoundry/bpm-release?v=1.0.4
+                sha1: c2cceb2d1e271a2f7c5e7c563a7b26f919ebc17a
+                stemcell:
+                  os: ubuntu-xenial
+                  version: 456.3
+            - type: replace
+              path: /releases/name=cfcr-etcd?
+              value:
+                name: cfcr-etcd
+                version: 1.11.1
+                url: https://bosh.io/d/github.com/cloudfoundry-incubator/cfcr-etcd-release?v=1.11.1
+                sha1: 5ff0104783202a287b7877883d9ff95f22e18eef
+                stemcell:
+                  os: ubuntu-xenial
+                  version: 456.3
+            - type: replace
+              path: /releases/name=sink-resources-release?
+              value:
+                name: sink-resources-release
+                version: latest
+            - type: replace
+              path: /instance_groups/name=worker/jobs/-
+              value:
+                name: sink-resources-images
+                release: sink-resources-release
+            EOF
+
+            cp -r kubo-deployment/. modified-kubo-deployment/
+            bosh interpolate kubo-deployment/manifests/cfcr.yml \
+              --ops-file extra-ops.yml \
+              > modified-kubo-deployment/manifests/cfcr.yml
+  - task: cfcr-deploy
+    file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+      cf-deployment: modified-kubo-deployment
+      ops-files: modified-kubo-deployment
+      vars-files: kubo-deployment # this isn't used but is a required input
+    params:
+      SYSTEM_DOMAIN: example.com # this isn't used but is a required input
+      MANIFEST_FILE: manifests/cfcr.yml
+      OPS_FILES: |
+        manifests/ops-files/misc/single-master.yml
+        manifests/ops-files/add-hostname-to-master-certificate.yml
+        manifests/ops-files/allow-privileged-containers.yml
+        manifests/ops-files/enable-podsecuritypolicy.yml
+        manifests/ops-files/set-fs-inotify-limit.yml
+        manifests/ops-files/iaas/gcp/cloud-provider.yml
+        manifests/ops-files/iaas/gcp/add-service-key-master.yml
+        manifests/ops-files/iaas/gcp/add-service-key-worker.yml
+  - task: run-apply-addons-errand
+    file: cf-deployment-concourse-tasks/run-errand/task.yml
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+    params:
+      DEPLOYMENT_NAME: cfcr
+      ERRAND_NAME: apply-addons
+  - task: expose-kubernetes-service
+    file: oratos-ci/tasks/expose-kubernetes-service/task.yml
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+    params:
+      GET_CREDENTIALS_HOOK: |
+        function cleanup {
+            set +e
+            killall -9 ssh > /dev/null 2>&1
+            killall -9 ssh-agent > /dev/null 2>&1
+        }
+        trap cleanup EXIT
+        BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/cfcr.sh get-credentials-tunnel testing
+  - task: configure-dev-dns-zone
+    file: oratos-ci/tasks/configure-dev-dns-zone/task.yml
+    params:
+      AWS_ACCESS_KEY_ID: ((aws.dev_dns_access_key_id))
+      AWS_SECRET_ACCESS_KEY: ((aws.dev_dns_secret_access_key))
+      ENV_DNS_NAME: testing-cfcr.oratos.ci.cf-app.com.
+
+
+- name: deploy-sink-resources-in-cluster
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources-release-github-release
+      trigger: true
+      passed:
+      - deploy-cfcr
+    - get: sink-resources
+      passed:
+      - deploy-cfcr
+    - get: oratos-ci-testing-cfcr-bbl-state
+    - get: oratos-ci
+  - task: deploy-sink-resources-in-cluster
+    file: oratos-ci/tasks/deploy-sink-resources/task.yml
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+    params:
+      HAS_NODE_EXPORTER: true
+      IMAGE_REPOSITORY: ((docker_image_repository))
+      GET_CREDENTIALS_HOOK: |
+        BBL_STATE_DIR=bbl-state \
+          oratos-ci/scripts/cfcr.sh get-credentials testing
+
+
+- name: cfcr-tests
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources-release-github-release
+      trigger: true
+      passed:
+      - deploy-sink-resources-in-cluster
+    - get: sink-resources
+      passed:
+      - deploy-sink-resources-in-cluster
+    - get: oratos-ci-testing-cfcr-bbl-state
+    - get: oratos-ci
+  - task: run-crd-tests
+    file: oratos-ci/tasks/run-crd-tests/task.yml
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+    params:
+      GET_CREDENTIALS_HOOK: |
+        BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/cfcr.sh get-credentials testing
+  - task: e2e-test
+    file: oratos-ci/tasks/sink-e2e/task.yml
+    input_mapping:
+      bbl-state: oratos-ci-testing-cfcr-bbl-state
+    params:
+      GET_CREDENTIALS_HOOK: |
+        BBL_STATE_DIR=bbl-state \
+            oratos-ci/scripts/cfcr.sh get-credentials testing
+
+
+- name: cut-final-release
+  serial: true
+  plan:
+  - in_parallel:
+    - get: sink-resources-version
+      params:
+        bump: final
+    - get: sink-resources-release-github-release
+      passed:
+      - cfcr-tests
+    - get: sink-resources-github-release
+      passed:
+      - create-bosh-release
+    - get: sink-resources-release
+    - get: oratos-ci
+    - get: fluent-bit-out-syslog-github-release
+  - task: update-bosh-release
+    privileged: true
+    file: oratos-ci/tasks/update-bosh-release/task.yml
+    params:
+      PRIVATE_YML: ((release.private_yml))
+      IMAGE_REPOSITORY: ((docker_image_repository))
+  - put: sink-resources-release
+    params:
+      repository: put-sink-resources-release
+      name: bosh-release/name
+  - put: sink-resources-release-github-release
+    params:
+      name: bosh-release/name
+      tag: bosh-release/tag
+      commitish: bosh-release/commitish
+      globs:
+      - bosh-release/binaries/*.tgz
+  - put: sink-resources-version
+    params: {file: sink-resources-version/version}
