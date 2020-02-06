@@ -611,7 +611,7 @@ jobs:
     input_mapping:
       bbl-state: cfcr-bbl-state
     params:
-      HAS_NODE_EXPORTER: true
+      HAS_NODE_EXPORTER: false
       IMAGE_REPOSITORY: ((docker_image_repository))
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
