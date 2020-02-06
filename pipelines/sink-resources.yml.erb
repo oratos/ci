@@ -66,13 +66,13 @@ resources:
   source:
     url: ((slack.notifications-url))
 
-- name: oratos-ci-testing-cfcr-bbl-state
+- name: cfcr-bbl-state
   type: vault
   source:
     url: https://vault.oratos.ci.cf-app.com
     role_id: ((vault.role_id))
     secret_id: ((vault.secret_id))
-    path: secret/envs/oratos-ci-testing-cfcr-bbl-state
+    path: secret/envs/cfcr-pks-latest-bbl-state
     tarball: true
 
 - name: cf-deployment-concourse-tasks
@@ -81,13 +81,13 @@ resources:
     uri: https://github.com/cloudfoundry/cf-deployment-concourse-tasks
     branch: v10.16.0
 
-- name: oratos-ci-testing-cfcr-gcp-vars
+- name: cfcr-gcp-vars
   type: vault
   source:
     url: https://vault.oratos.ci.cf-app.com
     role_id: ((vault.role_id))
     secret_id: ((vault.secret_id))
-    path: secret/envs/oratos-ci-testing-cfcr-gcp-vars
+    path: secret/envs/cfcr-pks-latest-gcp-vars
 
 - name: kubo-deployment
   type: git
@@ -411,8 +411,8 @@ jobs:
     - get: sink-resources
       passed:
       - create-release-candidate
-    - get: oratos-ci-testing-cfcr-bbl-state
-    - get: oratos-ci-testing-cfcr-gcp-vars
+    - get: cfcr-bbl-state
+    - get: cfcr-gcp-vars
     - get: oratos-ci
     - get: cf-deployment-concourse-tasks
     - get: kubo-deployment
@@ -420,25 +420,25 @@ jobs:
   - task: clean-up-environment
     file: oratos-ci/tasks/clean-up-environment/task.yml
     input_mapping:
-      bbl-state: oratos-ci-testing-cfcr-bbl-state
+      bbl-state: cfcr-bbl-state
     params:
       DEBUG:
   - in_parallel:
     - task: upload-stemcell
       file: oratos-ci/tasks/cfcr-upload-stemcell/task.yml
       input_mapping:
-        bbl-state: oratos-ci-testing-cfcr-bbl-state
+        bbl-state: cfcr-bbl-state
     - task: upload-kubo-bosh-release
       file: oratos-ci/tasks/cfcr-upload-bosh-release/task.yml
       input_mapping:
-        bbl-state: oratos-ci-testing-cfcr-bbl-state
+        bbl-state: cfcr-bbl-state
         bosh-release: kubo-release-bosh-io
       params:
         DEBUG:
     - task: upload-sink-resources-release
       file: oratos-ci/tasks/cfcr-upload-bosh-release/task.yml
       input_mapping:
-        bbl-state: oratos-ci-testing-cfcr-bbl-state
+        bbl-state: cfcr-bbl-state
         bosh-release: sink-resources-release-github-release
       params:
         DEBUG:
@@ -450,8 +450,8 @@ jobs:
           source:
             repository: oratos/ci-base
         inputs:
-        - name: oratos-ci-testing-cfcr-bbl-state
-        - name: oratos-ci-testing-cfcr-gcp-vars
+        - name: cfcr-bbl-state
+        - name: cfcr-gcp-vars
         params:
           DEBUG:
         run:
@@ -462,11 +462,11 @@ jobs:
             #!/bin/bash
             set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
-            pushd oratos-ci-testing-cfcr-bbl-state/bbl-state > /dev/null
+            pushd cfcr-bbl-state/bbl-state > /dev/null
               eval "$(bbl print-env)"
             popd > /dev/null
 
-            credhub import --file oratos-ci-testing-cfcr-gcp-vars/vars.yml
+            credhub import --file cfcr-gcp-vars/vars.yml
     - task: modify-kubo-deployment
       config:
         platform: linux
@@ -545,7 +545,7 @@ jobs:
   - task: cfcr-deploy
     file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
     input_mapping:
-      bbl-state: oratos-ci-testing-cfcr-bbl-state
+      bbl-state: cfcr-bbl-state
       cf-deployment: modified-kubo-deployment
       ops-files: modified-kubo-deployment
       vars-files: kubo-deployment # this isn't used but is a required input
@@ -564,14 +564,14 @@ jobs:
   - task: run-apply-addons-errand
     file: cf-deployment-concourse-tasks/run-errand/task.yml
     input_mapping:
-      bbl-state: oratos-ci-testing-cfcr-bbl-state
+      bbl-state: cfcr-bbl-state
     params:
       DEPLOYMENT_NAME: cfcr
       ERRAND_NAME: apply-addons
   - task: expose-kubernetes-service
     file: oratos-ci/tasks/expose-kubernetes-service/task.yml
     input_mapping:
-      bbl-state: oratos-ci-testing-cfcr-bbl-state
+      bbl-state: cfcr-bbl-state
     params:
       GET_CREDENTIALS_HOOK: |
         function cleanup {
@@ -601,12 +601,12 @@ jobs:
     - get: sink-resources
       passed:
       - deploy-cfcr
-    - get: oratos-ci-testing-cfcr-bbl-state
+    - get: cfcr-bbl-state
     - get: oratos-ci
   - task: deploy-sink-resources-in-cluster
     file: oratos-ci/tasks/deploy-sink-resources/task.yml
     input_mapping:
-      bbl-state: oratos-ci-testing-cfcr-bbl-state
+      bbl-state: cfcr-bbl-state
     params:
       HAS_NODE_EXPORTER: true
       IMAGE_REPOSITORY: ((docker_image_repository))
@@ -626,12 +626,12 @@ jobs:
     - get: sink-resources
       passed:
       - deploy-sink-resources-in-cluster
-    - get: oratos-ci-testing-cfcr-bbl-state
+    - get: cfcr-bbl-state
     - get: oratos-ci
   - task: run-crd-tests
     file: oratos-ci/tasks/run-crd-tests/task.yml
     input_mapping:
-      bbl-state: oratos-ci-testing-cfcr-bbl-state
+      bbl-state: cfcr-bbl-state
     params:
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
@@ -639,7 +639,7 @@ jobs:
   - task: e2e-test
     file: oratos-ci/tasks/sink-e2e/task.yml
     input_mapping:
-      bbl-state: oratos-ci-testing-cfcr-bbl-state
+      bbl-state: cfcr-bbl-state
     params:
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \

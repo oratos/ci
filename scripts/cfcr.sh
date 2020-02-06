@@ -153,11 +153,11 @@ function set_globals {
             ;;
         testing)
             domain=testing-cfcr.oratos.ci.cf-app.com
-            vault_path=secret/envs/oratos-ci-testing-cfcr-bbl-state
+            vault_path=secret/envs/cfcr-pks-latest-bbl-state
             ;;
         testing-1.5)
             domain=testing-cfcr-pks-1-5.oratos.ci.cf-app.com
-            vault_path=secret/envs/oratos-ci-testing-cfcr-pks-1-5-bbl-state
+            vault_path=secret/envs/cfcr-pks-1-5-bbl-state
             ;;
         control-plane-test)
             domain=control-plane-test-cfcr.oratos.ci.cf-app.com

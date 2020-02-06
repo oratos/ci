@@ -86,7 +86,7 @@ resources:
     url: https://vault.oratos.ci.cf-app.com
     role_id: ((vault.role_id))
     secret_id: ((vault.secret_id))
-    path: secret/envs/oratos-ci-testing-cfcr-pks-1-5-bbl-state
+    path: secret/envs/cfcr-pks-1-5-bbl-state
     tarball: true
 
 - name: cf-deployment-concourse-tasks
@@ -95,13 +95,13 @@ resources:
     uri: https://github.com/cloudfoundry/cf-deployment-concourse-tasks
     branch: v10.16.0
 
-- name: oratos-ci-testing-cfcr-gcp-vars
+- name: cfcr-gcp-vars
   type: vault
   source:
     url: https://vault.oratos.ci.cf-app.com
     role_id: ((vault.role_id))
     secret_id: ((vault.secret_id))
-    path: secret/envs/oratos-ci-testing-cfcr-gcp-vars
+    path: secret/envs/cfcr-pks-1-5-gcp-vars
 
 - name: kubo-deployment
   type: git
@@ -415,7 +415,7 @@ jobs:
       passed:
       - create-release-candidate
     - get: cfcr-bbl-state
-    - get: oratos-ci-testing-cfcr-gcp-vars
+    - get: cfcr-gcp-vars
     - get: oratos-ci
     - get: cf-deployment-concourse-tasks
     - get: kubo-deployment
@@ -454,7 +454,7 @@ jobs:
             repository: oratos/ci-base
         inputs:
         - name: cfcr-bbl-state
-        - name: oratos-ci-testing-cfcr-gcp-vars
+        - name: cfcr-gcp-vars
         params:
           DEBUG:
         run:
@@ -469,7 +469,7 @@ jobs:
               eval "$(bbl print-env)"
             popd > /dev/null
 
-            credhub import --file oratos-ci-testing-cfcr-gcp-vars/vars.yml
+            credhub import --file cfcr-gcp-vars/vars.yml
     - task: modify-kubo-deployment
       config:
         platform: linux
