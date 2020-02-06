@@ -80,7 +80,7 @@ resources:
   source:
     url: ((slack.notifications-url))
 
-- name: oratos-ci-testing-cfcr-bbl-state
+- name: cfcr-bbl-state
   type: vault
   source:
     url: https://vault.oratos.ci.cf-app.com
@@ -414,7 +414,7 @@ jobs:
     - get: sink-resources
       passed:
       - create-release-candidate
-    - get: oratos-ci-testing-cfcr-bbl-state
+    - get: cfcr-bbl-state
     - get: oratos-ci-testing-cfcr-gcp-vars
     - get: oratos-ci
     - get: cf-deployment-concourse-tasks
@@ -423,25 +423,25 @@ jobs:
   - task: clean-up-environment
     file: oratos-ci/tasks/clean-up-environment/task.yml
     input_mapping:
-      bbl-state: oratos-ci-testing-cfcr-bbl-state
+      bbl-state: cfcr-bbl-state
     params:
       DEBUG:
   - in_parallel:
     - task: upload-stemcell
       file: oratos-ci/tasks/cfcr-upload-stemcell/task.yml
       input_mapping:
-        bbl-state: oratos-ci-testing-cfcr-bbl-state
+        bbl-state: cfcr-bbl-state
     - task: upload-kubo-bosh-release
       file: oratos-ci/tasks/cfcr-upload-bosh-release/task.yml
       input_mapping:
-        bbl-state: oratos-ci-testing-cfcr-bbl-state
+        bbl-state: cfcr-bbl-state
         bosh-release: kubo-release-bosh-io
       params:
         DEBUG:
     - task: upload-sink-resources-release
       file: oratos-ci/tasks/cfcr-upload-bosh-release/task.yml
       input_mapping:
-        bbl-state: oratos-ci-testing-cfcr-bbl-state
+        bbl-state: cfcr-bbl-state
         bosh-release: sink-resources-release-github-release
       params:
         DEBUG:
@@ -453,7 +453,7 @@ jobs:
           source:
             repository: oratos/ci-base
         inputs:
-        - name: oratos-ci-testing-cfcr-bbl-state
+        - name: cfcr-bbl-state
         - name: oratos-ci-testing-cfcr-gcp-vars
         params:
           DEBUG:
@@ -465,7 +465,7 @@ jobs:
             #!/bin/bash
             set -Eeuo pipefail; [ -n "${DEBUG:-}" ] && set -x
 
-            pushd oratos-ci-testing-cfcr-bbl-state/bbl-state > /dev/null
+            pushd cfcr-bbl-state/bbl-state > /dev/null
               eval "$(bbl print-env)"
             popd > /dev/null
 
@@ -548,7 +548,7 @@ jobs:
   - task: cfcr-deploy
     file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
     input_mapping:
-      bbl-state: oratos-ci-testing-cfcr-bbl-state
+      bbl-state: cfcr-bbl-state
       cf-deployment: modified-kubo-deployment
       ops-files: modified-kubo-deployment
       vars-files: kubo-deployment # this isn't used but is a required input
@@ -567,14 +567,14 @@ jobs:
   - task: run-apply-addons-errand
     file: cf-deployment-concourse-tasks/run-errand/task.yml
     input_mapping:
-      bbl-state: oratos-ci-testing-cfcr-bbl-state
+      bbl-state: cfcr-bbl-state
     params:
       DEPLOYMENT_NAME: cfcr
       ERRAND_NAME: apply-addons
   - task: expose-kubernetes-service
     file: oratos-ci/tasks/expose-kubernetes-service/task.yml
     input_mapping:
-      bbl-state: oratos-ci-testing-cfcr-bbl-state
+      bbl-state: cfcr-bbl-state
     params:
       GET_CREDENTIALS_HOOK: |
         function cleanup {
@@ -584,13 +584,13 @@ jobs:
         }
         trap cleanup EXIT
         BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/cfcr.sh get-credentials-tunnel testing
+            oratos-ci/scripts/cfcr.sh get-credentials-tunnel testing-1.5
   - task: configure-dev-dns-zone
     file: oratos-ci/tasks/configure-dev-dns-zone/task.yml
     params:
       AWS_ACCESS_KEY_ID: ((aws.dev_dns_access_key_id))
       AWS_SECRET_ACCESS_KEY: ((aws.dev_dns_secret_access_key))
-      ENV_DNS_NAME: testing-cfcr.oratos.ci.cf-app.com.
+      ENV_DNS_NAME: testing-cfcr-pks-1-5.oratos.ci.cf-app.com.
 
 
 - name: deploy-sink-resources-in-cluster
@@ -604,18 +604,18 @@ jobs:
     - get: sink-resources
       passed:
       - deploy-cfcr
-    - get: oratos-ci-testing-cfcr-bbl-state
+    - get: cfcr-bbl-state
     - get: oratos-ci
   - task: deploy-sink-resources-in-cluster
     file: oratos-ci/tasks/deploy-sink-resources/task.yml
     input_mapping:
-      bbl-state: oratos-ci-testing-cfcr-bbl-state
+      bbl-state: cfcr-bbl-state
     params:
       HAS_NODE_EXPORTER: true
       IMAGE_REPOSITORY: ((docker_image_repository))
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
-          oratos-ci/scripts/cfcr.sh get-credentials testing
+          oratos-ci/scripts/cfcr.sh get-credentials testing-1.5
 
 
 - name: cfcr-tests
@@ -629,24 +629,24 @@ jobs:
     - get: sink-resources
       passed:
       - deploy-sink-resources-in-cluster
-    - get: oratos-ci-testing-cfcr-bbl-state
+    - get: cfcr-bbl-state
     - get: oratos-ci
   - task: run-crd-tests
     file: oratos-ci/tasks/run-crd-tests/task.yml
     input_mapping:
-      bbl-state: oratos-ci-testing-cfcr-bbl-state
+      bbl-state: cfcr-bbl-state
     params:
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/cfcr.sh get-credentials testing
+            oratos-ci/scripts/cfcr.sh get-credentials testing-1.5
   - task: e2e-test
     file: oratos-ci/tasks/sink-e2e/task.yml
     input_mapping:
-      bbl-state: oratos-ci-testing-cfcr-bbl-state
+      bbl-state: cfcr-bbl-state
     params:
       GET_CREDENTIALS_HOOK: |
         BBL_STATE_DIR=bbl-state \
-            oratos-ci/scripts/cfcr.sh get-credentials testing
+            oratos-ci/scripts/cfcr.sh get-credentials testing-1.5
 
 
 - name: cut-final-release
