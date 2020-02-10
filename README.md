@@ -35,3 +35,32 @@ Switched to context "bikepark".
 $ kubectl config current-context
 bikepark
 ```
+
+###Creating a new testing cluster:
+1. Create a `bbl` env in GCP in `bbl-state` directory.
+1. `git init` in `bbl-state`
+1. Clean `bbl-state` with `git clean -ffdX` to remove Terraform binaries.
+1. Tar the directory: `tar czf bbl-state.tgz bbl-state/`
+1. Base64 encode the tarball: `cat bbl-state.tgz | base64 > bbl-state.tgz.enc`
+1. Write that to a new vault var: `vault write secret/envs/<new cluster>-bbl-state tarball=@bbl-state.tgz.enc`
+1. Copy GCP creds from oratos-ci-testing-cfcr cluster: `vault read --field=vars.yml secret/envs/oratos-ci-testing-cfcr-gcp-vars > vars.yml`
+1. Update vars for the new CFCR cluster in `vars.yml`.
+1. Write vars file to a new vault key: `vault write secret/envs/<new cluster>-gcp-vars vars.yml=@vars.yml`
+1. In pipeline:
+    1. Set `cfcr-bbl-state` key and `cfcr-gcp-vars` key in pipeline.
+    1. Update value of `ENV_DNS_NAME` in `configure-dev-dns-zone` job.
+1. Create a VPN firewall on the network created by CFCR deploy allowing all IPs to send traffic to the master node 
+    (by label) on ports 8443 and 443
+
+###Dealing with vault:
+You may have to restart a vault pod at some point. Here's how:
+1. Log in to gcloud via cf-pks-observability1 team
+1. Run `gcloud container clusters list`. You should see an "oratos-vault" cluster.
+1. Run `gcloud container clusters get-credentials oratos-vault` (with zone if you don't have a default)
+1. `kubectl get pods -n oratos-vault` to find the dead pod(s)
+1. `kubectl delete pod -n oratos-vault -l app=vault`
+1. At this point you will need to unseal each replacement pod using port forwarding: `kubectl port-forward <new pod name> 8200 -n oratos-vault`
+1. In another terminal tab, run `echo $VAULT_ADDR` to see the vault url. We are going to temporarily change this env var 
+to the local port specified in the last command and pass it into the following vault command: 
+`VAULT_ADDR=http://localhost:8200 vault operator unseal` 
+1. Your new pod should be up!
