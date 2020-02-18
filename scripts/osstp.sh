@@ -8,11 +8,11 @@ OSSTP_LOAD=${OSSTP_LOAD:-~/workspace/osstpclients/bin/osstp-load.py}
 OSM_API_KEY_FILE=${OSM_API_KEY_FILE:-~/.osmapikey}
 
 pushd $SINK_RESOURCES_REPO
-    osstptool generate --download --remapper-definitions-file=$REMAPPER
+    osstptool generate -e sink-resources github.com/pivotal-cf/sink-resources --remapper-definitions-file=$REMAPPER
     python2 $OSSTP_LOAD -R sink-resources-release/latest osstp_golang.yml -I "Distributed - Static Link w/ TP" -A $OSM_API_KEY_FILE
 popd
 
 pushd $FLUENT_BIT_PLUGIN_REPO
-    osstptool generate --download --remapper-definitions-file=$REMAPPER
+    osstptool generate --vendor-path=vendor fluent-bit-out-syslog github.com/pivotal-cf/fluent-bit-out-syslog --remapper-definitions-file=$REMAPPER
     python2 $OSSTP_LOAD -R sink-resources-release/latest osstp_golang.yml -I "Distributed - Static Link w/ TP" -A $OSM_API_KEY_FILE
 popd
