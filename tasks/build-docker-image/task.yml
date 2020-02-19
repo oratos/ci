@@ -8,6 +8,7 @@ inputs:
 - name: oratos-ci # repo for task file
 outputs:
 - name: image-tarball # the place to store the build context and tag
+- name: pkg-list # the place to store the /builder-pkg-list for OSL process
 params:
   # - Required
   # - Override default args with private artifacts in all docker builds
