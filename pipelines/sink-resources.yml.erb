@@ -51,11 +51,11 @@ resources:
     regexp: pkg-list/*
 
 - name: osstpclients
-  type: gcs-resource
+  type: git
   source:
-    bucket: osstpclients
-    json_key: ((gcs_account))
-    regexp: osstpclients/*.zip
+    uri: https://gitlab.eng.vmware.com/core-build/osstpclients
+    branch: master
+# TODO: do we need to pass in api key for this? or an approved ssh key
 
 <% %w(sink-resources sink-resources-release fluent-bit-out-syslog).each do |repo| %>
 - name: <%= repo %>
@@ -236,7 +236,6 @@ jobs:
         params:
           file: pkg-list/<%= component %>
           content_type: application/octet-stream
-        attempts: 2
 <% end %>
     - do:
       - task: build-fluent-bit-image
@@ -259,7 +258,6 @@ jobs:
         params:
           file: pkg-list/fluent-bit-out-syslog
           content_type: application/octet-stream
-        attempts: 2
     - do:
       - task: prepare-observability-manager-image
         privileged: true
@@ -306,7 +304,6 @@ jobs:
         params:
           file: pkg-list/observability-manager
           content_type: application/octet-stream
-        attempts: 2
   - task: release
     privileged: true
     config:
@@ -731,7 +728,6 @@ jobs:
   - task: generate-and-upload-go-deps
     file: oratos-ci/tasks/upload-go-osl/task.yml
     params:
-      # TODO: add this to scripts/set-pipeline
-      OSM_API_KEY_FILE: ((osm_api_key_file))
+      OSM_API_CREDENTIALS: ((osm_api_credentials))
   <%# - task: upload-image-deps %>
 

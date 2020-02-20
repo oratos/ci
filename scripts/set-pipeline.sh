@@ -52,6 +52,7 @@ function set_pipeline {
     fi
     credentials_file=$(mktemp)
     gcs_creds_file=$(mktemp)
+    osm_creds_file=$(mktemp)
 
     pipeline_file="pipelines/${1}.yml"
     erb_file="${pipeline_file}.erb"
@@ -62,10 +63,12 @@ function set_pipeline {
     fi
     vault read -field=vars_file /secret/concourse/vcna/variables > $credentials_file
     vault read -field=vars_file /secret/concourse/main/gcs > $gcs_creds_file
+    vault read -field=vars_file /secret/concourse/main/osm > $osm_creds_file
     fly -t oratos-vmw set-pipeline -p "$1" \
         -l "${vars_file}" \
         -l "${credentials_file}" \
         -l "${gcs_creds_file}" \
+        -l "${osm_creds_file}"
         -c "${pipeline_file}"
 }
 
