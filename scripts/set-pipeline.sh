@@ -68,7 +68,7 @@ function set_pipeline {
         -l "${vars_file}" \
         -l "${credentials_file}" \
         -l "${gcs_creds_file}" \
-        -l "${osm_creds_file}"
+        -l "${osm_creds_file}" \
         -c "${pipeline_file}"
 }
 
