@@ -3,7 +3,7 @@ image_resource:
   type: docker-image
   source:
     repository: python
-    tag: 2-alpine3.11
+    tag: 2-alpine
 inputs:
 - name: sink-resources
 - name: fluent-bit-out-syslog
