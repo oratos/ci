@@ -9,6 +9,7 @@ inputs:
 - name: fluent-bit-out-syslog
 - name: oratos-ci # repo for task file
 - name: osstpclients # repo containing the osstpclient binaries
+- name: osstptool
 params:
   # - Required
   # API Key is needed to upload and create tickets in OSM
