@@ -15,4 +15,4 @@ params:
   # This can be retrieved from: https://osm.eng.vmware.com/oss/#/user-settings
   OSM_API_CREDENTIALS:
 run:
-  path: oratos-ci/upload-go-osl/task
+  path: oratos-ci/tasks/upload-go-osl/task

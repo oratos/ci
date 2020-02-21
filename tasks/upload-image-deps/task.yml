@@ -2,7 +2,8 @@ platform: linux
 image_resource:
   type: docker-image
   source:
-    repository: python:2-alpine
+    repository: python
+    tag: '2-alpine3.11'
 inputs:
 - name: sink-resources
 - name: fluent-bit-out-syslog
@@ -15,4 +16,4 @@ params:
   # This can be retrieved from: https://osm.eng.vmware.com/oss/#/user-settings
   OSM_API_CREDENTIALS:
 run:
-  path: oratos-ci/upload-image-deps/task
+  path: oratos-ci/tasks/upload-image-deps/task
