@@ -8,10 +8,11 @@ inputs:
 - name: fluent-bit-out-syslog
 - name: oratos-ci # repo for task file
 - name: osstpclients # repo containing the osstpclient binaries
+- name: osl-packages # bucket containing builder-dpkg-list files
 params:
   # - Required
   # API Key is needed to upload and create tickets in OSM
   # This can be retrieved from: https://osm.eng.vmware.com/oss/#/user-settings
   OSM_API_CREDENTIALS:
 run:
-  path: oratos-ci/upload-go-osl/task
+  path: oratos-ci/upload-image-deps/task
