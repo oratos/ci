@@ -4,17 +4,17 @@
 # TODO: does this work?
 REMAPPER="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"/osstp.yaml
 
-# TODO: unzip the osstpclient.zip
+pip install -r osstpclients/etc/requirements.txt
 OSSTP_LOAD="osstpclients/bin/osstp-load.py"
 OSM_API_CREDENTIALS_FILE=$(mktemp)
 echo "$OSM_API_CREDENTIALS" > "$OSM_API_CREDENTIALS_FILE"
 
 pushd sink-resources
     osstptool generate -e sink-resources github.com/pivotal-cf/sink-resources --remapper-definitions-file="$REMAPPER"
-    python2 "$OSSTP_LOAD" -R sink-resources-release/latest osstp_golang.yml -I "Distributed - Static Link w/ TP" -A "$OSM_API_CREDENTIALS_FILE"
+    python "$OSSTP_LOAD" -R sink-resources-release/latest osstp_golang.yml -I "Distributed - Static Link w/ TP" -A "$OSM_API_CREDENTIALS_FILE"
 popd
 
 pushd fluent-bit-out-syslog
     osstptool generate --vendor-path=vendor fluent-bit-out-syslog github.com/pivotal-cf/fluent-bit-out-syslog --remapper-definitions-file="$REMAPPER"
-    python2 "$OSSTP_LOAD" -R sink-resources-release/latest osstp_golang.yml -I "Distributed - Static Link w/ TP" -A "$OSM_API_CREDENTIALS_FILE"
+    python "$OSSTP_LOAD" -R sink-resources-release/latest osstp_golang.yml -I "Distributed - Static Link w/ TP" -A "$OSM_API_CREDENTIALS_FILE"
 popd
