@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -ex
 # shellcheck disable=SC1091
 # TODO: does this work?
 REMAPPER="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"/osstp.yaml

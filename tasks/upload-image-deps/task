@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# shellcheck disable=SC1091
-# TODO: does this work?
+set -ex
 REMAPPER="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"/osstp.yaml
 
 pip install -r osstpclients/etc/requirements.txt
