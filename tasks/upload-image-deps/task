@@ -12,8 +12,13 @@ pushd osl-packages
     ls
 popd
 
-pushd sink-resources
-    osstptool generate -e sink-resources github.com/pivotal-cf/sink-resources --remapper-definitions-file="$REMAPPER"
-    python "$OSSTP_LOAD" -R sink-resources-release/latest <change_me> -I "Distributed - Static Link w/ TP" -A "$OSM_API_CREDENTIALS_FILE"
+pushd osstptool
+    make
 popd
+
+./osstptool --help
+# pushd sink-resources
+#     ./osstptool generate -e sink-resources github.com/pivotal-cf/sink-resources --remapper-definitions-file="$REMAPPER"
+#     python "$OSSTP_LOAD" -R sink-resources-release/latest <change_me> -I "Distributed - Static Link w/ TP" -A "$OSM_API_CREDENTIALS_FILE"
+# popd
 
