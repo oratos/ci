@@ -42,7 +42,7 @@ resources:
   type: git
   source:
     uri: https://github.com/pivotal-cf/oratos-ci
-    branch: master
+    branch: WIP-automate-osl
 
 - name: osl-packages
   type: gcs-resource
@@ -51,12 +51,19 @@ resources:
     json_key: ((gcs_account))
     regexp: pkg-list/*
 
+- name: osstptool
+  type: git
+  source:
+    uri: git@gitlab.eng.vmware.com:frapposelli/osstptool
+    branch: master
+    private_key: ((github.oratos-bot-vmware-private-key))
+
 - name: osstpclients
   type: git
   source:
-    uri: https://gitlab.eng.vmware.com/core-build/osstpclients
+    uri: git@gitlab.eng.vmware.com:core-build/osstpclients
     branch: master
-# TODO: do we need to pass in api key for this? or an approved ssh key
+    private_key: ((github.oratos-bot-vmware-private-key))
 
 <% %w(sink-resources sink-resources-release fluent-bit-out-syslog).each do |repo| %>
 - name: <%= repo %>
@@ -237,6 +244,7 @@ jobs:
         params:
           file: pkg-list/<%= component %>
           content_type: application/octet-stream
+        attempts: 6
 <% end %>
     - do:
       - task: build-fluent-bit-image
@@ -693,6 +701,12 @@ jobs:
     - get: sink-resources-release
     - get: oratos-ci
     - get: fluent-bit-out-syslog-github-release
+    - get: sink-resources
+      passed:
+      - create-release-candidate
+    - get: fluent-bit-out-syslog
+      passed:
+      - create-release-candidate
   - task: update-bosh-release
     privileged: true
     file: oratos-ci/tasks/update-bosh-release/task.yml
@@ -713,22 +727,24 @@ jobs:
   - put: sink-resources-version
     params: {file: sink-resources-version/version}
 
-# TODO: grab the gcs files and run the osstpclient commands
 - name: create-and-upload-osl-packages
   plan:
   - in_parallel:
     - get: osl-packages
     - get: oratos-ci
     - get: sink-resources
-      passed:
-      - create-release-candidate
+   #   passed:
+#      - cut-final-release
     - get: fluent-bit-out-syslog
-      passed:
-      - create-release-candidate
+  #    passed:
+ #     - cut-final-release
     - get: osstpclients
-  - task: generate-and-upload-go-deps
-    file: oratos-ci/tasks/upload-go-osl/task.yml
-    params:
-      OSM_API_CREDENTIALS: ((osm_api_credentials))
-  <%# - task: upload-image-deps %>
+    - get: osstptool
+  - in_parallel:
+    - task: generate-and-upload-go-deps
+      file: oratos-ci/tasks/upload-go-osl/task.yml
+      params:
+        OSM_API_CREDENTIALS: ((osm_api_credentials))
+    - task: upload-image-deps
+      file: oratos-ci/tasks/upload-image-deps/task.yml
 
