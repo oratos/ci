@@ -1,0 +1,18 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: resource-intensive
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: resource-deployment
+  template:
+    metadata:
+      labels:
+        app: resource-deployment
+    spec:
+      containers:
+      - image: oratos/resource-intensive-app
+        imagePullPolicy: Always
+        name: resource-intensive-app
