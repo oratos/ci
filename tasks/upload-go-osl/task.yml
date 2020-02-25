@@ -8,6 +8,7 @@ inputs:
 - name: fluent-bit-out-syslog
 - name: oratos-ci # repo for task file
 - name: osstpclients # repo containing the osstpclient binaries
+- name: osl-packages # bucket containing builder-dpkg-list files
 - name: osstptool
 params:
   # - Required
