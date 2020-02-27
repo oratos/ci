@@ -114,8 +114,8 @@ pushd put-sink-resources-release
   mkdir -p ../bosh-release/binaries
   mv "${release_file}" "../bosh-release/binaries/sink-resources-release-${SINK_RESOURCES_VERSION}.tgz"
 
-  echo "Copy OSL config sink-resources-${SINK_RESOURCES_SHA}.yml to bosh-release/binaries"
-  cp "osl/${SINK_RESOURCES_VERSION}/sink-resources-${SINK_RESOURCES_SHA}.yml" \
+  echo "Copy OSL config sink-resources.yml to bosh-release/binaries"
+  cp "osl/${SINK_RESOURCES_VERSION}/sink-resources.yml" \
       "../bosh-release/binaries/sink-resources-${SINK_RESOURCES_SHA}.yml"
 
   git add .

@@ -4,8 +4,7 @@ image_resource:
   source:
     repository: oratos/vmware-python
 inputs:
-- name: sink-resources
-- name: fluent-bit-out-syslog
+- name: sink-resources-release-github-release
 - name: oratos-ci # repo for task file
 - name: osstpclients # repo containing the osstpclient binaries
 - name: osl-packages # bucket containing builder-dpkg-list files
@@ -15,5 +14,6 @@ params:
   # API Key is needed to upload and create tickets in OSM
   # This can be retrieved from: https://osm.eng.vmware.com/oss/#/user-settings
   OSM_API_CREDENTIALS:
+  SINK_RESOURCES_VERSION:
 run:
-  path: oratos-ci/tasks/upload-go-osl/task
+  path: oratos-ci/tasks/upload-osl-files/task

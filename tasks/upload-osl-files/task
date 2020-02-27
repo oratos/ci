@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# shellcheck disable=SC1091
+set -ex
+
+pip install -r osstpclients/etc/requirements.txt
+OSSTP_LOAD="../osstpclients/bin/osstp-load.py"
+OSM_API_CREDENTIALS_FILE=$(mktemp)
+echo -n "$OSM_API_CREDENTIALS" > "$OSM_API_CREDENTIALS_FILE"
+
+pushd osstptool
+    make
+popd
+SINK_RESOURCES_VERSION="$(cat sink-resources-version/version)"
+pushd sink-resources-release-github-release
+    tar xzf source.tar.gz
+    echo "y" | python "$OSSTP_LOAD" -R sink-resources-release/latest osl/${SINK_RESOURCES_VERSION}/sink-resources.yml -I "Distributed - Static Link w/ TP" -A "$OSM_API_CREDENTIALS_FILE"
+popd
