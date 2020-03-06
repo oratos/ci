@@ -201,18 +201,21 @@ jobs:
   - put: sink-resources-version
     params:
       bump: major
+      pre: rc
 
 - name: bump-minor
   plan:
   - put: sink-resources-version
     params:
       bump: minor
+      pre: rc
 
 - name: bump-patch
   plan:
   - put: sink-resources-version
     params:
       bump: patch
+      pre: rc
 
 
 - name: create-release-candidate
