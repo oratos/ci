@@ -73,7 +73,7 @@ resources:
     branch: master
     private_key: ((github.oratos-bot-vmware-private-key))
 
-<% %w(sink-resources sink-resources-release fluent-bit-out-syslog).each do |repo| %>
+<% %w(sink-resources sink-resources-release).each do |repo| %>
 - name: <%= repo %>
   type: git
   source:
@@ -90,6 +90,21 @@ resources:
     release: false
     pre_release: true
 <% end %>
+
+- name: fluent-bit-out-syslog
+  type: git
+  source:
+    uri: git@github.com:pivotal-cf/fluent-bit-out-syslog
+    tag_filter: v0.21.*
+    private_key: ((github.oratos-bot-private-key))
+
+- name: fluent-bit-out-syslog-github-release
+  type: github-release
+  source:
+    owner: pivotal-cf
+    repository: fluent-bit-out-syslog
+    access_token: ((github.oratos-bot-release-access-token))
+    tag_filter: v0.21.*
 
 - name: slack-alert
   type: slack-notification
