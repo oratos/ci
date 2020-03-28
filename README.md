@@ -55,12 +55,14 @@ bikepark
 ###Dealing with vault:
 You may have to restart a vault pod at some point. Here's how:
 1. Log in to gcloud via cf-pks-observability1 team
-1. Run `gcloud container clusters list`. You should see an "oratos-vault" cluster.
-1. Run `gcloud container clusters get-credentials oratos-vault` (with zone if you don't have a default)
-1. `kubectl get pods -n oratos-vault` to find the dead pod(s)
-1. `kubectl delete pod -n oratos-vault -l app=vault`
-1. At this point you will need to unseal each replacement pod using port forwarding: `kubectl port-forward <new pod name> 8200 -n oratos-vault`
-1. In another terminal tab, run `echo $VAULT_ADDR` to see the vault url. We are going to temporarily change this env var 
-to the local port specified in the last command and pass it into the following vault command: 
-`VAULT_ADDR=http://localhost:8200 vault operator unseal` 
-1. Your new pod should be up!
+2. Run `gcloud container clusters list`. You should see an "oratos-vault" cluster.
+3. Run `gcloud container clusters get-credentials oratos-vault` (with zone if you don't have a default)
+4. `kubectl get pods -n oratos-vault` to find the dead pod(s)
+5. `kubectl delete pod -n oratos-vault -l app=vault` to delete the dead pod(s)
+6. For each new pod that comes up, unseal using port forwarding:
+    - `kubectl port-forward <new pod name> 8200 -n oratos-vault`
+    - In another terminal tab, run `echo $VAULT_ADDR` to see the vault url. 
+    - Change this env var to the local port specified in the last command and pass it into the following vault command: 
+      `VAULT_ADDR=http://localhost:8200 vault operator unseal`
+    - Enter the "unseal key" found in Vault. (Folder "Shared-CF-Oratos", Name "Vault Key") 
+7. Your new pod should be up!
