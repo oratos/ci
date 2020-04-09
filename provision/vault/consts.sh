@@ -8,9 +8,14 @@ LASTPASS_X509_PATH="Shared-CF-Oratos/vault.oratos.ci.cf-app.com certs/key"
 VALUES="
 vault:
   dev: false
-  customSecrets:
-  - secretName: vault-gcs-service-account
+  extraVolumes:
+  - name: vault-gcs-service-account
+    secret:
+      secretName: vault-gcs-service-account
+  extraVolumeMounts:
+  - name: vault-gcs-service-account
     mountPath: /vault/sa
+    readOnly: true
   extraEnv:
   - name: GOOGLE_APPLICATION_CREDENTIALS
     value: /vault/sa/key.json

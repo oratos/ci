@@ -138,7 +138,7 @@ data:
             ssl_stapling on;
 
             location / {
-                proxy_pass http://vault-vault.oratos-vault.svc.cluster.local:8200;
+                proxy_pass http://vault.oratos-vault.svc.cluster.local:8200;
             }
         }
     }
