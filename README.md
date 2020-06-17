@@ -36,6 +36,14 @@ $ kubectl config current-context
 bikepark
 ```
 
+###Creating a sink-resources-release final release
+1. Run the `cut-final-release` job in CI.
+1. Update the new draft release in
+   [sink-resources-release](https://github.com/pivotal-cf/sink-resources-release/releases)
+1. Use instructions from
+   [pks-releng-toolbox](https://github.com/pivotal-cf/pks-releng-toolbox/blob/master/CONTRIBUTING.md)
+   to prepare a pull request to [PKS](https://github.com/pivotal-cf/p-pks-integrations)
+
 ###Creating a new testing cluster:
 1. Create a `bbl` env in GCP in `bbl-state` directory.
 1. `git init` in `bbl-state`
@@ -49,7 +57,7 @@ bikepark
 1. In pipeline:
     1. Set `cfcr-bbl-state` key and `cfcr-gcp-vars` key in pipeline.
     1. Update value of `ENV_DNS_NAME` in `configure-dev-dns-zone` job.
-1. Create a VPN firewall on the network created by CFCR deploy allowing all IPs to send traffic to the master node 
+1. Create a VPN firewall on the network created by CFCR deploy allowing all IPs to send traffic to the master node
     (by label) on ports 8443 and 443
 
 ###Dealing with vault:
@@ -61,8 +69,8 @@ You may have to restart a vault pod at some point. Here's how:
 5. `kubectl delete pod -n oratos-vault -l app=vault` to delete the dead pod(s)
 6. For each new pod that comes up, unseal using port forwarding:
     - `kubectl port-forward <new pod name> 8200 -n oratos-vault`
-    - In another terminal tab, run `echo $VAULT_ADDR` to see the vault url. 
-    - Change this env var to the local port specified in the last command and pass it into the following vault command: 
+    - In another terminal tab, run `echo $VAULT_ADDR` to see the vault url.
+    - Change this env var to the local port specified in the last command and pass it into the following vault command:
       `VAULT_ADDR=http://localhost:8200 vault operator unseal`
-    - Enter the "unseal key" found in Vault. (Folder "Shared-CF-Oratos", Name "Vault Key") 
+    - Enter the "unseal key" found in Vault. (Folder "Shared-CF-Oratos", Name "Vault Key")
 7. Your new pod should be up!
