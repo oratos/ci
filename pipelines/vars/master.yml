@@ -1,7 +1,7 @@
 docker_image_repository: epks-docker-local.artifactory.eng.vmware.com/oratos
-base_image: cnabu-docker-local.artifactory.eng.vmware.com/base/ubuntu:bionic-vmware-2020-06-16-19-07
-golang_source: https://artifactory.eng.vmware.com:443/golang-dist/go1.14.4.linux-amd64.tar.gz
-kubectl_source: http://build-artifactory.eng.vmware.com/kscom-generic-local/prod/kubernetes/v1.15.11+vmware.1/bin/linux/amd64/kubectl
+base_image: cnabu-docker-local.artifactory.eng.vmware.com/base/ubuntu:bionic-vmware-2020-10-20-05-49
+golang_source: https://artifactory.eng.vmware.com:443/golang-dist/go1.14.10.linux-amd64.tar.gz
+kubectl_source: http://build-artifactory.eng.vmware.com/kscom-generic-local/prod/kubernetes/v1.18.9+vmware.1/bin/linux/amd64/kubectl
 
 
 fluent_bit_out_syslog_params:
