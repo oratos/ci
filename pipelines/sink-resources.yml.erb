@@ -22,19 +22,19 @@ resource_types:
 - name: slack-notification
   type: docker-image
   source:
-    repository: cfcommunity/slack-notification-resource
+    repository: gcr.io/cf-pks-releng-environments/cfcommunity/slack-notification-resource
     tag: v5.0
 
 - name: vault
   type: docker-image
   source:
-    repository: oratos/vault-resource
+    repository: gcr.io/cf-pks-releng-environments/oratos/vault-resource
     tag: latest
 
 - name: gcs-resource
   type: docker-image
   source:
-    repository: frodenas/gcs-resource
+    repository: gcr.io/cf-pks-releng-environments/frodenas/gcs-resource
 
 resources:
 - name: oratos-ci
@@ -346,7 +346,7 @@ jobs:
       image_resource:
         type: docker-image
         source:
-          repository: concourse/docker-image-resource
+          repository: gcr.io/cf-pks-releng-environments/concourse/docker-image-resource
       params:
         CONTAINER_REPOSITORY: ((docker_image_repository))
         DOCKERHUB_USERNAME: ((artifactory.username))
