@@ -80,8 +80,6 @@ jobs:
   - in_parallel:
     - get: out-syslog
       trigger: true
-      passed:
-      - unit-tests
     - get: oratos-ci
   - in_parallel:
     - task: prepare-build
