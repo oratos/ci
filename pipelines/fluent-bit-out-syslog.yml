@@ -113,7 +113,7 @@ jobs:
       image_resource:
         type: docker-image
         source:
-          repository: oratos/ci-base
+          repository: gcr.io/cf-pks-releng-environments/oratos/ci-base
       params:
         VERSION: ((fluent_bit_out_syslog_params.VERSION))
       inputs:
