@@ -95,7 +95,7 @@ resources:
   type: git
   source:
     uri: git@github.com:pivotal-cf/fluent-bit-out-syslog
-    tag_filter: v0.22.*
+    tag_filter: v0.23.*
     private_key: ((github.oratos-bot-private-key))
 
 - name: fluent-bit-out-syslog-github-release
@@ -104,7 +104,7 @@ resources:
     owner: pivotal-cf
     repository: fluent-bit-out-syslog
     access_token: ((github.oratos-bot-release-access-token))
-    tag_filter: v0.22.*
+    tag_filter: v0.23.*
 
 - name: slack-alert
   type: slack-notification
