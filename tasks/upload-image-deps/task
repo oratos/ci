@@ -17,7 +17,7 @@ popd
 osl_packages=("ghostunnel" "cert-generator" "event-controller" "sink-controller" "telegraf" "validator" "metric-controller" "observability-manager")
 
 for component in "${osl_packages[@]}"; do
-    echo "y" | python "$OSSTP_LOAD" -R sink-resources-release/latest "${HOME_DIR}/${component}-pkg-list/${component}" -I "Distributed - Static Link w/ TP" -A "$OSM_API_CREDENTIALS_FILE"
+    echo "y" | python "$OSSTP_LOAD" -R sink-resources-release/latest "${HOME_DIR}/${component}-pkg-list/${component}" -I "Distributed - Static Link w/ TP" -A "$OSM_API_CREDENTIALS_FILE" -F
 done;
 
 pushd sink-resources
