@@ -27,8 +27,11 @@ docker save "$image_name" | gzip > "image-tarball/$COMPONENT-$sha.tgz"
 if [[ "${image_name}" ==  *node-exporter* ]]
 then
   docker run -t "$image_name" &
-  sleep 2
+  sleep 5
+  echo "test001"
+  echo $(docker ps)
   container_id=$(docker ps | grep "$image_name" | awk '{print $1}')
+  echo $(container_id)
   docker cp "${container_id}":/builder-dpkg-list pkg-list/"${COMPONENT}"
 else
   docker run -t "$image_name" cat /builder-dpkg-list > pkg-list/"${COMPONENT}"
