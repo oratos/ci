@@ -9,6 +9,8 @@ log_in "$DOCKERHUB_USERNAME" "$DOCKERHUB_PASSWORD" "$CONTAINER_REPOSITORY"
 sha="$(cat image-repo/.git/HEAD)"
 image_name="$CONTAINER_REPOSITORY/$COMPONENT:$sha"
 
+echo $BASE_IMAGE
+
 pushd image-repo
   docker build \
     --build-arg BASE_IMAGE="$BASE_IMAGE" \
@@ -31,3 +33,5 @@ then
 else
   docker run -t "$image_name" cat /builder-dpkg-list > pkg-list/"${COMPONENT}"
 fi
+
+cat pkg-list/"${COMPONENT}"
