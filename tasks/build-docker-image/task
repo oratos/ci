@@ -20,6 +20,7 @@ pushd image-repo
     -f "$DOCKER_FILE_PATH" \
     . \
     -t "$image_name"
+  docker push $image_name
 popd
 
 docker save "$image_name" | gzip > "image-tarball/$COMPONENT-$sha.tgz"
