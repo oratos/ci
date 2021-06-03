@@ -23,18 +23,14 @@ pushd image-repo
   docker push $image_name
 popd
 
-docker save "$image_name" | gzip > "image-tarball/$COMPONENT-$sha.tgz"
-
 if [[ "${image_name}" ==  *node-exporter* ]]
 then
   docker run -t "$image_name" &
   sleep 5
-  echo "test001: "$(docker ps)
   container_id=$(docker ps | grep "$image_name" | awk '{print $1}')
-  echo "test002: "$(container_id)
   docker cp "${container_id}":/builder-dpkg-list pkg-list/"${COMPONENT}"
   sleep 2
-  echo "test003: "
+  echo "dependency: ----------------------------------"
   cat pkg-list/"${COMPONENT}"
 else
   docker run -t "$image_name" cat /builder-dpkg-list > pkg-list/"${COMPONENT}"
