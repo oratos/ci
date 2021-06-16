@@ -9,7 +9,12 @@ log_in "$DOCKERHUB_USERNAME" "$DOCKERHUB_PASSWORD" "$CONTAINER_REPOSITORY"
 sha="$(cat image-repo/.git/HEAD)"
 image_name="$CONTAINER_REPOSITORY/$COMPONENT:$sha"
 
+echo "******************************"
 echo "base image:"$BASE_IMAGE
+echo "telegraf le image:"$TELEGRAF_IMAGE
+echo "golang source:"$GOLANG_SOURCE
+echo "kubectl source:"$KUBECTL_SOURCE
+echo "******************************"
 
 pushd image-repo
   docker build \
